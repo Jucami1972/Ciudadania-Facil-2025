@@ -40,16 +40,8 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableOpacity 
-        style={styles.overlay} 
-        activeOpacity={1} 
-        onPress={onClose}
-      >
-        <TouchableOpacity 
-          style={styles.modalContainer} 
-          activeOpacity={1}
-          onPress={(e) => e.stopPropagation()}
-        >
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
           {/* Header con icono */}
           <View style={styles.header}>
             <View style={styles.iconContainer}>
@@ -115,8 +107,8 @@ const ProgressModal: React.FC<ProgressModalProps> = ({
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 };
@@ -128,16 +120,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    ...Platform.select({
-      web: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-      },
-    }),
   },
   modalContainer: {
     backgroundColor: 'white',
@@ -150,12 +132,6 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
     position: 'relative',
-    ...Platform.select({
-      web: {
-        zIndex: 10000,
-        boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
-      },
-    }),
   },
   header: {
     alignItems: 'center',

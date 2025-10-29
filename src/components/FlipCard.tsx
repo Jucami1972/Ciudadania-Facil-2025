@@ -34,21 +34,25 @@ interface FlipCardProps {
   };
   language: 'en' | 'es';
   isImportant?: boolean;
-  onFlip?: (isFlipped: boolean) => void;
 }
 
 interface FlipCardHandle {
   reset: () => void;
+  playAudio: () => void;
+  stopAudio: () => void;
+  isPlaying: boolean;
+  setIsPlaying: (playing: boolean) => void;
 }
 
 const { width } = Dimensions.get('window');
 
 const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
-  ({ frontContent, backContent, language, isImportant = false, onFlip }, ref) => {
+  ({ frontContent, backContent, language, isImportant = false }, ref) => {
     const anim = useRef(new Animated.Value(0)).current;
     const flipped = useRef(false);
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isFlipped, setIsFlipped] = useState(false);
 
     // Detener el audio cuando el componente se desmonta o cambia de pregunta
     useEffect(() => {
@@ -103,12 +107,8 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
         useNativeDriver: true,
       }).start();
       flipped.current = !flipped.current;
+      setIsFlipped(!isFlipped);
       stopAudio(); // Detener el audio al voltear
-      
-      // Notificar al componente padre sobre el cambio de estado
-      if (onFlip) {
-        onFlip(flipped.current);
-      }
     };
 
     const reset = () => {
@@ -119,12 +119,8 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
         useNativeDriver: true,
       }).start();
       flipped.current = false;
+      setIsFlipped(false);
       stopAudio();
-      
-      // Notificar al componente padre sobre el reset
-      if (onFlip) {
-        onFlip(false);
-      }
     };
 
     const playQuestionAudio = async () => {
@@ -132,6 +128,13 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
         if (!frontContent.number) return;
         await stopAudio(); // Detener cualquier audio que esté sonando
         const module = questionAudioMap[frontContent.number];
+        
+        if (!module) {
+          console.error('Audio module not found for question ID:', frontContent.number);
+          setIsPlaying(false);
+          return;
+        }
+        
         const { sound: newSound } = await Audio.Sound.createAsync(module);
         setSound(newSound);
         setIsPlaying(true);
@@ -169,6 +172,16 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
 
     useImperativeHandle(ref, () => ({
       reset,
+      playAudio: () => {
+        if (isPlaying) {
+          stopAudio();
+        } else {
+          isFlipped ? playAnswerAudio() : playQuestionAudio();
+        }
+      },
+      stopAudio,
+      isPlaying,
+      setIsPlaying,
     }));
 
     const qText = language === 'en' ? frontContent.questionEn : frontContent.question;
@@ -182,33 +195,27 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
       return 20;
     };
 
+    const renderTextWithPreferredOptions = (text: string, style: any) => {
+      const parts = text.split(/(<preferred>.*?<\/preferred>)/g);
+      return (
+        <Text style={style}>
+          {parts.map((part, index) => {
+            if (part.startsWith('<preferred>') && part.endsWith('</preferred>')) {
+              const preferredText = part.replace(/<\/?preferred>/g, '');
+              return (
+                <Text key={index} style={[style, { color: '#FFD700', fontWeight: 'bold' }]}>
+                  {preferredText}
+                </Text>
+              );
+            }
+            return part;
+          })}
+        </Text>
+      );
+    };
+
     return (
       <View style={styles.container}>
-        <View style={styles.audioWithFlag}>
-          <Image source={require('../assets/images/flag-usa.png')} style={styles.flagImage} />
-          <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              if (isPlaying) {
-                stopAudio();
-              } else {
-                flipped.current ? playAnswerAudio() : playQuestionAudio();
-              }
-            }}
-            style={[styles.audioButtonOnFlag, isPlaying && styles.audioButtonActive]}
-            hitSlop={10}
-            accessibilityLabel={isPlaying ? "Detener audio" : "Reproducir audio"}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isPlaying }}
-          >
-            <MaterialCommunityIcons 
-              name={isPlaying ? "stop" : "volume-high"} 
-              size={50} 
-              color="white" 
-            />
-          </TouchableOpacity>
-        </View>
-
         <TouchableOpacity onPress={flip} style={styles.flipContainer}>
           {/* FRENTE */}
           <Animated.View
@@ -247,7 +254,7 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
               )}
               <View style={styles.contentBackground}>
                 <ScrollView contentContainerStyle={styles.scrollInner}>
-                  <Text style={[styles.answerText, { fontSize: getFontSize(aText) }]}>{aText}</Text>
+                  {renderTextWithPreferredOptions(aText, [styles.answerText, { fontSize: getFontSize(aText) }])}
                 </ScrollView>
               </View>
               <Text style={styles.instruction}>Toca para girar / Tap to flip</Text>

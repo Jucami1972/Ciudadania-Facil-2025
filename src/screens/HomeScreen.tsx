@@ -27,8 +27,8 @@ const HomeScreen = () => {
       try {
         const viewedRaw = await AsyncStorage.getItem('@study:viewed');
         const viewed = new Set<number>(viewedRaw ? JSON.parse(viewedRaw) : []);
-        // total de preguntas definidas es 100 según assets/datos
-        const total = 100;
+        // Total de preguntas actualizadas a 128 según el nuevo examen de ciudadanía 2025
+        const total = 128;
         const pct = Math.max(0, Math.min(100, Math.round((viewed.size / total) * 100)));
         setStudyProgress(pct);
       } catch {}
@@ -80,7 +80,9 @@ const HomeScreen = () => {
                 </Text>
               </View>
               <View style={styles.progressCircle}>
-                <Text style={styles.progressText}>{studyProgress}%</Text>
+                <Text style={styles.progressText} adjustsFontSizeToFit numberOfLines={1}>
+                  {studyProgress}%
+                </Text>
               </View>
             </View>
           </LinearGradient>
@@ -271,9 +273,9 @@ const styles = StyleSheet.create({
     color: '#FFD700' 
   },
   progressCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: Platform.OS === 'web' ? 75 : 65,
+    height: Platform.OS === 'web' ? 60 : 50,
+    borderRadius: Platform.OS === 'web' ? 10 : 8,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
@@ -281,9 +283,12 @@ const styles = StyleSheet.create({
     borderColor: '#2645ca',
   },
   progressText: {
-    fontSize: 16,
+    fontSize: Platform.OS === 'web' ? 18 : 14,
     color: '#444',
     fontWeight: 'bold',
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });
 

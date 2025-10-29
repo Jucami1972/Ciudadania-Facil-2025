@@ -32,7 +32,7 @@ const { width, height } = Dimensions.get('window');
 const GRADIENTS = {
   GOVERNMENT: ['#9057e3', '#5e13b3'] as [string, string],
   HISTORY: ['#a51890', '#6c1e74'] as [string, string],
-  CIVICS: ['#9057e3', '#5e13b3'] as [string, string],
+  SYMBOLS_HOLIDAYS: ['#9057e3', '#5e13b3'] as [string, string],
   DEFAULT: ['#5637A4', '#9747FF'] as [string, string],
 };
 
@@ -47,11 +47,11 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
   const flipCardRef = useRef<any>(null);
 
   const [language, setLanguage] = useState<'en' | 'es'>('en');
-  const [isCardFlipped, setIsCardFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const toastAnimation = useRef(new Animated.Value(0)).current;
 
   const filteredQuestions = useMemo(() => {
@@ -73,7 +73,6 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
     restartFromBeginning,
     viewAllQuestions,
     closeProgressModal,
-    markSectionCompleted,
   } = useSectionProgress(sectionId, filteredQuestions.length);
 
   if (filteredQuestions.length === 0) {
@@ -85,6 +84,23 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
   }
 
   const current = filteredQuestions[currentIndex];
+  
+  // Sincronizar el estado de reproducción con el componente FlipCard
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (flipCardRef.current) {
+        setIsPlaying(flipCardRef.current.isPlaying);
+      }
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, [currentIndex]);
+
+  // Resetear el estado de reproducción cuando cambie la pregunta
+  useEffect(() => {
+    setIsPlaying(false);
+  }, [currentIndex]);
+
   // Marcar pregunta vista para progreso global de estudio
   useEffect(() => {
     const markViewed = async () => {
@@ -104,17 +120,27 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
     markViewed();
   }, [current?.id]);
 
+  // Detener el audio cuando el componente se desmonte
+  useEffect(() => {
+    return () => {
+      if (flipCardRef.current) {
+        flipCardRef.current.stopAudio();
+      }
+    };
+  }, []);
+
   const getCategoryGradient = (): [string, string] => {
     if (title === 'Gobierno Americano') return GRADIENTS.GOVERNMENT;
     if (title === 'Historia Americana') return GRADIENTS.HISTORY;
-    if (title === 'Educación Cívica') return GRADIENTS.CIVICS;
+    if (title === 'Educación Cívica') return GRADIENTS.SYMBOLS_HOLIDAYS;
     return GRADIENTS.DEFAULT;
   };
 
   const handleLanguageChange = (newLanguage: 'en' | 'es') => {
     setLanguage(newLanguage);
-    // NO resetear la tarjeta para mantener el estado de volteo
-    // Solo cambiar el idioma del contenido
+    setIsPlaying(false); // Resetear el estado de reproducción al cambiar idioma
+    // No resetear la tarjeta para mantener la misma cara (pregunta o respuesta)
+    // El cambio de idioma se aplicará automáticamente al contenido
   };
 
   const getPreviousSubcategory = () => {
@@ -148,7 +174,7 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
       }
 
       // Si no hay subcategorías anteriores en la categoría actual, buscamos la última subcategoría de la categoría anterior
-      const allCategories: CategoryType[] = [CATEGORIES.GOVERNMENT, CATEGORIES.HISTORY, CATEGORIES.CIVICS];
+      const allCategories: CategoryType[] = [CATEGORIES.GOVERNMENT, CATEGORIES.HISTORY, CATEGORIES.SYMBOLS_HOLIDAYS];
       const currentCategoryIndex = allCategories.indexOf(category);
       if (currentCategoryIndex > 0) {
         const previousCategory = allCategories[currentCategoryIndex - 1];
@@ -231,7 +257,6 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
       if (flipCardRef.current) {
         flipCardRef.current.reset();
       }
-      setIsCardFlipped(false); // Resetear estado de volteo al cambiar pregunta
     } else {
       const previousSubcategory = getPreviousSubcategory();
       if (previousSubcategory) {
@@ -287,7 +312,7 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
       }
 
       // Si no hay más subcategorías en la categoría actual, buscamos la siguiente categoría
-      const allCategories: CategoryType[] = [CATEGORIES.GOVERNMENT, CATEGORIES.HISTORY, CATEGORIES.CIVICS];
+      const allCategories: CategoryType[] = [CATEGORIES.GOVERNMENT, CATEGORIES.HISTORY, CATEGORIES.SYMBOLS_HOLIDAYS];
       const currentCategoryIndex = allCategories.indexOf(category);
       if (currentCategoryIndex < allCategories.length - 1) {
         const nextCategory = allCategories[currentCategoryIndex + 1];
@@ -326,15 +351,15 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
       if (flipCardRef.current) {
         flipCardRef.current.reset();
       }
-      setIsCardFlipped(false); // Resetear estado de volteo al cambiar pregunta
     } else {
-      // Marcar la sección como completada
-      markSectionCompleted();
-      
       const nextSubcategory = getNextSubcategory();
       if (nextSubcategory) {
-        const navigateToNext = () => {
+        const navigateToNext = async () => {
           try {
+            // Detener el audio antes de navegar a la siguiente subcategoría
+            if (flipCardRef.current) {
+              await flipCardRef.current.stopAudio();
+            }
             navigation.replace('StudyCards', {
               category: nextSubcategory.category,
               title: nextSubcategory.title,
@@ -353,7 +378,13 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
       } else {
         showToastMessage(
           '¡Has completado todas las categorías!',
-          () => navigation.navigate('Home')
+          async () => {
+            // Detener el audio antes de ir al home
+            if (flipCardRef.current) {
+              await flipCardRef.current.stopAudio();
+            }
+            navigation.navigate('Home');
+          }
         );
       }
     }
@@ -365,20 +396,32 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton} 
-            onPress={() => navigation.goBack()}
+            onPress={async () => {
+              // Detener el audio antes de volver atrás
+              if (flipCardRef.current) {
+                await flipCardRef.current.stopAudio();
+              }
+              navigation.goBack();
+            }}
             accessibilityLabel="Volver atrás"
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text.dark} />
+            <MaterialCommunityIcons name="arrow-left" size={20} color={colors.text.dark} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Tarjetas de Estudio</Text>
           <TouchableOpacity 
             style={styles.homeButton} 
-            onPress={() => navigation.navigate('Home')}
+            onPress={async () => {
+              // Detener el audio antes de ir al home
+              if (flipCardRef.current) {
+                await flipCardRef.current.stopAudio();
+              }
+              navigation.navigate('Home');
+            }}
             accessibilityLabel="Ir al inicio"
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name="home" size={24} color={colors.text.dark} />
+            <MaterialCommunityIcons name="home" size={20} color={colors.text.dark} />
           </TouchableOpacity>
         </View>
       </View>
@@ -461,7 +504,6 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
           }}
           language={language}
           isImportant={current.asterisk}
-          onFlip={setIsCardFlipped}
         />
       </ScrollView>
 
@@ -475,6 +517,30 @@ const StudyCardsScreen: React.FC<Props> = ({ route }) => {
           accessibilityState={{ disabled: currentIndex === 0 && !getPreviousSubcategory() }}
         >
           <MaterialCommunityIcons name="chevron-left" size={24} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Botón de audio centrado */}
+        <TouchableOpacity
+          style={[styles.navButton, styles.audioButton]}
+          onPress={() => {
+            if (flipCardRef.current) {
+              flipCardRef.current.playAudio();
+              // Sincronizar el estado local con el estado del componente FlipCard
+              setTimeout(() => {
+                if (flipCardRef.current) {
+                  setIsPlaying(flipCardRef.current.isPlaying);
+                }
+              }, 100);
+            }
+          }}
+          accessibilityLabel={isPlaying ? "Detener audio" : "Reproducir audio"}
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons 
+            name={isPlaying ? "stop" : "play"} 
+            size={28} 
+            color="#fff" 
+          />
         </TouchableOpacity>
 
         {showToast && (
@@ -548,7 +614,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#F5F5F5',
-    paddingBottom: spacing.md,
+    paddingBottom: 4,
     ...shadow.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
@@ -557,12 +623,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: Platform.OS === 'ios' ? 60 : 70,
+    height: Platform.OS === 'ios' ? 48 : 52,
     paddingHorizontal: spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 6 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 6 : 8,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radius.md,
     backgroundColor: 'white',
     alignItems: 'center',
@@ -572,8 +640,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.1)',
   },
   homeButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     borderRadius: radius.md,
     backgroundColor: 'white',
     alignItems: 'center',
@@ -583,7 +651,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.1)',
   },
   headerTitle: {
-    fontSize: fontSize.xl,
+    fontSize: Platform.OS === 'web' ? fontSize.lg : fontSize.md,
     fontWeight: fontWeight.bold,
     color: colors.text.dark,
     textShadowColor: 'rgba(0,0,0,0.1)',
@@ -714,7 +782,7 @@ const styles = StyleSheet.create({
   },
   navContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
@@ -732,6 +800,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radius.lg,
     backgroundColor: '#5637A4',
+    width: 60,
+    height: 60,
+  },
+  audioButton: {
+    backgroundColor: '#FF6B6B',
     width: 60,
     height: 60,
   },

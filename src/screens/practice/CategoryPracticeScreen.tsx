@@ -19,12 +19,12 @@ import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
-// import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
+import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 import { NavigationProps } from '../../types/navigation';
 import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/spacing';
 import { questionAudioMap } from '../../assets/audio/questions/questionsMap';
-import { practiceQuestions, getQuestionsByCategory, detectRequiredQuantity, detectQuestionType } from '../../data/practiceQuestions';
+import { practiceQuestions, getQuestionsByCategory, detectRequiredQuantity, detectQuestionType, PracticeQuestion } from '../../data/practiceQuestions';
 import { validarRespuesta } from '../../data/conciliacionPreguntas';
 
 const { width } = Dimensions.get('window');
@@ -45,19 +45,15 @@ interface Category {
 
 type QuestionMode = 'text-text' | 'voice-text';
 
-interface PracticeQuestion {
-  id: number;
-  question: string;
-  answer: string;
-  category: 'government' | 'history' | 'civics';
-  difficulty: 'easy' | 'medium' | 'hard';
-  mode?: QuestionMode; // Opcional para compatibilidad
+// Interfaz local que extiende PracticeQuestion para incluir el modo
+interface LocalPracticeQuestion extends PracticeQuestion {
+  mode?: QuestionMode;
 }
 
 const CategoryPracticeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<PracticeQuestion | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<LocalPracticeQuestion | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [questionIndex, setQuestionIndex] = useState<number>(0);
@@ -71,42 +67,25 @@ const CategoryPracticeScreen = () => {
   const [isAnswerInputFocused, setIsAnswerInputFocused] = useState(false);
 
   // Función para obtener TODAS las preguntas disponibles por categoría de forma aleatoria
-  const getAllQuestionsByCategory = (categoryId: string): PracticeQuestion[] => {
+  const getAllQuestionsByCategory = (categoryId: string): LocalPracticeQuestion[] => {
     console.log('🔍 getAllQuestionsByCategory llamado con categoryId:', categoryId);
     
-    try {
-      // Validar que categoryId sea válido
-      const validCategories = ['government', 'history', 'civics'];
-      if (!validCategories.includes(categoryId)) {
-        console.error('❌ Categoría inválida:', categoryId);
-        return [];
-      }
-      
-      const categoryQuestions = getQuestionsByCategory(categoryId as 'government' | 'history' | 'civics');
-      console.log('📚 Preguntas obtenidas de getQuestionsByCategory:', categoryQuestions.length);
-      
-      if (categoryQuestions.length === 0) {
-        console.warn('⚠️ No se encontraron preguntas para la categoría:', categoryId);
-        return [];
-      }
-      
-      // Agregar modo aleatorio a cada pregunta
-      const questionsWithMode = categoryQuestions.map(q => ({
-        ...q,
-        mode: Math.random() < 0.5 ? 'text-text' : 'voice-text' as QuestionMode
-      }));
-      
-      console.log('🎲 Preguntas con modo asignado:', questionsWithMode.length);
-      
-      // Ordenar aleatoriamente
-      const shuffledQuestions = questionsWithMode.sort(() => Math.random() - 0.5);
-      console.log('🔄 Preguntas ordenadas aleatoriamente:', shuffledQuestions.length);
-      
-      return shuffledQuestions;
-    } catch (error) {
-      console.error('❌ Error en getAllQuestionsByCategory:', error);
-      return [];
-    }
+    const categoryQuestions = getQuestionsByCategory(categoryId as 'government' | 'history' | 'symbols_holidays');
+    console.log('📚 Preguntas obtenidas de getQuestionsByCategory:', categoryQuestions.length);
+    
+    // Agregar modo aleatorio a cada pregunta
+    const questionsWithMode = categoryQuestions.map(q => ({
+      ...q,
+      mode: Math.random() < 0.5 ? 'text-text' : 'voice-text' as QuestionMode
+    }));
+    
+    console.log('🎲 Preguntas con modo asignado:', questionsWithMode.length);
+    
+    // Ordenar aleatoriamente
+    const shuffledQuestions = questionsWithMode.sort(() => Math.random() - 0.5);
+    console.log('🔄 Preguntas ordenadas aleatoriamente:', shuffledQuestions.length);
+    
+    return shuffledQuestions;
   };
 
   const categories: Category[] = [
@@ -134,40 +113,28 @@ const CategoryPracticeScreen = () => {
   ];
 
   // Hook para reconocimiento de voz
-  // Temporalmente deshabilitado para web
-  const isRecording = false;
-  const voiceSupported = false;
-  const voiceError = null;
-  const startRecording = () => {
-    console.log('Voice recording not supported in web');
-    Alert.alert('No disponible', 'El reconocimiento de voz no está disponible en la versión web');
-  };
-  const stopRecording = () => {
-    console.log('Stop recording called');
-  };
-  
-  // const { 
-  //   isRecording, 
-  //   isSupported: voiceSupported, 
-  //   error: voiceError,
-  //   startRecording, 
-  //   stopRecording 
-  // } = useVoiceRecognition({
-  //   onSpeechResult: (text) => {
-  //     console.log('Voice result received:', text);
-  //     setUserAnswer(text);
-  //   },
-  //   onError: (error) => {
-  //     console.error('Voice recognition error:', error);
-  //     Alert.alert('Error de Voz', error);
-  //   },
-  //   onStart: () => {
-  //     console.log('Voice recognition started');
-  //   },
-  //   onEnd: () => {
-  //     console.log('Voice recognition ended');
-  //   }
-  // });
+  const { 
+    isRecording, 
+    isSupported: voiceSupported, 
+    error: voiceError,
+    startRecording, 
+    stopRecording 
+  } = useVoiceRecognition({
+    onSpeechResult: (text) => {
+      console.log('Voice result received:', text);
+      setUserAnswer(text);
+    },
+    onError: (error) => {
+      console.error('Voice recognition error:', error);
+      Alert.alert('Error de Voz', error);
+    },
+    onStart: () => {
+      console.log('Voice recognition started');
+    },
+    onEnd: () => {
+      console.log('Voice recognition ended');
+    }
+  });
 
   // Cargar preguntas incorrectas y marcadas al iniciar
   useEffect(() => {
@@ -230,56 +197,77 @@ const CategoryPracticeScreen = () => {
   };
 
   const handleCategorySelect = (categoryId: string) => {
-    console.log('🎯 handleCategorySelect llamado con:', categoryId);
-    console.log('🌐 Platform.OS:', Platform.OS);
-    console.log('🖱️ Evento de clic detectado');
+    setSelectedCategory(categoryId);
+    setQuestionIndex(0);
+    setScore(0);
+    setUserAnswer('');
+    setIsCorrect(null);
     
-    try {
-      setSelectedCategory(categoryId);
-      setQuestionIndex(0);
-      setScore(0);
-      setUserAnswer('');
-      setIsCorrect(null);
-      
-      // Obtener TODAS las preguntas disponibles por categoría de forma aleatoria
-      const categoryQuestions = getAllQuestionsByCategory(categoryId);
-      console.log('📊 Preguntas obtenidas:', categoryQuestions.length);
-      
-      if (categoryQuestions.length > 0) {
-        setTotalQuestions(categoryQuestions.length);
-        setCurrentQuestion(categoryQuestions[0]);
-        console.log('✅ Primera pregunta establecida:', categoryQuestions[0].question);
-        
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
-      } else {
-        console.error('❌ No se encontraron preguntas para la categoría:', categoryId);
-        Alert.alert('Error', 'No se encontraron preguntas para esta categoría');
-      }
-    } catch (error) {
-      console.error('❌ Error en handleCategorySelect:', error);
-      Alert.alert('Error', 'Ocurrió un error al cargar las preguntas');
+    // Obtener TODAS las preguntas disponibles por categoría de forma aleatoria
+    const categoryQuestions = getAllQuestionsByCategory(categoryId);
+    if (categoryQuestions.length > 0) {
+      setTotalQuestions(categoryQuestions.length);
+      setCurrentQuestion(categoryQuestions[0]);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
-  // Función INTELIGENTE para comparar respuestas con conciliación automática
-  // Función SIMPLIFICADA usando el sistema de conciliación
+  // Función para limpiar texto removiendo símbolos, corchetes y asteriscos
+  const cleanText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .trim()
+      // Remover símbolos comunes
+      .replace(/[•·\-\*]/g, '')
+      // Remover corchetes y su contenido
+      .replace(/\[.*?\]/g, '')
+      // Remover paréntesis y su contenido
+      .replace(/\(.*?\)/g, '')
+      // Remover asteriscos
+      .replace(/\*/g, '')
+      // Remover espacios múltiples
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Función INTELIGENTE para comparar respuestas con limpieza de texto
   const isAnswerCorrect = (userAnswer: string, correctAnswer: string, questionText: string): boolean => {
-    console.log('=== VALIDACIÓN CON SISTEMA DE CONCILIACIÓN ===');
+    console.log('=== VALIDACIÓN CON LIMPIEZA DE TEXTO ===');
     console.log('Question:', questionText);
-    console.log('User Answer:', userAnswer);
-    console.log('Correct Answer:', correctAnswer);
+    console.log('User Answer (original):', userAnswer);
+    console.log('Correct Answer (original):', correctAnswer);
     
-    // Usar el sistema de conciliación para validar la respuesta
-    const resultado = validarRespuesta(userAnswer, correctAnswer, questionText);
+    // Limpiar ambas respuestas
+    const cleanUserAnswer = cleanText(userAnswer);
+    const cleanCorrectAnswer = cleanText(correctAnswer);
     
-    console.log('Resultado de validación:', resultado);
+    console.log('User Answer (cleaned):', cleanUserAnswer);
+    console.log('Correct Answer (cleaned):', cleanCorrectAnswer);
+    
+    // Dividir la respuesta correcta en opciones (separadas por comas o saltos de línea)
+    const correctOptions = cleanCorrectAnswer
+      .split(/[,•\n]/)
+      .map(opt => opt.trim())
+      .filter(opt => opt.length > 0);
+    
+    console.log('Correct Options:', correctOptions);
+    
+    // Verificar si la respuesta del usuario coincide con alguna opción
+    const isMatch = correctOptions.some(option => {
+      const normalizedOption = cleanText(option);
+      return cleanUserAnswer === normalizedOption || 
+             cleanUserAnswer.includes(normalizedOption) ||
+             normalizedOption.includes(cleanUserAnswer);
+    });
+    
+    console.log('Is Match:', isMatch);
     console.log('=== FIN VALIDACIÓN ===');
     
-    return resultado.isCorrect;
+    return isMatch;
   };
 
   const handleAnswerSubmit = async () => {
@@ -485,16 +473,6 @@ const CategoryPracticeScreen = () => {
             style={styles.categoryCard}
             onPress={() => handleCategorySelect(category.id)}
             activeOpacity={0.8}
-            accessibilityLabel={`Seleccionar categoría ${category.title}`}
-            accessibilityRole="button"
-            accessibilityHint={`Practica preguntas de ${category.title}`}
-            {...Platform.select({
-              web: {
-                onClick: () => handleCategorySelect(category.id),
-                onMouseEnter: () => console.log('Mouse enter:', category.title),
-                onMouseLeave: () => console.log('Mouse leave:', category.title),
-              },
-            })}
           >
             <LinearGradient
               colors={category.gradient}
@@ -819,7 +797,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#F5F5F5',
-    paddingBottom: 16,
+    paddingBottom: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -876,15 +854,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     maxWidth: 150,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        transition: 'transform 0.2s ease-in-out',
-        '&:hover': {
-          transform: 'scale(1.05)',
-        },
-      },
-    }),
     minHeight: 80,
   },
   gradient: {

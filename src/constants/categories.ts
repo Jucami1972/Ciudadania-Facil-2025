@@ -2,7 +2,7 @@
 export const CATEGORIES = {
   GOVERNMENT: 'government',
   HISTORY: 'history',
-  CIVICS: 'civics',
+  SYMBOLS_HOLIDAYS: 'symbols_holidays',
 } as const;
 
 export type CategoryType = typeof CATEGORIES[keyof typeof CATEGORIES];
@@ -10,5 +10,5 @@ export type CategoryType = typeof CATEGORIES[keyof typeof CATEGORIES];
 export const CATEGORY_LABELS: Record<CategoryType, string> = {
   [CATEGORIES.GOVERNMENT]: 'Gobierno Americano',
   [CATEGORIES.HISTORY]: 'Historia Americana',
-  [CATEGORIES.CIVICS]: 'Educación Cívica',
+  [CATEGORIES.SYMBOLS_HOLIDAYS]: 'Símbolos y Días Festivos',
 };

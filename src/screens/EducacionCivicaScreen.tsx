@@ -8,7 +8,7 @@ const EducacionCivicaScreen: React.FC = () => {
     key: 'educacion-civica',
     name: 'StudyCards',
     params: {
-      category: 'civics',
+      category: 'symbols_holidays',
       title: 'Educación Cívica',
       subtitle: 'A: Geografía',
       questionRange: '88-95',

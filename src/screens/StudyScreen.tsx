@@ -40,19 +40,18 @@ const categoryTitles = {
 
 const sections: Record<MainCategoryKey, SubCategory[]> = {
   GobiernoAmericano: [
-    { title: 'Gobierno Americano', subtitle: 'A: Principios de la Democracia Americana', questionRange: '1-12', category: 'government' },
-    { title: 'Gobierno Americano', subtitle: 'B: Sistema de Gobierno', questionRange: '13-47', category: 'government' },
-    { title: 'Gobierno Americano', subtitle: 'C: Derechos y Responsabilidades', questionRange: '48-57', category: 'government' },
+    { title: 'Gobierno Americano', subtitle: 'A: Principles of American Government', questionRange: '1-15', category: 'government' },
+    { title: 'Gobierno Americano', subtitle: 'B: System of Government', questionRange: '16-62', category: 'government' },
+    { title: 'Gobierno Americano', subtitle: 'C: Rights and Responsibilities', questionRange: '63-72', category: 'government' },
   ],
   HistoriaAmericana: [
-    { title: 'Historia Americana', subtitle: 'A: Período Colonial e Independencia', questionRange: '58-70', category: 'history' },
-    { title: 'Historia Americana', subtitle: 'B: 1800s', questionRange: '71-77', category: 'history' },
-    { title: 'Historia Americana', subtitle: 'C: Historia Reciente', questionRange: '78-87', category: 'history' },
+    { title: 'Historia Americana', subtitle: 'A: Colonial Period and Independence', questionRange: '73-89', category: 'history' },
+    { title: 'Historia Americana', subtitle: 'B: 1800s', questionRange: '90-99', category: 'history' },
+    { title: 'Historia Americana', subtitle: 'C: Recent American History and Other Important Historical Information', questionRange: '100-118', category: 'history' },
   ],
   EducacionCivica: [
-    { title: 'Educación Cívica', subtitle: 'A: Geografía', questionRange: '88-95', category: 'civics' },
-    { title: 'Educación Cívica', subtitle: 'B: Símbolos', questionRange: '96-98', category: 'civics' },
-    { title: 'Educación Cívica', subtitle: 'C: Días Festivos', questionRange: '99-100', category: 'civics' },
+    { title: 'Símbolos y Días Festivos', subtitle: 'A: Symbols', questionRange: '119-124', category: 'symbols_holidays' },
+    { title: 'Símbolos y Días Festivos', subtitle: 'B: Holidays', questionRange: '125-128', category: 'symbols_holidays' },
   ],
 };
 
@@ -235,7 +234,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#F5F5F5',
-    paddingBottom: spacing.md,
+    paddingBottom: 4,
     ...shadow.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuTitle: {
-    fontSize: Platform.select({ web: fontSize.sm, default: fontSize.md }) as number,
+    fontSize: Platform.select({ web: fontSize.xs, default: fontSize.sm }) as number,
     fontWeight: fontWeight.medium,
     color: 'white',
     marginBottom: Platform.select({ web: 2, default: spacing.xs }) as number,
@@ -383,7 +382,7 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   menuSubtitle: {
-    fontSize: Platform.select({ web: fontSize.xs, default: fontSize.sm }) as number,
+    fontSize: Platform.select({ web: 10, default: fontSize.xs }) as number,
     color: '#FFD700',
     textShadowColor: 'rgba(0,0,0,0.2)',
     textShadowOffset: { width: 0, height: 1 },

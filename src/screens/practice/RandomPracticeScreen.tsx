@@ -94,7 +94,7 @@ const RandomPracticeScreen: React.FC = () => {
     // Obtener preguntas aleatorias de cada categoría usando las nuevas funciones
     const governmentQuestions = getRandomQuestionsByCategory('government', 3);
     const historyQuestions = getRandomQuestionsByCategory('history', 3);
-    const civicsQuestions = getRandomQuestionsByCategory('civics', 4);
+    const symbolsHolidaysQuestions = getRandomQuestionsByCategory('symbols_holidays', 4);
     
     // Agregar modo aleatorio a cada pregunta
     const addModeToQuestions = (questions: any[]): PracticeQuestion[] => {
@@ -108,7 +108,7 @@ const RandomPracticeScreen: React.FC = () => {
     const allQuestions = [
       ...addModeToQuestions(governmentQuestions),
       ...addModeToQuestions(historyQuestions),
-      ...addModeToQuestions(civicsQuestions)
+      ...addModeToQuestions(symbolsHolidaysQuestions)
     ];
     
     return allQuestions.sort(() => Math.random() - 0.5);
@@ -721,7 +721,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#F5F5F5',
-    paddingBottom: 16,
+    paddingBottom: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
