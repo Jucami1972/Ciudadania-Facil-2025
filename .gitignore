@@ -33,3 +33,5 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+src/assets/audio/**/*.mp3
+src/assets/audio/*.mp3
