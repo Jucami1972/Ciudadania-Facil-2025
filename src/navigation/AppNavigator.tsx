@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -6,6 +7,7 @@ import { RootStackParamList } from '../types/navigation';
 
 // Pantallas principales
 import HomeScreen from '../screens/HomeScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 import StudyScreen from '../screens/StudyScreen';
 import SubcategoriasScreen from '../screens/SubcategoriasScreen';
 import StudyCardsScreen from '../screens/StudyCardsScreen';
@@ -26,6 +28,9 @@ import EducacionCivicaWrapper from '../wrappers/EducacionCivicaWrapper';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+// Determinar qué componente usar para Home
+const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;
+
 export default function AppNavigator() {
   return (
     <NavigationContainer>
@@ -41,7 +46,7 @@ export default function AppNavigator() {
         <Stack.Group>
           <Stack.Screen 
             name="Home" 
-            component={HomeScreen}
+            component={HomeComponent}
             options={{
               animation: 'fade',
             }}
