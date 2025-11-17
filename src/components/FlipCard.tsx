@@ -16,6 +16,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Audio } from 'expo-av';
 import type { AVPlaybackStatus } from 'expo-av';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -34,6 +35,7 @@ interface FlipCardProps {
   };
   language: 'en' | 'es';
   isImportant?: boolean;
+  onFlip?: (isFlipped: boolean) => void;
 }
 
 interface FlipCardHandle {
@@ -47,7 +49,7 @@ interface FlipCardHandle {
 const { width } = Dimensions.get('window');
 
 const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
-  ({ frontContent, backContent, language, isImportant = false }, ref) => {
+  ({ frontContent, backContent, language, isImportant = false, onFlip }, ref) => {
     const anim = useRef(new Animated.Value(0)).current;
     const flipped = useRef(false);
     const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -100,15 +102,20 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
     });
 
     const flip = () => {
+      const newFlippedState = !flipped.current;
       Animated.spring(anim, {
         toValue: flipped.current ? 0 : 180,
         friction: 8,
         tension: 10,
         useNativeDriver: true,
       }).start();
-      flipped.current = !flipped.current;
-      setIsFlipped(!isFlipped);
+      flipped.current = newFlippedState;
+      setIsFlipped(newFlippedState);
       stopAudio(); // Detener el audio al voltear
+      // Notificar al componente padre
+      if (onFlip) {
+        onFlip(newFlippedState);
+      }
     };
 
     const reset = () => {
@@ -121,6 +128,10 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
       flipped.current = false;
       setIsFlipped(false);
       stopAudio();
+      // Notificar al componente padre
+      if (onFlip) {
+        onFlip(false);
+      }
     };
 
     const playQuestionAudio = async () => {
@@ -203,7 +214,7 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
             if (part.startsWith('<preferred>') && part.endsWith('</preferred>')) {
               const preferredText = part.replace(/<\/?preferred>/g, '');
               return (
-                <Text key={index} style={[style, { color: '#FFD700', fontWeight: 'bold' }]}>
+                <Text key={index} style={[style, { color: '#FFE87C', fontWeight: '700', textShadowColor: 'rgba(0, 0, 0, 0.2)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }]}>
                   {preferredText}
                 </Text>
               );
@@ -221,20 +232,28 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
           <Animated.View
             style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: frontDeg }], zIndex: flipped.current ? 0 : 1 }]}
           >
-            <LinearGradient colors={['#9057e3', '#5e13b3']} style={[styles.gradient, isImportant && styles.important]}>
+            {/* LADO FRONTAL - GRADIENTE MORADO */}
+            <LinearGradient 
+              colors={['#A277FF', '#7C4DFF']} 
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              style={[styles.gradient, isImportant && styles.important]}
+            >
               <View style={styles.labelRow}>
-                <Text style={styles.sideLabel}>{language === 'en' ? 'Question' : 'Pregunta'}</Text>
+                <Text style={styles.sideLabel}>
+                  {language === 'en' ? `Question #${frontContent.number || ''}` : `Pregunta #${frontContent.number || ''}`}
+                </Text>
               </View>
               {frontContent.number != null && (
                 <View style={styles.numberBox}>
                   <Text style={styles.numberText}>#{frontContent.number}</Text>
                 </View>
               )}
-              <View style={styles.contentBackground}>
+              <BlurView intensity={10} tint="light" style={styles.contentBackground}>
                 <ScrollView contentContainerStyle={styles.scrollInner}>
                   <Text style={[styles.questionText, { fontSize: getFontSize(qText) }]}>{qText}</Text>
                 </ScrollView>
-              </View>
+              </BlurView>
               <Text style={styles.instruction}>Toca para girar / Tap to flip</Text>
             </LinearGradient>
           </Animated.View>
@@ -243,7 +262,14 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
           <Animated.View
             style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: backDeg }], position: 'absolute', top: 0 }]}
           >
-            <LinearGradient colors={['#9057e3', '#5e13b3']} style={[styles.gradient, isImportant && styles.important]}>
+            {/* LADO POSTERIOR - GRADIENTE MORADO OSCURO */}
+            <LinearGradient 
+              colors={['#6D28D9', '#9333EA', '#A855F7']} 
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+              locations={[0, 0.5, 1]}
+              style={[styles.gradient, isImportant && styles.important]}
+            >
               <View style={styles.labelRow}>
                 <Text style={styles.sideLabel}>{language === 'en' ? 'Answer' : 'Respuesta'}</Text>
               </View>
@@ -252,12 +278,12 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
                   <Text style={styles.numberText}>#{frontContent.number}</Text>
                 </View>
               )}
-              <View style={styles.contentBackground}>
+              <BlurView intensity={10} tint="light" style={styles.contentBackground}>
                 <ScrollView contentContainerStyle={styles.scrollInner}>
                   {renderTextWithPreferredOptions(aText, [styles.answerText, { fontSize: getFontSize(aText) }])}
                 </ScrollView>
-              </View>
-              <Text style={styles.instruction}>Toca para girar / Tap to flip</Text>
+              </BlurView>
+              <Text style={styles.instruction}>Toca para regresar / Tap to flip back</Text>
             </LinearGradient>
           </Animated.View>
         </TouchableOpacity>
@@ -268,38 +294,44 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
 
 const styles = StyleSheet.create({
   container: {
-    width: width * 0.9,
+    width: width * 0.92,
     minHeight: 450,
     maxHeight: 1200,
     alignSelf: 'center',
-    marginTop: 2,
-    marginBottom: 16,
+    marginTop: 8,
+    marginBottom: 20,
     position: 'relative',
     flex: 1,
-    paddingBottom: 5, // Asegura espacio para los botones inferiores
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   flipContainer: {
     flex: 1,
     overflow: 'hidden',
-    borderRadius: 30,
+    borderRadius: 28,
     height: '100%',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 10,
   },
   face: {
     width: '100%',
     height: '100%',
     backfaceVisibility: 'hidden',
-    borderRadius: 20,
+    borderRadius: 28,
   },
   gradient: {
     flex: 1,
-    padding: 18,
+    padding: 24,
     justifyContent: 'space-between',
     height: '100%',
   },
   important: {
     borderWidth: 2,
-    borderColor: '#991abe',
+    borderColor: '#FFD700',
   },
   labelRow: {
     flexDirection: 'row',
@@ -309,35 +341,44 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   sideLabel: {
-    fontSize: 30,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.15)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+    letterSpacing: 0.3,
   },
   numberBox: {
     position: 'absolute',
-    top: 26,
-    right: 16,
-    backgroundColor: 'rgba(151, 148, 147, 0.42)',
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   numberText: {
-    color: 'rgb(255, 255, 255)',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: 'rgba(255, 255, 255, 0.95)',
+    fontSize: 14,
+    fontWeight: '700',
   },
   contentBackground: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderRadius: 20,
-    paddingTop: 4,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 20,
     paddingHorizontal: 24,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
     minHeight: 200,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
   },
   scrollInner: {
     alignItems: 'center',
@@ -349,22 +390,32 @@ const styles = StyleSheet.create({
   questionText: {
     fontSize: 20,
     fontWeight: '600',
-    color: 'white',
+    color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 28,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    letterSpacing: 0.1,
   },
   answerText: {
     fontSize: 18,
     fontWeight: '600',
-    color: 'white',
+    color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 26,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+    letterSpacing: 0.1,
   },
   instruction: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 13,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
   audioWithFlag: {
     position: 'absolute',

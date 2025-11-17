@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import * as Speech from 'expo-speech'; // Changed from Voice from '@react-native-voice/voice';
+import Voice from '@react-native-voice/voice';
 
 interface UseVoiceRecognitionProps {
   onSpeechResult?: (text: string) => void;
@@ -15,34 +15,93 @@ export const useVoiceRecognition = ({
   onEnd
 }: UseVoiceRecognitionProps = {}) => {
   const [isRecording, setIsRecording] = useState(false);
-  const [isSupported, setIsSupported] = useState(true); // expo-speech siempre está disponible
+  const [isSupported, setIsSupported] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    checkVoiceSupport();
-    // setupVoiceListeners(); // Removed
-    return () => {
-      // cleanup si es necesario // Removed cleanupVoiceListeners
-    };
+    if (Voice) {
+      checkVoiceSupport();
+      setupVoiceListeners();
+      return () => {
+        cleanupVoiceListeners();
+      };
+    } else {
+      // Si el módulo no está disponible, marcar como no soportado
+      // No llamar a onError aquí, solo marcar como no disponible silenciosamente
+      setIsSupported(false);
+      setError(null); // No establecer error, solo marcar como no soportado
+    }
   }, []);
 
   const checkVoiceSupport = async () => {
+    if (!Voice) {
+      setIsSupported(false);
+      return;
+    }
+
     try {
-      // expo-speech siempre está disponible en Expo Go
-      setIsSupported(true);
-      console.log('Voice recognition available: true (expo-speech)');
+      const available = await Voice.isAvailable();
+      setIsSupported(available);
+      console.log('Voice recognition available:', available);
     } catch (error) {
       console.error('Error checking voice support:', error);
       setIsSupported(false);
     }
   };
 
-  // setupVoiceListeners and cleanupVoiceListeners functions removed
+  const setupVoiceListeners = () => {
+    if (!Voice) return;
+
+    Voice.onSpeechStart = () => {
+      console.log('Speech recognition started');
+      onStart?.();
+    };
+
+    Voice.onSpeechResults = (e: any) => {
+      if (e.value && e.value.length > 0) {
+        const result = e.value[0];
+        console.log('Speech recognition result:', result);
+        onSpeechResult?.(result);
+      }
+    };
+
+    Voice.onSpeechError = (e: any) => {
+      console.error('Speech recognition error:', e);
+      const errorMsg = e.error?.message || 'Error en el reconocimiento de voz';
+      setError(errorMsg);
+      onError?.(errorMsg);
+      setIsRecording(false);
+    };
+
+    Voice.onSpeechEnd = () => {
+      console.log('Speech recognition ended');
+      setIsRecording(false);
+      onEnd?.();
+    };
+  };
+
+  const cleanupVoiceListeners = () => {
+    if (!Voice) return;
+    try {
+      Voice.destroy().then(() => Voice.removeAllListeners());
+    } catch (error) {
+      console.error('Error cleaning up voice listeners:', error);
+    }
+  };
 
   const startRecording = useCallback(async (language: string = 'en-US') => {
+    if (!Voice) {
+      const errorMsg = 'El reconocimiento de voz no está disponible. Se requiere un development build para usar esta funcionalidad.';
+      setError(errorMsg);
+      // Solo llamar a onError si el usuario intentó usar la voz
+      onError?.(errorMsg);
+      return;
+    }
+
     if (!isSupported) {
       const errorMsg = 'El reconocimiento de voz no está disponible en este dispositivo';
       setError(errorMsg);
+      // Solo llamar a onError si el usuario intentó usar la voz
       onError?.(errorMsg);
       return;
     }
@@ -50,42 +109,32 @@ export const useVoiceRecognition = ({
     try {
       setError(null);
       setIsRecording(true);
-      onStart?.();
-
-      console.log('Starting voice recognition simulation with language:', language);
-
-      // Simular reconocimiento de voz con expo-speech
-      // En una implementación real, esto sería reemplazado por un servicio de reconocimiento
-      // Por ahora, simulamos el proceso
-
-      // Simular que está escuchando
-      setTimeout(() => {
-        if (isRecording) {
-          // Simular resultado de reconocimiento
-          const mockResult = "Respuesta simulada del reconocimiento de voz";
-          console.log('Simulated voice recognition result:', mockResult);
-          onSpeechResult?.(mockResult);
-          setIsRecording(false);
-          onEnd?.();
-        }
-      }, 3000); // Simular 3 segundos de "escucha"
-
-    } catch (error) {
+      
+      await Voice.start(language);
+      console.log('Voice recognition started with language:', language);
+    } catch (error: any) {
       console.error('Error starting voice recognition:', error);
-      const errorMsg = 'Error al iniciar el reconocimiento de voz';
+      const errorMsg = error?.message || 'Error al iniciar el reconocimiento de voz';
       setError(errorMsg);
       onError?.(errorMsg);
       setIsRecording(false);
     }
-  }, [isSupported, onError, onStart, onEnd, onSpeechResult]);
+  }, [isSupported, onError]);
 
   const stopRecording = useCallback(async () => {
+    if (!Voice) {
+      setIsRecording(false);
+      return;
+    }
+
     try {
-      console.log('Stopping voice recognition simulation...');
+      await Voice.stop();
+      console.log('Voice recognition stopped');
       setIsRecording(false);
       onEnd?.();
     } catch (error) {
       console.error('Error stopping voice recognition:', error);
+      setIsRecording(false);
     }
   }, [onEnd]);
 

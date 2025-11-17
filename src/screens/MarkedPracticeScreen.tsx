@@ -7,29 +7,21 @@ import {
   SafeAreaView,
   TouchableOpacity,
   FlatList,
-  Platform,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationProps, PracticeMode } from '../types/navigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NavigationProps } from '../types/navigation';
+import { practiceQuestions, PracticeQuestion } from '../data/practiceQuestions';
 
-import { colors } from '../constants/colors';
-import { spacing, radius, shadow } from '../constants/spacing';
-import { fontSize, fontWeight } from '../constants/typography';
-
-interface MarkedQuestion {
-  id: string;
-  question: string;
-  category: string;
-  markedDate: string;
+interface MarkedQuestion extends PracticeQuestion {
+  markedDate?: string;
 }
 
 const MarkedPracticeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProps>();
-  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [markedQuestions, setMarkedQuestions] = useState<MarkedQuestion[]>([]);
 
@@ -39,50 +31,79 @@ const MarkedPracticeScreen: React.FC = () => {
 
   const loadMarkedQuestions = async () => {
     try {
-      // Cargar preguntas marcadas desde AsyncStorage
+      setIsLoading(true);
+      // Cargar IDs de preguntas marcadas desde AsyncStorage
       const markedData = await AsyncStorage.getItem('@practice:marked');
       
       if (markedData) {
-        const markedIds = JSON.parse(markedData);
-        // Aquí podrías cargar las preguntas completas desde practiceQuestions.tsx
-        // Por ahora mantenemos la simulación
-        const mockData: MarkedQuestion[] = [
-          {
-            id: '1',
-            question: '¿Cuál es la capital de los Estados Unidos?',
-            category: 'Gobierno Americano',
-            markedDate: '2023-12-01',
-          },
-        ];
+        const markedIds: number[] = JSON.parse(markedData);
         
-        setMarkedQuestions(mockData);
+        // Filtrar las preguntas reales usando los IDs
+        const loadedQuestions = practiceQuestions.filter(q => 
+          markedIds.includes(q.id)
+        );
+        
+        // Mapear a MarkedQuestion con información adicional
+        const questionsWithInfo: MarkedQuestion[] = loadedQuestions.map(q => ({
+          ...q,
+          markedDate: new Date().toISOString(), // Por ahora, se puede mejorar guardando la fecha real
+        }));
+        
+        setMarkedQuestions(questionsWithInfo);
       } else {
         setMarkedQuestions([]);
       }
     } catch (error) {
       console.error('Error loading marked questions:', error);
+      setMarkedQuestions([]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const startPractice = () => {
-    navigation.navigate('PruebaPractica', {
-      mode: 'marked' as PracticeMode,
-      category: 'Marcadas',
-      section: 'Preguntas Marcadas',
+    if (markedQuestions.length === 0) return;
+    
+    // Crear una práctica con las preguntas marcadas
+    navigation.navigate('CategoryPractice', {
+      questionType: 'marked',
     });
+  };
+
+  const getCategoryLabel = (category: string): string => {
+    const labels: Record<string, string> = {
+      government: 'Gobierno Americano',
+      history: 'Historia Americana',
+      symbols_holidays: 'Educación Cívica',
+    };
+    return labels[category] || category;
   };
 
   const renderQuestion = ({ item }: { item: MarkedQuestion }) => (
     <View style={styles.questionCard}>
       <View style={styles.questionHeader}>
-        <Text style={styles.category}>{item.category}</Text>
-        <Text style={styles.markedDate}>
-          Marcada: {new Date(item.markedDate).toLocaleDateString()}
+        <View style={styles.categoryBadge}>
+          <MaterialCommunityIcons 
+            name={item.category === 'government' ? 'bank' : 
+                  item.category === 'history' ? 'book-open-variant' : 'school'} 
+            size={14} 
+            color="#10b981" 
+          />
+          <Text style={styles.categoryText}>{getCategoryLabel(item.category)}</Text>
+        </View>
+        <View style={styles.bookmarkBadge}>
+          <MaterialCommunityIcons name="bookmark" size={12} color="#10b981" />
+        </View>
+      </View>
+      <Text style={styles.questionText} numberOfLines={3}>
+        {item.question}
+      </Text>
+      <View style={styles.answerPreview}>
+        <Text style={styles.answerLabel}>Respuesta:</Text>
+        <Text style={styles.answerText} numberOfLines={2}>
+          {item.answer}
         </Text>
       </View>
-      <Text style={styles.questionText}>{item.question}</Text>
     </View>
   );
 
@@ -91,76 +112,77 @@ const MarkedPracticeScreen: React.FC = () => {
       <MaterialCommunityIcons 
         name="bookmark-outline" 
         size={64} 
-        color={colors.primary.main} 
+        color="#6b7280" 
       />
       <Text style={styles.emptyTitle}>No hay preguntas marcadas</Text>
       <Text style={styles.emptyDescription}>
-        Marca las preguntas que quieras repasar más tarde.
+        Marca las preguntas que quieras repasar más tarde desde las tarjetas de estudio o durante la práctica.
       </Text>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          accessibilityLabel="Volver atrás"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text.dark} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preguntas Marcadas</Text>
-        <TouchableOpacity 
-          style={styles.homeButton}
-          onPress={() => navigation.navigate('Home')}
-          accessibilityLabel="Ir al inicio"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="home" size={24} color={colors.text.dark} />
-        </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Preguntas</Text>
+            <Text style={styles.headerSubtitle}>Marcadas</Text>
+          </View>
+          <View style={{ width: 36 }} />
+        </View>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.main} />
+          <ActivityIndicator size="large" color="#10b981" />
           <Text style={styles.loadingText}>Cargando preguntas...</Text>
         </View>
       ) : (
         <>
-          <FlatList
-            data={markedQuestions}
-            renderItem={renderQuestion}
-            keyExtractor={item => item.id}
-            contentContainerStyle={styles.listContainer}
-            ListEmptyComponent={ListEmptyComponent}
-            ListHeaderComponent={
-              markedQuestions.length > 0 ? (
-                <Text style={styles.subtitle}>
-                  {markedQuestions.length} preguntas marcadas
+          <ScrollView 
+            style={styles.container}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {markedQuestions.length > 0 && (
+              <View style={styles.introCard}>
+                <View style={styles.introIconContainer}>
+                  <MaterialCommunityIcons name="bookmark" size={24} color="#10b981" />
+                </View>
+                <Text style={styles.introTitle}>
+                  {markedQuestions.length} {markedQuestions.length === 1 ? 'pregunta marcada' : 'preguntas marcadas'}
                 </Text>
-              ) : null
-            }
-          />
+                <Text style={styles.introSubtitle}>
+                  Practica estas preguntas para reforzar tu conocimiento
+                </Text>
+              </View>
+            )}
+
+            <FlatList
+              data={markedQuestions}
+              renderItem={renderQuestion}
+              keyExtractor={item => item.id.toString()}
+              scrollEnabled={false}
+              ListEmptyComponent={ListEmptyComponent}
+            />
+          </ScrollView>
 
           {markedQuestions.length > 0 && (
             <View style={styles.bottomContainer}>
               <TouchableOpacity
                 style={styles.startButton}
                 onPress={startPractice}
-                accessibilityLabel="Comenzar práctica"
-                accessibilityRole="button"
               >
-                <LinearGradient
-                  colors={colors.primary.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
-                  <Text style={styles.buttonText}>Comenzar Práctica</Text>
-                  <MaterialCommunityIcons name="arrow-right" size={24} color="white" />
-                </LinearGradient>
+                <MaterialCommunityIcons name="play-circle" size={20} color="#fff" />
+                <Text style={styles.buttonText}>Comenzar Práctica</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
           )}
@@ -171,125 +193,237 @@ const MarkedPracticeScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: colors.neutral.background,
+    backgroundColor: '#f9fafb',
   },
   header: {
+    backgroundColor: '#ffffff',
+    paddingBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
+  },
+  headerContent: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    height: Platform.OS === 'ios' ? 60 : 50,
-    backgroundColor: colors.neutral.card,
-    ...shadow.sm,
+    alignItems: 'center',
+    height: 56,
+    paddingHorizontal: 16,
   },
   backButton: {
     width: 36,
     height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.neutral.background,
+    borderRadius: 10,
+    backgroundColor: '#f9fafb',
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.sm,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
   },
-  homeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    backgroundColor: colors.neutral.background,
+  headerTitleContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.sm,
+    flex: 1,
   },
   headerTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text.dark,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: 0.2,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginTop: 1,
+    letterSpacing: 0.1,
+  },
+  container: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
   loadingText: {
-    marginTop: spacing.md,
-    fontSize: fontSize.md,
-    color: colors.text.dark,
-  },
-  listContainer: {
-    padding: spacing.lg,
-    flexGrow: 1,
-  },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.text.light,
-    marginBottom: spacing.lg,
+    marginTop: 12,
+    fontSize: 14,
+    color: '#6b7280',
     textAlign: 'center',
   },
+  introCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+  },
+  introIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  introTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  introSubtitle: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontWeight: '500',
+  },
   questionCard: {
-    backgroundColor: colors.neutral.card,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md,
-    ...shadow.sm,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
   },
   questionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  category: {
-    fontSize: fontSize.sm,
-    color: colors.primary.main,
-    fontWeight: fontWeight.medium,
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    gap: 5,
   },
-  markedDate: {
-    fontSize: fontSize.sm,
-    color: colors.text.light,
+  categoryText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#10b981',
+  },
+  bookmarkBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   questionText: {
-    fontSize: fontSize.md,
-    color: colors.text.dark,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 10,
+    lineHeight: 20,
+  },
+  answerPreview: {
+    backgroundColor: '#f9fafb',
+    padding: 10,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#10b981',
+  },
+  answerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  answerText: {
+    fontSize: 12,
+    color: '#111827',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
+    padding: 40,
+    minHeight: 300,
   },
   emptyTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text.dark,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  emptyDescription: {
-    fontSize: fontSize.md,
-    color: colors.text.light,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
     textAlign: 'center',
   },
+  emptyDescription: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
   bottomContainer: {
-    padding: spacing.lg,
-    backgroundColor: colors.neutral.card,
-    ...shadow.lg,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 0.5,
+    borderTopColor: '#e5e7eb',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 8,
   },
   startButton: {
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  gradientButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing.lg,
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    borderRadius: 14,
+    gap: 8,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   buttonText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.bold,
-    color: 'white',
-    marginRight: spacing.sm,
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
 

@@ -34,7 +34,15 @@ export type PracticeMode = 'category' | 'random' | 'incorrect' | 'marked';
 
 // Stack Navigator Param List
 export type RootStackParamList = {
-  // Pantallas principales
+  // Pantallas de autenticación
+  Login: undefined;
+  Register: undefined;
+
+  // Navegación principal con tabs
+  AuthStack: undefined;
+  AppTabs: undefined;
+
+  // Pantallas principales (legacy - mantenidas para compatibilidad)
   Home: undefined;
   Study: undefined;
   TarjetasDeEstudio: undefined;
@@ -48,7 +56,10 @@ export type RootStackParamList = {
     category: string;
     section: string;
   };
-  CategoryPractice: undefined;
+  CategoryPractice: {
+    questionType?: string;
+  };
+  QuestionTypePractice: undefined;
   Practice: {
     mode: PracticeMode;
     category: string;
@@ -60,10 +71,13 @@ export type RootStackParamList = {
     category?: string;
   };
   RandomPractice: undefined;
+  Random20Practice: undefined;
+  PhotoMemory: undefined;
   IncorrectPractice: undefined;
   MarkedPractice: undefined;
 
-  // Pantallas de estudio
+  // Pantallas de estudio (nuevas rutas con tabs)
+  StudyHome: undefined;
   Subcategorias: { 
     mainCategory: string; 
     categories: SubCategory[] 
@@ -74,11 +88,26 @@ export type RootStackParamList = {
     subtitle: string;
     questionRange: string;
   };
+  StudyCardsByType: {
+    questionType: string;
+    typeName: string;
+    typeNameEn: string;
+  };
   Explanation: {
     explanationEs: string;
     explanationEn: string;
     questionTitle: string;
   };
+
+  // Pantallas de práctica (nuevas rutas con tabs)
+  PruebaPracticaHome: undefined;
+  CategoryPracticeHome: undefined;
+  QuestionTypePracticeHome: undefined;
+  Random20PracticeHome: undefined;
+  EntrevistaAIHome: undefined;
+  PhotoMemoryHome: undefined;
+  VocabularioHome: undefined;
+  ExamenHome: undefined;
 
   // Pantallas de categorías principales
   GobiernoAmericano: { 

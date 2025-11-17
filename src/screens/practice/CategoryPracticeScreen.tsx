@@ -1,5 +1,5 @@
 // src/screens/practice/CategoryPracticeScreen.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,12 @@ import {
   Alert,
   Animated,
   Dimensions,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
@@ -26,6 +27,8 @@ import { spacing } from '../../constants/spacing';
 import { questionAudioMap } from '../../assets/audio/questions/questionsMap';
 import { practiceQuestions, getQuestionsByCategory, detectRequiredQuantity, detectQuestionType, PracticeQuestion } from '../../data/practiceQuestions';
 import { validarRespuesta } from '../../data/conciliacionPreguntas';
+import { getQuestionsByCategory as getQuestionsByTypeCategory } from '../../data/questionCategories';
+import { getQuestionsByType, QUESTION_TYPES } from '../../services/questionTypesService';
 
 const { width } = Dimensions.get('window');
 
@@ -52,7 +55,11 @@ interface LocalPracticeQuestion extends PracticeQuestion {
 
 const CategoryPracticeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const route = useRoute();
+  const routeParams = route.params as { questionType?: string };
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(
+    routeParams?.questionType || null
+  );
   const [currentQuestion, setCurrentQuestion] = useState<LocalPracticeQuestion | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -64,25 +71,121 @@ const CategoryPracticeScreen = () => {
   const [incorrectQuestions, setIncorrectQuestions] = useState<Set<number>>(new Set());
   const [markedQuestions, setMarkedQuestions] = useState<Set<number>>(new Set());
   const [showMarkQuestionDialog, setShowMarkQuestionDialog] = useState(false);
-  const [isAnswerInputFocused, setIsAnswerInputFocused] = useState(false);
+  const [shuffledQuestions, setShuffledQuestions] = useState<LocalPracticeQuestion[]>([]);
 
-  // Función para obtener TODAS las preguntas disponibles por categoría de forma aleatoria
-  const getAllQuestionsByCategory = (categoryId: string): LocalPracticeQuestion[] => {
+  // Función para mezclar array usando Fisher-Yates shuffle (más confiable)
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  };
+
+  // Función para obtener TODAS las preguntas disponibles por categoría o tipo de forma aleatoria
+  const getAllQuestionsByCategory = async (categoryId: string): Promise<LocalPracticeQuestion[]> => {
     console.log('🔍 getAllQuestionsByCategory llamado con categoryId:', categoryId);
     
-    const categoryQuestions = getQuestionsByCategory(categoryId as 'government' | 'history' | 'symbols_holidays');
-    console.log('📚 Preguntas obtenidas de getQuestionsByCategory:', categoryQuestions.length);
+    // Verificar si es un tipo de pregunta (who, what, when, etc.) o una categoría (government, history, etc.)
+    const isQuestionType = QUESTION_TYPES.some(type => type.id === categoryId);
+    const validCategories = ['government', 'history', 'symbols_holidays'];
+    const isCategory = validCategories.includes(categoryId);
+    const isIncorrect = categoryId === 'incorrect';
+    const isMarked = categoryId === 'marked';
+    
+    let categoryQuestions: PracticeQuestion[] = [];
+    
+    if (isMarked) {
+      // Es el modo de preguntas marcadas, cargar desde AsyncStorage
+      console.log('🔖 Es modo de preguntas marcadas, cargando desde AsyncStorage');
+      try {
+        const markedData = await AsyncStorage.getItem(STORAGE_KEYS.MARKED_QUESTIONS);
+        if (markedData) {
+          const markedIds: number[] = JSON.parse(markedData);
+          categoryQuestions = practiceQuestions.filter(q => markedIds.includes(q.id));
+          console.log('📚 Preguntas marcadas cargadas:', categoryQuestions.length);
+        } else {
+          console.log('⚠️ No hay preguntas marcadas guardadas');
+          return [];
+        }
+      } catch (error) {
+        console.error('Error loading marked questions:', error);
+        return [];
+      }
+    } else if (isIncorrect) {
+      // Es el modo de preguntas incorrectas, cargar desde AsyncStorage
+      console.log('❌ Es modo de preguntas incorrectas, cargando desde AsyncStorage');
+      try {
+        const incorrectData = await AsyncStorage.getItem(STORAGE_KEYS.INCORRECT_QUESTIONS);
+        if (incorrectData) {
+          const incorrectIds: number[] = JSON.parse(incorrectData);
+          categoryQuestions = practiceQuestions.filter(q => incorrectIds.includes(q.id));
+          console.log('📚 Preguntas incorrectas cargadas:', categoryQuestions.length);
+        } else {
+          console.log('⚠️ No hay preguntas incorrectas guardadas');
+          return [];
+        }
+      } catch (error) {
+        console.error('Error loading incorrect questions:', error);
+        return [];
+      }
+    } else if (isQuestionType) {
+      // Es un tipo de pregunta, usar getQuestionsByType y convertir a PracticeQuestion
+      console.log('📝 Es un tipo de pregunta, usando getQuestionsByType');
+      const questionsByType = getQuestionsByType(categoryId);
+      console.log('📚 Preguntas obtenidas de getQuestionsByType:', questionsByType.length);
+      
+      // Convertir Question[] a PracticeQuestion[]
+      categoryQuestions = questionsByType.map(q => ({
+        id: q.id,
+        question: q.questionEs || q.questionEn,
+        answer: q.answerEs || q.answerEn,
+        category: q.category,
+        difficulty: 'medium' as const, // Dificultad por defecto
+      }));
+      console.log('✅ Preguntas convertidas a PracticeQuestion:', categoryQuestions.length);
+    } else if (isCategory) {
+      // Es una categoría válida, usar getQuestionsByCategory
+      console.log('📂 Es una categoría, usando getQuestionsByCategory');
+      categoryQuestions = getQuestionsByCategory(categoryId as 'government' | 'history' | 'symbols_holidays');
+      console.log('📚 Preguntas obtenidas de getQuestionsByCategory:', categoryQuestions.length);
+    } else {
+      console.error('❌ categoryId no es válido:', categoryId);
+      return [];
+    }
+    
+    // Crear array de modos aleatorios (50% text-text, 50% voice-text)
+    const modes: QuestionMode[] = [];
+    const totalQuestions = categoryQuestions.length;
+    const textCount = Math.floor(totalQuestions / 2);
+    const voiceCount = totalQuestions - textCount;
+    
+    // Llenar array con modos balanceados
+    for (let i = 0; i < textCount; i++) {
+      modes.push('text-text');
+    }
+    for (let i = 0; i < voiceCount; i++) {
+      modes.push('voice-text');
+    }
+    
+    // Mezclar los modos aleatoriamente
+    const shuffledModes = shuffleArray(modes);
     
     // Agregar modo aleatorio a cada pregunta
-    const questionsWithMode = categoryQuestions.map(q => ({
+    const questionsWithMode = categoryQuestions.map((q, index) => ({
       ...q,
-      mode: Math.random() < 0.5 ? 'text-text' : 'voice-text' as QuestionMode
+      mode: shuffledModes[index] as QuestionMode
     }));
     
     console.log('🎲 Preguntas con modo asignado:', questionsWithMode.length);
+    console.log('📊 Distribución de modos:', {
+      text: questionsWithMode.filter(q => q.mode === 'text-text').length,
+      voice: questionsWithMode.filter(q => q.mode === 'voice-text').length
+    });
     
-    // Ordenar aleatoriamente
-    const shuffledQuestions = questionsWithMode.sort(() => Math.random() - 0.5);
+    // Mezclar las preguntas aleatoriamente usando Fisher-Yates
+    const shuffledQuestions = shuffleArray(questionsWithMode);
     console.log('🔄 Preguntas ordenadas aleatoriamente:', shuffledQuestions.length);
     
     return shuffledQuestions;
@@ -111,6 +214,8 @@ const CategoryPracticeScreen = () => {
       description: 'Preguntas sobre educación cívica y geografía'
     }
   ];
+
+  const initializedFromParams = useRef(false);
 
   // Hook para reconocimiento de voz
   const { 
@@ -177,6 +282,21 @@ const CategoryPracticeScreen = () => {
     });
   }, [questionIndex, currentQuestion, isCorrect, userAnswer]);
 
+  // Inicializar práctica automáticamente si viene una categoría desde navegación
+  useEffect(() => {
+    if (
+      routeParams?.questionType &&
+      !currentQuestion &&
+      !initializedFromParams.current
+    ) {
+      initializedFromParams.current = true;
+      handleCategorySelect(routeParams.questionType).catch(error => {
+        console.error('Error initializing practice:', error);
+        Alert.alert('Error', 'No se pudieron cargar las preguntas');
+      });
+    }
+  }, [routeParams?.questionType, currentQuestion]);
+
   // Función para cargar datos persistentes
   const loadPersistedData = async () => {
     try {
@@ -196,7 +316,7 @@ const CategoryPracticeScreen = () => {
     }
   };
 
-  const handleCategorySelect = (categoryId: string) => {
+  const handleCategorySelect = async (categoryId: string) => {
     setSelectedCategory(categoryId);
     setQuestionIndex(0);
     setScore(0);
@@ -204,8 +324,10 @@ const CategoryPracticeScreen = () => {
     setIsCorrect(null);
     
     // Obtener TODAS las preguntas disponibles por categoría de forma aleatoria
-    const categoryQuestions = getAllQuestionsByCategory(categoryId);
+    const categoryQuestions = await getAllQuestionsByCategory(categoryId);
     if (categoryQuestions.length > 0) {
+      // Guardar las preguntas aleatorias en el estado para mantener el orden durante la sesión
+      setShuffledQuestions(categoryQuestions);
       setTotalQuestions(categoryQuestions.length);
       setCurrentQuestion(categoryQuestions[0]);
       Animated.timing(fadeAnim, {
@@ -213,6 +335,21 @@ const CategoryPracticeScreen = () => {
         duration: 500,
         useNativeDriver: true,
       }).start();
+    } else {
+      // No hay preguntas disponibles
+      Alert.alert(
+        'Sin preguntas',
+        'No hay preguntas disponibles para este tipo. Por favor, selecciona otro tipo de pregunta.',
+        [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              setSelectedCategory(null);
+              setCurrentQuestion(null);
+            }
+          }
+        ]
+      );
     }
   };
 
@@ -309,31 +446,43 @@ const CategoryPracticeScreen = () => {
     console.log('selectedCategory:', selectedCategory);
     console.log('questionIndex actual:', questionIndex);
     console.log('totalQuestions:', totalQuestions);
+    console.log('shuffledQuestions length:', shuffledQuestions.length);
     
-    if (!selectedCategory) {
-      console.log('❌ No hay categoría seleccionada');
+    if (!selectedCategory || shuffledQuestions.length === 0) {
+      console.log('❌ No hay categoría seleccionada o no hay preguntas');
       return;
     }
-    
-    const categoryQuestions = getAllQuestionsByCategory(selectedCategory);
-    console.log('Preguntas de la categoría:', categoryQuestions.length);
     
     const nextIndex = questionIndex + 1;
     console.log('Siguiente índice:', nextIndex);
     
-    if (nextIndex < categoryQuestions.length) {
+    if (nextIndex < shuffledQuestions.length) {
       console.log('✅ Avanzando a la siguiente pregunta');
-      console.log('Nueva pregunta:', categoryQuestions[nextIndex]);
+      console.log('Nueva pregunta:', shuffledQuestions[nextIndex]);
+      console.log('Modo de la pregunta:', shuffledQuestions[nextIndex].mode);
       
       setQuestionIndex(nextIndex);
-      setCurrentQuestion(categoryQuestions[nextIndex]);
+      setCurrentQuestion(shuffledQuestions[nextIndex]);
       setUserAnswer('');
       setIsCorrect(null);
+      setShowMarkQuestionDialog(false);
+      
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
       
       console.log('✅ Estado actualizado - Nueva pregunta cargada');
     } else {
       console.log('🏁 Práctica completada');
-      // Practice completed
       Alert.alert(
         'Práctica Completada',
         `Puntuación: ${score}/${totalQuestions}`,
@@ -452,338 +601,209 @@ const CategoryPracticeScreen = () => {
             accessibilityLabel="Volver atrás"
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color={colors.text.dark} />
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Práctica por Categoría</Text>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Práctica</Text>
+            <Text style={styles.headerSubtitle}>Por Categoría</Text>
+          </View>
           <TouchableOpacity 
             style={styles.iconButton}
             onPress={() => navigation.navigate('Home')}
             accessibilityLabel="Ir al inicio"
             accessibilityRole="button"
           >
-            <MaterialCommunityIcons name="home" size={24} color={colors.text.dark} />
+            <MaterialCommunityIcons name="home" size={20} color="#1f2937" />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.categoriesContainer}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            style={styles.categoryCard}
-            onPress={() => handleCategorySelect(category.id)}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={category.gradient}
-              style={styles.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+      {!selectedCategory && (
+        <View style={styles.categoriesContainer}>
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryCard}
+              onPress={() => handleCategorySelect(category.id)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.categoryTitle}>
-                {category.title.split(' ')[0]}
-                {'\n'}
-                {category.title.split(' ')[1]}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-             {/* ÁREA DE PRÁCTICA - CON CUADRO DE ESCRITURA FLOTANTE */}
-       {selectedCategory && currentQuestion && (
-         <View style={styles.practiceArea}>
-           <Animated.View style={[styles.practiceContent, { opacity: fadeAnim }]}>
-             <ScrollView 
-               style={styles.practiceScroll} 
-               showsVerticalScrollIndicator={false}
-               keyboardShouldPersistTaps="always"
-               contentContainerStyle={styles.scrollContentContainer}
-               automaticallyAdjustKeyboardInsets={false}
-               keyboardDismissMode="none"
-               showsHorizontalScrollIndicator={false}
-             >
-              {/* Información de la práctica */}
-              <View style={styles.practiceInfo}>
-                <Text style={styles.practiceTitle} numberOfLines={1} adjustsFontSizeToFit>
-                  Práctica: {categories.find(c => c.id === selectedCategory)?.title}
+              <LinearGradient
+                colors={category.gradient}
+                style={styles.gradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.categoryTitle}>
+                  {category.title.split(' ')[0]}
+                  {'\n'}
+                  {category.title.split(' ')[1]}
                 </Text>
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressItem}>
-                    <Text style={styles.progressLabel}>Pregunta</Text>
-                    <Text style={styles.progressValue}>{questionIndex + 1} de {totalQuestions}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {selectedCategory && !currentQuestion && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary.main} />
+          <Text style={styles.loadingText}>Cargando preguntas...</Text>
+        </View>
+      )}
+
+      {selectedCategory && currentQuestion && (
+        <KeyboardAvoidingView 
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          <View style={styles.practiceArea}>
+            <Animated.View style={[styles.practiceContent, { opacity: fadeAnim }]}>
+              <ScrollView
+                style={styles.practiceScroll}
+                contentContainerStyle={styles.practiceScrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.practiceInfo}>
+                  <View style={styles.practiceHeaderRow}>
+                    <Text style={styles.practiceTitle} numberOfLines={1}>
+                      {categories.find((c) => c.id === selectedCategory)?.title}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.changeCategoryPill}
+                      onPress={() => {
+                        setSelectedCategory(null);
+                        setCurrentQuestion(null);
+                        setUserAnswer('');
+                      }}
+                    >
+                      <MaterialCommunityIcons name="swap-horizontal" size={14} color={colors.primary.main} />
+                      <Text style={styles.changeCategoryText}>Cambiar</Text>
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.progressItem}>
-                    <Text style={styles.progressLabel}>Puntuación</Text>
-                    <Text style={styles.progressValue}>{score}/{totalQuestions}</Text>
+                  <View style={styles.practiceStats}>
+                    <View style={styles.practiceStat}>
+                      <Text style={styles.practiceStatLabel}>Pregunta</Text>
+                      <Text style={styles.practiceStatValue}>
+                        {questionIndex + 1}/{totalQuestions}
+                      </Text>
+                    </View>
+                    <View style={styles.practiceStat}>
+                      <Text style={styles.practiceStatLabel}>Puntuación</Text>
+                      <Text style={styles.practiceStatValue}>
+                        {score}/{totalQuestions}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              {/* Tipo de pregunta */}
-              <View style={styles.questionModeContainer}>
-                <MaterialCommunityIcons 
-                  name={currentQuestion.mode?.includes('voice') ? 'microphone' : 'text'} 
-                  size={20} 
-                  color={colors.primary.main} 
-                />
-                <Text style={styles.questionModeText}>{getQuestionModeText(currentQuestion.mode || 'text-text')}</Text>
-              </View>
+                <View style={styles.questionCard}>
+                  <View style={styles.questionModeChip}>
+                    <MaterialCommunityIcons
+                      name={currentQuestion.mode?.includes('voice') ? 'microphone' : 'text'}
+                      size={14}
+                      color={colors.primary.main}
+                    />
+                    <Text style={styles.questionModeTextChip}>{getQuestionModeText(currentQuestion.mode || 'text-text')}</Text>
+                  </View>
 
-              {/* Estado del reconocimiento de voz - Solo para voice-text */}
-              {currentQuestion.mode === 'voice-text' && (
-                <View style={styles.voiceStatusContainer}>
-                  <MaterialCommunityIcons 
-                    name={voiceSupported ? 'check-circle' : 'alert-circle'} 
-                    size={16} 
-                    color={voiceSupported ? '#4CAF50' : '#F44336'} 
-                  />
-                  <Text style={[styles.voiceStatusText, { color: voiceSupported ? '#4CAF50' : '#F44336' }]}>
-                    {voiceSupported ? 'Reconocimiento de voz disponible' : 'Reconocimiento de voz no disponible'}
-                  </Text>
-                  {voiceError && (
-                    <Text style={styles.voiceErrorText}>Error: {voiceError}</Text>
+                  {currentQuestion.mode === 'voice-text' ? (
+                    <View style={styles.audioContainer}>
+                      <TouchableOpacity style={styles.audioButton} onPress={handlePlayAudioQuestion}>
+                        <MaterialCommunityIcons name="play-circle" size={20} color="#fff" />
+                        <Text style={styles.audioButtonText}>Escuchar</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.voiceInstruction}>Escribe tu respuesta después de escuchar</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.questionLabel}>Pregunta</Text>
+                      <Text style={styles.questionText}>{currentQuestion.question}</Text>
+                    </>
                   )}
                 </View>
-              )}
 
-              {/* Pregunta - SOLO MOSTRAR SI NO ES DE AUDIO (voice-text) */}
-              {currentQuestion.mode !== 'voice-text' && (
-                <View style={styles.questionContainer}>
-                  <Text style={styles.questionLabel}>Pregunta:</Text>
-                  <Text style={styles.questionText}>{currentQuestion.question}</Text>
-                </View>
-              )}
-              
-              {/* Botón para reproducir audio si es pregunta de voz */}
-              {currentQuestion.mode === 'voice-text' && (
-                <View style={styles.audioContainer}>
-                  <TouchableOpacity 
-                    style={styles.audioButton}
-                    onPress={handlePlayAudioQuestion}
-                  >
-                    <MaterialCommunityIcons name="play-circle" size={24} color={colors.primary.main} />
-                    <Text style={styles.audioButtonText}>Reproducir Pregunta</Text>
-                  </TouchableOpacity>
-                  
-                  {/* Instrucción para voice-text */}
-                  <Text style={styles.voiceInstruction}>
-                    Escucha la pregunta y escribe tu respuesta
-                  </Text>
-                </View>
-              )}
-
-                             {/* Área de respuesta - MEJORADA */}
-               <View style={[
-                 styles.answerContainer,
-                 isAnswerInputFocused && styles.answerContainerFocused
-               ]}>
-                 <Text style={styles.answerLabel}>Tu Respuesta:</Text>
-                 
-                 {/* Input de texto para respuestas de texto */}
-                 <TextInput
-                   style={[
-                     styles.answerInput,
-                     isAnswerInputFocused && styles.answerInputFocused
-                   ]}
-                   value={userAnswer}
-                   onChangeText={setUserAnswer}
-                   placeholder="Escribe tu respuesta aquí..."
-                   placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                   multiline
-                   numberOfLines={4}
-                   textAlignVertical="top"
-                   autoCapitalize="sentences"
-                   autoCorrect={true}
-                   returnKeyType="done"
-                   blurOnSubmit={false}
-                   onFocus={() => setIsAnswerInputFocused(true)}
-                   onBlur={() => setIsAnswerInputFocused(false)}
-                 />
-                 
-                 {/* Indicador visual de que el input está activo */}
-                 {isAnswerInputFocused && (
-                   <View style={styles.inputActiveIndicator}>
-                     <MaterialCommunityIcons 
-                       name="pencil" 
-                       size={16} 
-                       color={colors.primary.main} 
-                     />
-                     <Text style={styles.inputActiveText}>Escribiendo...</Text>
-                   </View>
-                 )}
-               </View>
-
-              {/* Botón de confirmar respuesta */}
-              {userAnswer.trim() && (
-                <TouchableOpacity 
-                  style={styles.confirmButton}
-                  onPress={handleAnswerSubmit}
-                >
-                  <Text style={styles.confirmButtonText}>Confirmar Respuesta</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Resultado flotante */}
-              {isCorrect !== null && (
-                <View style={styles.resultOverlay}>
+                {isCorrect !== null && (
                   <View style={styles.resultCard}>
-                    <LinearGradient
-                      colors={getFeedbackColor()}
-                      style={styles.resultGradient}
-                    >
-                      <MaterialCommunityIcons 
-                        name={isCorrect ? 'check-circle' : 'close-circle'} 
-                        size={48} 
-                        color="white" 
+                    <View style={[styles.resultHeader, { backgroundColor: isCorrect ? '#22c55e' : '#ef4444' }]}>
+                      <MaterialCommunityIcons
+                        name={isCorrect ? 'check-circle' : 'close-circle'}
+                        size={22}
+                        color="#fff"
                       />
-                      <Text style={styles.resultText}>
+                      <Text style={styles.resultHeaderText}>
                         {isCorrect ? '¡Correcto!' : 'Incorrecto'}
                       </Text>
-                      <Text style={styles.correctAnswerText}>
-                        Respuesta correcta: {currentQuestion.answer}
-                      </Text>
-                    </LinearGradient>
-                    
-                    {/* Botones de acción */}
+                    </View>
+                    <View style={styles.correctAnswerContainer}>
+                      <Text style={styles.correctAnswerLabel}>Respuesta correcta</Text>
+                      <Text style={styles.correctAnswerValue}>{currentQuestion.answer}</Text>
+                    </View>
                     <View style={styles.resultActions}>
-                      <TouchableOpacity 
-                        style={styles.repeatButton}
-                        onPress={handleRepeatQuestion}
-                      >
-                        <MaterialCommunityIcons name="replay" size={20} color={colors.primary.main} />
-                        <Text style={styles.repeatButtonText}>Repetir</Text>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={handleRepeatQuestion}>
+                        <MaterialCommunityIcons name="replay" size={16} color={colors.primary.main} />
+                        <Text style={styles.secondaryButtonText}>Repetir</Text>
                       </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={styles.nextButton}
-                        onPress={() => {
-                          console.log('🔘 Botón Siguiente presionado');
-                          handleNextQuestion();
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.nextButtonText}>Siguiente</Text>
-                        <MaterialCommunityIcons name="arrow-right" size={20} color="white" />
+                      <TouchableOpacity style={styles.primaryButton} onPress={handleNextQuestion}>
+                        <Text style={styles.primaryButtonText}>Siguiente</Text>
+                        <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
                       </TouchableOpacity>
                     </View>
                   </View>
-                </View>
-              )}
+                )}
 
-              {/* Diálogo para marcar pregunta incorrecta */}
-              {showMarkQuestionDialog && (
-                <View style={styles.markQuestionDialog}>
-                  <LinearGradient
-                    colors={['#FF9800', '#F57C00']}
-                    style={styles.markQuestionGradient}
-                  >
-                    <MaterialCommunityIcons 
-                      name="bookmark-outline" 
-                      size={48} 
-                      color="white" 
-                    />
-                    <Text style={styles.markQuestionTitle}>
-                      ¿Quieres marcar esta pregunta?
-                    </Text>
-                    <Text style={styles.markQuestionText}>
-                      Puedes marcarla para repasarla más tarde en "Preguntas Marcadas"
-                    </Text>
-                    
-                    <View style={styles.markQuestionButtons}>
-                      <TouchableOpacity 
-                        style={styles.markQuestionNoButton}
-                        onPress={() => setShowMarkQuestionDialog(false)}
-                      >
-                        <Text style={styles.markQuestionNoText}>No, gracias</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={styles.markQuestionYesButton}
-                        onPress={toggleMarkedQuestion}
-                      >
-                        <MaterialCommunityIcons name="bookmark-outline" size={20} color="white" />
-                        <Text style={styles.markQuestionYesText}>
-                          {markedQuestions.has(currentQuestion?.id || 0) ? 'Desmarcar' : 'Marcar'}
-                        </Text>
-                      </TouchableOpacity>
+                {showMarkQuestionDialog && (
+                  <View style={styles.markBanner}>
+                    <MaterialCommunityIcons name="bookmark-outline" size={20} color="#fff" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.markBannerTitle}>¿Marcar esta pregunta?</Text>
+                      <Text style={styles.markBannerSubtitle}>
+                        Guárdala para repasar luego
+                      </Text>
                     </View>
-                    
-                    <TouchableOpacity 
-                      style={styles.viewIncorrectButton}
-                      onPress={navigateToIncorrectQuestions}
-                    >
-                      <MaterialCommunityIcons name="alert-circle" size={20} color="white" />
-                      <Text style={styles.viewIncorrectText}>Ver Preguntas Incorrectas</Text>
+                    <TouchableOpacity style={styles.markBannerButton} onPress={toggleMarkedQuestion}>
+                      <Text style={styles.markBannerButtonText}>
+                        {markedQuestions.has(currentQuestion.id) ? 'Quitar' : 'Marcar'}
+                      </Text>
                     </TouchableOpacity>
-                  </LinearGradient>
-                </View>
-              )}
-              
-                             {/* Espacio extra para evitar que el teclado tape contenido */}
-               <View style={styles.bottomSpacer} />
-             </ScrollView>
-           </Animated.View>
-           
-           {/* CUADRO DE ESCRITURA FLOTANTE - SIEMPRE VISIBLE */}
-           <View style={styles.floatingAnswerContainer}>
-             <View style={[
-               styles.answerContainer,
-               isAnswerInputFocused && styles.answerContainerFocused
-             ]}>
-               <Text style={styles.answerLabel}>Tu Respuesta:</Text>
-               
-               <TextInput
-                 style={[
-                   styles.answerInput,
-                   isAnswerInputFocused && styles.answerInputFocused
-                 ]}
-                 value={userAnswer}
-                 onChangeText={setUserAnswer}
-                 placeholder="Escribe tu respuesta aquí..."
-                 placeholderTextColor="rgba(0, 0, 0, 0.4)"
-                 multiline
-                 numberOfLines={3}
-                 textAlignVertical="top"
-                 autoCapitalize="sentences"
-                 autoCorrect={true}
-                 returnKeyType="done"
-                 blurOnSubmit={false}
-                 onFocus={() => setIsAnswerInputFocused(true)}
-                 onBlur={() => setIsAnswerInputFocused(false)}
-               />
-               
-               {/* Indicador visual de que el input está activo */}
-               {isAnswerInputFocused && (
-                 <View style={styles.inputActiveIndicator}>
-                   <MaterialCommunityIcons 
-                     name="pencil" 
-                     size={16} 
-                     color={colors.primary.main} 
-                   />
-                   <Text style={styles.inputActiveText}>Escribiendo...</Text>
-                 </View>
-               )}
-             </View>
-             
-             {/* Botón de confirmar respuesta */}
-             {userAnswer.trim() && (
-               <TouchableOpacity 
-                 style={styles.confirmButton}
-                 onPress={handleAnswerSubmit}
-               >
-                 <Text style={styles.confirmButtonText}>Confirmar Respuesta</Text>
-               </TouchableOpacity>
-             )}
-           </View>
-         </View>
-       )}
+                  </View>
+                )}
+
+                {/* Espacio para el cuadro flotante */}
+                <View style={styles.bottomSpacer} />
+              </ScrollView>
+            </Animated.View>
+
+            {/* Cuadro de respuesta flotante */}
+            {isCorrect === null && (
+              <View style={styles.floatingAnswerContainer}>
+                <Text style={styles.answerLabel}>Tu respuesta</Text>
+                <TextInput
+                  style={styles.answerInput}
+                  value={userAnswer}
+                  onChangeText={setUserAnswer}
+                  placeholder="Escribe tu respuesta aquí..."
+                  placeholderTextColor="#9ca3af"
+                  multiline
+                  textAlignVertical="top"
+                />
+                {userAnswer.trim().length > 0 && (
+                  <TouchableOpacity style={styles.submitButton} onPress={handleAnswerSubmit}>
+                    <Text style={styles.submitButtonText}>Confirmar respuesta</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      )}
 
       {/* Mensaje cuando no hay categoría seleccionada */}
       {!selectedCategory && (
         <View style={styles.noSelectionContainer}>
-          <MaterialCommunityIcons name="help-circle-outline" size={64} color="#ccc" />
-          <Text style={styles.noSelectionText}>Selecciona una categoría para comenzar la práctica</Text>
+          <MaterialCommunityIcons name="help-circle-outline" size={48} color="#d1d5db" />
+          <Text style={styles.noSelectionText}>Selecciona una categoría para comenzar</Text>
         </View>
       )}
     </SafeAreaView>
@@ -796,42 +816,49 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#F5F5F5',
-    paddingBottom: 4,
+    backgroundColor: '#ffffff',
+    paddingBottom: 0,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 64,
+    height: 56,
     paddingHorizontal: 16,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'white',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#f9fafb',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#000000',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: 0.2,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6b7280',
+    marginTop: 1,
+    letterSpacing: 0.1,
   },
   categoriesContainer: {
     flexDirection: 'row',
@@ -902,18 +929,51 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff',
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderTopWidth: 0.5,
+    borderTopColor: '#e5e7eb',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 8,
     zIndex: 1000,
+  },
+  answerLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  answerInput: {
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    minHeight: 70,
+    maxHeight: 100,
+    color: '#111827',
+    backgroundColor: '#f9fafb',
+    textAlignVertical: 'top',
+  },
+  submitButton: {
+    marginTop: 10,
+    backgroundColor: colors.primary.main,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.3,
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -929,371 +989,272 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 0,
   },
-  practiceInfo: {
+  practiceScrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 180, // Espacio para el cuadro flotante
+    gap: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    paddingHorizontal: 24,
+    paddingTop: 40,
   },
-  practiceTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text.dark,
-    marginBottom: 6,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: colors.text.light,
     textAlign: 'center',
-    letterSpacing: 0.5,
   },
-  progressContainer: {
+  practiceInfo: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+  },
+  practiceHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 8,
-    paddingHorizontal: 16,
-  },
-  progressItem: {
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  practiceTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
     flex: 1,
   },
-  progressLabel: {
-    fontSize: 12,
-    color: colors.text.light,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  progressValue: {
-    fontSize: 16,
-    color: colors.text.dark,
-    fontWeight: '700',
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    minWidth: 80,
-    textAlign: 'center',
-  },
-  questionModeContainer: {
+  changeCategoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 136, 229, 0.08)',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(30, 136, 229, 0.15)',
+    backgroundColor: 'rgba(124,58,237,0.08)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 4,
   },
-  questionModeText: {
-    marginLeft: 12,
-    fontSize: 14,
-    color: colors.text.dark,
+  changeCategoryText: {
+    color: colors.primary.main,
     fontWeight: '600',
-    letterSpacing: 0.3,
+    fontSize: 11,
   },
-  questionContainer: {
-    marginBottom: 16,
-    backgroundColor: '#fafbfc',
-    padding: 16,
+  practiceStats: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  practiceStat: {
+    flex: 1,
+    backgroundColor: '#f9fafb',
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
   },
-  questionLabel: {
+  practiceStatLabel: {
+    fontSize: 10,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    fontWeight: '600',
+  },
+  practiceStatValue: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.text.dark,
-    marginBottom: 10,
+    color: '#111827',
+    marginTop: 3,
+  },
+  questionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    gap: 10,
+  },
+  questionModeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(124,58,237,0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 5,
+  },
+  questionModeTextChip: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary.main,
+  },
+  questionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6b7280',
+    marginBottom: 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   questionText: {
-    fontSize: 16,
-    color: colors.text.dark,
-    lineHeight: 22,
-    marginBottom: 16,
+    fontSize: 14,
+    color: '#111827',
+    lineHeight: 20,
     fontWeight: '500',
   },
   audioContainer: {
-    marginBottom: 16,
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 16,
+    backgroundColor: '#f9fafb',
+    padding: 12,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    gap: 6,
   },
   audioButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary.light,
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: colors.primary.main,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: colors.primary.main,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 8,
   },
   audioButtonText: {
-    marginLeft: 12,
-    color: colors.primary.main,
-    fontWeight: '600',
-    fontSize: 16,
-    letterSpacing: 0.3,
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+    letterSpacing: 0.2,
   },
   voiceInstruction: {
-    fontSize: 14,
-    color: colors.text.light,
+    fontSize: 11,
+    color: '#6b7280',
     textAlign: 'center',
-    fontStyle: 'italic',
-    backgroundColor: 'rgba(0, 0, 0, 0.03)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
   },
-  answerContainer: {
-    marginBottom: 12, // Reducido para el cuadro flotante
-    backgroundColor: '#ffffff',
-    padding: 12, // Reducido para el cuadro flotante
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(30, 136, 229, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  answerLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.text.dark,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  answerInput: {
-    borderWidth: 2,
-    borderColor: 'rgba(30, 136, 229, 0.4)',
-    borderRadius: 12,
-    padding: 12,
-    fontSize: 16,
-    minHeight: 60, // Más compacto para el cuadro flotante
-    textAlignVertical: 'top',
-    backgroundColor: '#f8f9fa',
+  resultCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowRadius: 3,
     elevation: 1,
-    color: '#000000',
-    fontWeight: '500',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    gap: 12,
   },
-  answerInputFocused: {
-    borderColor: 'rgba(30, 136, 229, 0.8)',
-    backgroundColor: '#ffffff',
-    shadowColor: '#1e88e5',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  answerContainerFocused: {
-    borderColor: 'rgba(30, 136, 229, 0.6)',
-    backgroundColor: '#f0f8ff',
-    shadowColor: '#1e88e5',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  inputActiveIndicator: {
+  resultHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8, // Reducido para el cuadro flotante
-    paddingHorizontal: 10, // Reducido para el cuadro flotante
-    paddingVertical: 4, // Reducido para el cuadro flotante
-    backgroundColor: 'rgba(30, 136, 229, 0.1)',
-    borderRadius: 10, // Reducido para el cuadro flotante
-    alignSelf: 'flex-start',
-  },
-  inputActiveText: {
-    marginLeft: 6,
-    fontSize: 11, // Reducido para el cuadro flotante
-    color: colors.primary.main,
-    fontWeight: '600',
-    fontStyle: 'italic',
-  },
-  voiceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary.main,
-    padding: 18,
-    borderRadius: 16,
     justifyContent: 'center',
-    shadowColor: colors.primary.main,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  voiceButtonRecording: {
-    backgroundColor: '#f44336',
-    shadowColor: '#f44336',
-  },
-  voiceButtonText: {
-    marginLeft: 12,
-    color: 'white',
-    fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 0.3,
-  },
-  voiceAnswerDisplay: {
-    backgroundColor: 'rgba(30, 136, 229, 0.08)',
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary.main,
-    borderWidth: 1,
-    borderColor: 'rgba(30, 136, 229, 0.15)',
-  },
-  voiceAnswerLabel: {
-    fontSize: 12,
-    color: colors.text.light,
-    marginBottom: 6,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  voiceAnswerText: {
-    fontSize: 16,
-    color: colors.text.dark,
-    fontWeight: '600',
-    lineHeight: 22,
-  },
-  confirmButton: {
-    backgroundColor: colors.primary.main,
-    padding: 12, // Reducido para el cuadro flotante
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 0, // Sin margen inferior en el cuadro flotante
-    shadowColor: colors.primary.main,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 8,
   },
-  confirmButtonText: {
-    color: 'white',
-    fontSize: 13, // Reducido para el cuadro flotante
+  resultHeaderText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#fff',
     letterSpacing: 0.3,
+  },
+  correctAnswerContainer: {
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+  },
+  correctAnswerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6b7280',
     textTransform: 'uppercase',
-  },
-  // Estilos para resultado flotante - MEJORADO
-  resultOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-  },
-  resultCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    margin: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12,
-    maxWidth: '90%',
-    minWidth: 300,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  resultGradient: {
-    padding: 24,
-    borderRadius: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  resultText: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: 'white',
-    marginTop: 12,
-    marginBottom: 8,
     letterSpacing: 0.5,
+    marginBottom: 6,
   },
-  correctAnswerText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.95)',
-    textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 22,
+  correctAnswerValue: {
+    fontSize: 13,
+    color: '#111827',
+    fontWeight: '600',
+    lineHeight: 18,
   },
   resultActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
-  repeatButton: {
+  secondaryButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.primary.main,
-    flex: 1,
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: '#f9fafb',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
+    gap: 6,
   },
-  repeatButtonText: {
-    marginLeft: 8,
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.primary.main,
-    fontWeight: '700',
-    fontSize: 14,
-    letterSpacing: 0.3,
   },
-  nextButton: {
+  primaryButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary.main,
-    padding: 16,
-    borderRadius: 16,
-    flex: 1,
     justifyContent: 'center',
-    shadowColor: colors.primary.main,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: colors.primary.main,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 6,
   },
-  nextButtonText: {
-    color: 'white',
+  primaryButtonText: {
+    fontSize: 13,
     fontWeight: '700',
-    marginRight: 8,
-    fontSize: 14,
-    letterSpacing: 0.3,
+    color: '#fff',
+  },
+  markBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f59e0b',
+    padding: 10,
+    borderRadius: 12,
+    gap: 8,
+  },
+  markBannerTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 1,
+  },
+  markBannerSubtitle: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  markBannerButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  markBannerButtonText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#f59e0b',
   },
   noSelectionContainer: {
     flex: 1,
@@ -1302,10 +1263,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   noSelectionText: {
-    fontSize: 16,
-    color: '#999',
+    fontSize: 14,
+    color: '#9ca3af',
     textAlign: 'center',
-    marginTop: 16,
+    marginTop: 12,
+    fontWeight: '500',
   },
   voiceStatusContainer: {
     flexDirection: 'row',
@@ -1335,8 +1297,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   bottomSpacer: {
-    height: 120, // Espacio para el cuadro flotante
-    minHeight: 120,
+    height: 160, // Espacio para el cuadro flotante
+    minHeight: 160,
   },
   
   // Estilos para el diálogo de marcar preguntas

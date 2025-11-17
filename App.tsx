@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { theme } from './src/config/theme';
+import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App(): JSX.Element {
@@ -32,11 +33,13 @@ export default function App(): JSX.Element {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <PaperProvider theme={theme}>
-        <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
-        <AppNavigator />
-      </PaperProvider>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <SafeAreaProvider>
+        <PaperProvider theme={theme}>
+          <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
+          <AppNavigator />
+        </PaperProvider>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }

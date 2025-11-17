@@ -15,11 +15,14 @@ import { NavigationProps } from '../types/navigation';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PracticeMode } from '../types/question';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
+  const { user, logout } = useAuth();
   const [studyProgress, setStudyProgress] = useState<number>(0);
 
   useEffect(() => {
@@ -56,6 +59,15 @@ const HomeScreen = () => {
           resizeMode="cover"
         >
           <View style={styles.headerOverlay} />
+          {user && (
+            <View style={styles.userHeader}>
+              <Text style={styles.userEmail}>{user.email}</Text>
+              <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+                <MaterialCommunityIcons name="logout" size={20} color="white" />
+                <Text style={styles.logoutText}>Salir</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ImageBackground>
       </View>
 
@@ -138,13 +150,63 @@ const HomeScreen = () => {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* TARJETA 4 – Entrevista AI */}
+        {/* TARJETA 4 – Práctica por Tipo */}
+        <TouchableOpacity
+          style={styles.menuItemContainer}
+          onPress={() => navigation.navigate('QuestionTypePractice' as any)}
+        >
+          <LinearGradient
+            colors={['#7c3aed', '#a855f7']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.menuItem}
+          >
+            <View style={styles.menuContent}>
+              <View style={styles.textContainer}>
+                <Text style={styles.menuTitle}>Práctica por Tipo</Text>
+                <Text style={styles.menuSubtitle}>
+                  Practica por tipo de pregunta y respuesta
+                </Text>
+              </View>
+              <View style={styles.progressCircle}>
+                <Text style={styles.progressText}>–%</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* TARJETA 5 – Práctica de 20 Preguntas */}
+        <TouchableOpacity
+          style={styles.menuItemContainer}
+          onPress={() => navigation.navigate('Random20Practice' as any)}
+        >
+          <LinearGradient
+            colors={['#ec4899', '#f472b6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.menuItem}
+          >
+            <View style={styles.menuContent}>
+              <View style={styles.textContainer}>
+                <Text style={styles.menuTitle}>Práctica de 20 Preguntas</Text>
+                <Text style={styles.menuSubtitle}>
+                  Simula el examen real con 20 preguntas aleatorias
+                </Text>
+              </View>
+              <View style={styles.progressCircle}>
+                <Text style={styles.progressText}>–%</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* TARJETA 6 – Entrevista AI */}
         <TouchableOpacity
           style={styles.menuItemContainer}
           onPress={() => navigation.navigate('EntrevistaAI')}
         >
           <LinearGradient
-            colors={['#470a56', '#ce32b1']}
+            colors={['#06b6d4', '#22d3ee']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.menuItem}
@@ -153,7 +215,7 @@ const HomeScreen = () => {
               <View style={styles.textContainer}>
                 <Text style={styles.menuTitle}>Entrevista AI</Text>
                 <Text style={styles.menuSubtitle}>
-                  Practica la entrevista
+                  Practica con una entrevista simulada
                 </Text>
               </View>
               <View style={styles.progressCircle}>
@@ -163,7 +225,32 @@ const HomeScreen = () => {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* TARJETA 5 – Examen */}
+        {/* TARJETA 7 – Memoria Fotográfica */}
+        <TouchableOpacity
+          style={styles.menuItemContainer}
+          onPress={() => navigation.navigate('PhotoMemory' as any)}
+        >
+          <LinearGradient
+            colors={['#10b981', '#34d399']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.menuItem}
+          >
+            <View style={styles.menuContent}>
+              <View style={styles.textContainer}>
+                <Text style={styles.menuTitle}>Memoria Fotográfica</Text>
+                <Text style={styles.menuSubtitle}>
+                  Asocia imágenes con preguntas y respuestas
+                </Text>
+              </View>
+              <View style={styles.progressCircle}>
+                <Text style={styles.progressText}>–%</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* TARJETA 8 – Examen */}
         <TouchableOpacity
           style={styles.menuItemContainer}
           onPress={() => navigation.navigate('Examen')}
@@ -289,6 +376,36 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
     textAlignVertical: 'center',
+  },
+  userHeader: {
+    position: 'absolute',
+    top: Platform.OS === 'web' ? 20 : 10,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  userEmail: {
+    color: 'white',
+    fontSize: 12,
+    marginRight: 8,
+    fontWeight: '600',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 8,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  logoutText: {
+    color: 'white',
+    fontSize: 12,
+    marginLeft: 4,
+    fontWeight: '600',
   },
 });
 
