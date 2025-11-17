@@ -260,15 +260,16 @@ const StudyScreenModerno = () => {
     <>
       {!isWeb && (
         <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={{ width: 36 }} />
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Estudio</Text>
-            <Text style={styles.headerSubtitle}>Por Categoría</Text>
+          <View style={styles.headerContent}>
+            <View style={{ width: 36 }} />
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Estudio</Text>
+              <Text style={styles.headerSubtitle}>Por Categoría</Text>
+            </View>
+            <View style={{ width: 36 }} />
           </View>
-          <View style={{ width: 36 }} />
         </View>
-      </View>
+      )}
 
       {/* Tabs de Categorías */}
       <View style={styles.tabsContainer}>
@@ -398,8 +399,6 @@ const StudyScreenModerno = () => {
           </Text>
         </View>
       </ScrollView>
-      </View>
-      )}
     </>
   );
 
