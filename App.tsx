@@ -5,7 +5,17 @@ import { StatusBar } from 'react-native';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { theme } from './src/config/theme';
 import { AuthProvider } from './src/context/AuthContext';
+import { PremiumProvider } from './src/context/PremiumContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+// Inicializar Sentry (solo en producción)
+import './src/config/sentry';
+// Inicializar servicio de pagos
+import { initializePayments, disconnectPayments } from './src/services/paymentService';
+// Configurar notificaciones
+import { setupNotificationListeners, requestPermissions } from './src/services/notificationService';
+// Configurar sincronización offline
+import { setupConnectionListener } from './src/utils/offlineSync';
 
 export default function App(): JSX.Element {
   useEffect(() => {
@@ -29,17 +39,87 @@ export default function App(): JSX.Element {
       }
     };
 
+    const setupPayments = async () => {
+      try {
+        await initializePayments();
+      } catch (error) {
+        console.warn('Error inicializando servicio de pagos:', error);
+      }
+    };
+
+    const setupNotifications = async () => {
+      try {
+        // Solicitar permisos
+        await requestPermissions();
+        
+        // Configurar listeners
+        const listeners = setupNotificationListeners(
+          (notification) => {
+            // Notificación recibida
+            console.log('Notificación recibida:', notification);
+          },
+          (response) => {
+            // Usuario tocó la notificación
+            console.log('Notificación tocada:', response);
+            // Aquí puedes navegar a una pantalla específica si es necesario
+          }
+        );
+
+        // Cleanup al desmontar
+        return () => {
+          listeners.remove();
+        };
+      } catch (error) {
+        console.warn('Error configurando notificaciones:', error);
+      }
+    };
+
+    const setupOfflineSync = () => {
+      // Configurar listener de conexión
+      const connectionCleanup = setupConnectionListener(async (isConnected) => {
+        if (isConnected) {
+          // Cuando vuelve online, intentar sincronizar
+          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+          const userId = await AsyncStorage.getItem('@user:uid');
+          if (userId) {
+            const { loadFromFirestore } = require('./src/utils/offlineSync');
+            await loadFromFirestore(userId);
+          }
+        }
+      });
+
+      return connectionCleanup;
+    };
+
     configureAudio();
+    setupPayments();
+    const notificationCleanup = setupNotifications();
+    const connectionCleanup = setupOfflineSync();
+
+    // Cleanup al desmontar
+    return () => {
+      disconnectPayments();
+      if (notificationCleanup) {
+        notificationCleanup.then(cleanup => cleanup && cleanup());
+      }
+      if (connectionCleanup) {
+        connectionCleanup();
+      }
+    };
   }, []);
 
   return (
-    <AuthProvider>
-      <SafeAreaProvider>
-        <PaperProvider theme={theme}>
-          <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
-          <AppNavigator />
-        </PaperProvider>
-      </SafeAreaProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <PremiumProvider>
+          <SafeAreaProvider>
+            <PaperProvider theme={theme}>
+              <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
+              <AppNavigator />
+            </PaperProvider>
+          </SafeAreaProvider>
+        </PremiumProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

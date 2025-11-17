@@ -228,6 +228,12 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
       );
     };
 
+    // Props para web (mouse events)
+    const webProps = isWeb ? {
+      onMouseEnter: () => setIsHovered(true),
+      onMouseLeave: () => setIsHovered(false),
+    } : {};
+
     return (
       <View style={styles.container}>
         <TouchableOpacity 
@@ -236,8 +242,7 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
             styles.flipContainer,
             isWeb && isHovered && styles.flipContainerHovered,
           ]}
-          onMouseEnter={() => isWeb && setIsHovered(true)}
-          onMouseLeave={() => isWeb && setIsHovered(false)}
+          {...(webProps as any)}
         >
           {/* FRENTE */}
           <Animated.View

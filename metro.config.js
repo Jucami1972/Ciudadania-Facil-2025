@@ -5,6 +5,25 @@ const defaultConfig = getDefaultConfig(__dirname);
 
 module.exports = {
   ...defaultConfig,
+  transformer: {
+    ...defaultConfig.transformer,
+    // Optimizaciones de minificación
+    minifierConfig: {
+      keep_classnames: false,
+      keep_fnames: false,
+      mangle: {
+        keep_classnames: false,
+        keep_fnames: false,
+      },
+    },
+    // Habilitar tree shaking
+    getTransformOptions: async () => ({
+      transform: {
+        experimentalImportSupport: false,
+        inlineRequires: true, // Mejora el tiempo de inicio
+      },
+    }),
+  },
   resolver: {
     ...defaultConfig.resolver,
     sourceExts: ['jsx', 'js', 'ts', 'tsx', 'json', 'web.js', 'web.jsx', 'web.ts', 'web.tsx'],

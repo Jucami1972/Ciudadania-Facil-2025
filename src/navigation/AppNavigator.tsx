@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,6 +8,8 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../types/navigation';
+import { trackScreenView, trackSessionStart } from '../utils/analytics';
+import Onboarding, { useOnboardingStatus } from '../components/Onboarding';
 
 // Pantallas de autenticación
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -47,6 +49,7 @@ import Random20PracticeScreenModerno from '../screens/practice/Random20PracticeS
 import AIInterviewN400ScreenModerno from '../screens/practice/AIInterviewN400ScreenModerno';
 import PhotoMemoryScreenModerno from '../screens/practice/PhotoMemoryScreenModerno';
 import VocabularioScreenModernoV2 from '../screens/VocabularioScreenModernoV2';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
@@ -178,8 +181,44 @@ const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading } = useOnboardingStatus();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const routeNameRef = useRef<string | undefined>();
 
-  if (loading) {
+  // Mostrar onboarding si el usuario está autenticado y no lo ha completado
+  useEffect(() => {
+    if (!loading && !onboardingLoading && user && onboardingCompleted === false) {
+      setShowOnboarding(true);
+    }
+  }, [loading, onboardingLoading, user, onboardingCompleted]);
+
+  // Trackear sesión al iniciar
+  useEffect(() => {
+    trackSessionStart();
+  }, []);
+
+  // Trackear cambios de pantalla
+  const handleNavigationStateChange = () => {
+    const previousRouteName = routeNameRef.current;
+    const currentRoute = navigationRef.current?.getCurrentRoute();
+    const currentRouteName = currentRoute?.name;
+
+    if (previousRouteName !== currentRouteName && currentRouteName) {
+      trackScreenView(currentRouteName, {
+        previous_screen: previousRouteName || 'none',
+        user_id: user?.uid || 'anonymous',
+      });
+    }
+
+    routeNameRef.current = currentRouteName;
+  };
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
+
+  if (loading || onboardingLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#7c3aed" />
@@ -187,13 +226,31 @@ export default function AppNavigator() {
     );
   }
 
+  // Mostrar onboarding si es necesario
+  if (showOnboarding && user) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name;
+      }}
+      onStateChange={handleNavigationStateChange}
+    >
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <RootStack.Screen name="AuthStack" component={AuthStack} />
         ) : (
-          <RootStack.Screen name="AppTabs" component={AppTabNavigator} />
+          <>
+            <RootStack.Screen name="AppTabs" component={AppTabNavigator} />
+            <RootStack.Screen 
+              name="Subscription" 
+              component={SubscriptionScreen}
+              options={{ presentation: 'modal' }}
+            />
+          </>
         )}
       </RootStack.Navigator>
     </NavigationContainer>

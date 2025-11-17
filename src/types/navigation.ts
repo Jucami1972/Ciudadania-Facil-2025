@@ -114,6 +114,9 @@ export type RootStackParamList = {
     subcategory: string 
   };
 
+  // Premium
+  Subscription: undefined;
+
   ResultsScreen: undefined;
 };
 

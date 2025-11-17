@@ -22,7 +22,17 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Esta app necesita acceso al micrófono para el reconocimiento de voz durante las prácticas.",
         "NSSpeechRecognitionUsageDescription": "Esta app necesita acceso al reconocimiento de voz para transcribir las respuestas del usuario."
-      }
+      },
+      "plugins": [
+        [
+          "expo-notifications",
+          {
+            "icon": "./src/assets/icon.png",
+            "color": "#7C3AED",
+            "sounds": []
+          }
+        ]
+      ]
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +44,20 @@
       "jsEngine": "hermes",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
+      "plugins": [
+        [
+          "expo-notifications",
+          {
+            "icon": "./src/assets/adaptive-icon.png",
+            "color": "#7C3AED",
+            "sounds": [],
+            "mode": "default"
+          }
+        ]
       ]
     },
     "web": {

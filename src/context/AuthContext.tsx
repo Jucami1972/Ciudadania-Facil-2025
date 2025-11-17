@@ -7,6 +7,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+import { 
+  trackEvent, 
+  AnalyticsEvent, 
+  setUserId, 
+  setUserProperties 
+} from '../utils/analytics';
+import { loadFromFirestore, setupConnectionListener } from '../utils/offlineSync';
 
 // Cerrar el navegador web cuando termine la autenticación
 WebBrowser.maybeCompleteAuthSession();
@@ -71,10 +78,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Guardar información del usuario en AsyncStorage
           await AsyncStorage.setItem('@user:uid', firebaseUser.uid);
           await AsyncStorage.setItem('@user:email', firebaseUser.email || '');
+          
+          // Configurar Analytics para el usuario
+          setUserId(firebaseUser.uid);
+          setUserProperties({
+            email: firebaseUser.email || '',
+            email_verified: firebaseUser.emailVerified,
+            sign_in_method: firebaseUser.providerData[0]?.providerId || 'email',
+          });
+
+          // Cargar datos desde Firestore y configurar sincronización
+          await loadFromFirestore(firebaseUser.uid);
         } else {
           // Limpiar información del usuario
           await AsyncStorage.removeItem('@user:uid');
           await AsyncStorage.removeItem('@user:email');
+          
+          // Limpiar Analytics
+          setUserId(null);
         }
       });
     } catch (error) {
@@ -94,6 +115,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       await authInstance.createUserWithEmailAndPassword(email, password);
+      
+      // Trackear registro exitoso
+      trackEvent(AnalyticsEvent.USER_SIGNED_UP, {
+        method: 'email',
+      });
     } catch (error: any) {
       let errorMessage = 'Error al registrar usuario';
       
@@ -124,6 +150,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       await authInstance.signInWithEmailAndPassword(email, password);
+      
+      // Trackear inicio de sesión exitoso
+      trackEvent(AnalyticsEvent.USER_SIGNED_IN, {
+        method: 'email',
+      });
     } catch (error: any) {
       let errorMessage = 'Error al iniciar sesión';
       
@@ -167,6 +198,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (Platform.OS === 'web') {
         const result = await authInstance.signInWithPopup(provider);
         if (result.user) {
+          // Trackear inicio de sesión con Google
+          trackEvent(AnalyticsEvent.USER_SIGNED_IN, {
+            method: 'google',
+          });
           // Usuario autenticado correctamente
           return;
         }
@@ -208,6 +243,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const authInstance = getAuthInstance();
     
     try {
+      // Trackear cierre de sesión
+      trackEvent(AnalyticsEvent.USER_SIGNED_OUT);
+      
       await authInstance.signOut();
       await AsyncStorage.clear();
     } catch (error: any) {
