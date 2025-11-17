@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NavigationProps } from '../../types/navigation';
 import WebLayout from '../../components/layout/WebLayout';
+import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
 
 interface PhotoCard {
   id: number;
@@ -37,6 +38,7 @@ const cardWidth = isWeb ? (Math.min(width, 1600) - 160) / 4 : (width - 48) / 2;
 const PhotoMemoryScreenModerno = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProps>();
+  const isWebDesktop = useIsWebDesktop();
   const [selectedCard, setSelectedCard] = useState<PhotoCard | null>(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -225,7 +227,8 @@ const PhotoMemoryScreenModerno = () => {
     </>
   );
 
-  if (isWeb) {
+  // Web de escritorio: usar WebLayout con sidebar
+  if (isWeb && isWebDesktop) {
     return (
       <WebLayout headerTitle="Memoria Fotográfica">
         {content}
@@ -233,6 +236,7 @@ const PhotoMemoryScreenModerno = () => {
     );
   }
 
+  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
     <SafeAreaView style={styles.safeArea}>
       {content}

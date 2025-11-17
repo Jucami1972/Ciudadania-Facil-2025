@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { questionAudioMap } from '../assets/audio/questions/questionsMap';
 import { answerAudioMap } from '../assets/audio/answers/answersMap';
 import WebLayout from '../components/layout/WebLayout';
+import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -31,6 +32,7 @@ const StudyCardsScreenModerno = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<StudyCardsRouteProp>();
+  const isWebDesktop = useIsWebDesktop();
   const { category, title, subtitle } = route.params;
   const flipCardRef = useRef<any>(null);
 
@@ -376,7 +378,8 @@ const StudyCardsScreenModerno = () => {
     </>
   );
 
-  if (isWeb) {
+  // Web de escritorio: usar WebLayout con sidebar
+  if (isWeb && isWebDesktop) {
     return (
       <WebLayout headerTitle={subtitle || 'Tarjetas de Estudio'}>
         {content}
@@ -384,6 +387,7 @@ const StudyCardsScreenModerno = () => {
     );
   }
 
+  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
     <SafeAreaView style={styles.safeArea}>
       {content}

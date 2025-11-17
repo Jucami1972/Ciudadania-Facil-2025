@@ -56,7 +56,7 @@ export interface N400FormData {
   [key: string]: any;
 }
 
-interface InterviewContext {
+export interface InterviewContext {
   applicantName: string;
   applicantAge?: number;
   countryOfOrigin?: string;

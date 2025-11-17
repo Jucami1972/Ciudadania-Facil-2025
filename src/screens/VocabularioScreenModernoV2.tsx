@@ -24,6 +24,7 @@ import * as Speech from 'expo-speech';
 
 import { NavigationProps } from '../types/navigation';
 import WebLayout from '../components/layout/WebLayout';
+import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -824,6 +825,7 @@ const getDifficultyColor = (difficulty: string) => {
 const VocabularioScreenModernoV2 = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProps>();
+  const isWebDesktop = useIsWebDesktop();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('government'); // government, history, symbols_holidays
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
@@ -1143,7 +1145,8 @@ const VocabularioScreenModernoV2 = () => {
     </>
   );
 
-  if (isWeb) {
+  // Web de escritorio: usar WebLayout con sidebar
+  if (isWeb && isWebDesktop) {
     return (
       <WebLayout headerTitle="Vocabulario">
         {content}
@@ -1151,6 +1154,7 @@ const VocabularioScreenModernoV2 = () => {
     );
   }
 
+  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
     <SafeAreaView style={styles.safeArea}>
       {content}

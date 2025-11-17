@@ -19,9 +19,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import * as DocumentPicker from 'expo-document-picker';
 import { NavigationProps } from '../../types/navigation';
-import aiInterviewN400Service, { N400FormData } from '../../services/aiInterviewN400Service';
+import aiInterviewN400Service, { N400FormData, InterviewContext } from '../../services/aiInterviewN400Service';
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 import WebLayout from '../../components/layout/WebLayout';
+import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
 
 const isWeb = Platform.OS === 'web';
 
@@ -35,6 +36,7 @@ interface Message {
 const AIInterviewN400ScreenModerno = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProps>();
+  const isWebDesktop = useIsWebDesktop();
   const [sessionStarted, setSessionStarted] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -76,16 +78,28 @@ const AIInterviewN400ScreenModerno = () => {
     setIsLoading(true);
 
     try {
-      const context = {
+      // Extraer children del n400FormData si existe, o usar 0
+      const childrenCount = n400FormData?.children ? n400FormData.children.length : 0;
+      
+      // Calcular edad desde fecha de nacimiento si está disponible
+      let applicantAge = 30;
+      if (n400FormData?.dateOfBirth) {
+        try {
+          const birthYear = new Date(n400FormData.dateOfBirth).getFullYear();
+          applicantAge = new Date().getFullYear() - birthYear;
+        } catch {
+          applicantAge = 30;
+        }
+      }
+      
+      const context: InterviewContext = {
         applicantName,
-        ...(n400FormData || {
-          applicantAge: 30,
-          countryOfOrigin: 'Desconocido',
-          yearsInUS: 5,
-          currentOccupation: 'Desconocido',
-          maritalStatus: 'Desconocido',
-          children: 0,
-        }),
+        applicantAge,
+        countryOfOrigin: n400FormData?.countryOfBirth || 'Desconocido',
+        yearsInUS: n400FormData?.yearsInUS || 5,
+        currentOccupation: n400FormData?.currentOccupation || 'Desconocido',
+        maritalStatus: n400FormData?.maritalStatus || 'Desconocido',
+        children: childrenCount,
         n400FormData: n400FormData || undefined,
       };
 
@@ -475,7 +489,8 @@ const AIInterviewN400ScreenModerno = () => {
     </>
   );
 
-  if (isWeb) {
+  // Web de escritorio: usar WebLayout con sidebar
+  if (isWeb && isWebDesktop) {
     return (
       <WebLayout headerTitle="Entrevista AI">
         {content}
@@ -483,6 +498,7 @@ const AIInterviewN400ScreenModerno = () => {
     );
   }
 
+  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
     <SafeAreaView style={styles.safeArea}>
       {content}
@@ -637,7 +653,7 @@ const styles = StyleSheet.create({
     flex: 1,
     ...Platform.select({
       web: {
-        maxHeight: 'calc(100vh - 200px)',
+        // maxHeight se maneja con flex en React Native
       },
     }),
   },
@@ -731,8 +747,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     ...Platform.select({
       web: {
-        position: 'sticky',
-        bottom: 0,
+        // position: 'sticky' no es compatible con React Native
+        // Se manejará con flex en el contenedor padre
         maxWidth: 1000,
         alignSelf: 'center',
         width: '100%',

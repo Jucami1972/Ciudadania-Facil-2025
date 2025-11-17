@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import WebSidebar from './WebSidebar';
 import WebHeader from './WebHeader';
 import { colors } from '../../constants/colors';
+import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
 
 interface WebLayoutProps {
   children: React.ReactNode;
@@ -16,10 +17,14 @@ const WebLayout: React.FC<WebLayoutProps> = ({
   headerTitle,
   showNotifications = false 
 }) => {
-  if (Platform.OS !== 'web') {
+  const isWebDesktop = useIsWebDesktop();
+
+  // Si no es web o es web móvil, retornar solo los children (sin sidebar/header)
+  if (Platform.OS !== 'web' || !isWebDesktop) {
     return <>{children}</>;
   }
 
+  // Solo mostrar sidebar y header en web de escritorio
   return (
     <View style={styles.wrapper}>
       <WebSidebar />

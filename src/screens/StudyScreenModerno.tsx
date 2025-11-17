@@ -19,6 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList, SubCategory } from '../types/navigation';
 import { questions } from '../data/questions';
 import WebLayout from '../components/layout/WebLayout';
+import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 
 const isWeb = Platform.OS === 'web';
 
@@ -116,6 +117,7 @@ const categoryConfig = {
 const StudyScreenModerno = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
+  const isWebDesktop = useIsWebDesktop();
   const [progressData, setProgressData] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<MainCategoryKey>('GobiernoAmericano');
   const [subcategoryProgress, setSubcategoryProgress] = useState<Record<string, number>>({});
@@ -402,7 +404,8 @@ const StudyScreenModerno = () => {
     </>
   );
 
-  if (isWeb) {
+  // Web de escritorio: usar WebLayout con sidebar
+  if (isWeb && isWebDesktop) {
     return (
       <WebLayout headerTitle="Estudio por Categoría">
         {content}
@@ -410,6 +413,7 @@ const StudyScreenModerno = () => {
     );
   }
 
+  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
     <SafeAreaView style={styles.safeArea}>
       {content}

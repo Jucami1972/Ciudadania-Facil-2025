@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import WebLayout from '../components/layout/WebLayout';
+import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -372,6 +373,7 @@ const HomeScreenRedesign = () => {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
+  const isWebDesktop = useIsWebDesktop();
 
   // Estados
   const [progress, setProgress] = useState(5);
@@ -647,7 +649,8 @@ const HomeScreenRedesign = () => {
     </>
   );
 
-  if (isWeb) {
+  // Web de escritorio: usar WebLayout con sidebar
+  if (isWeb && isWebDesktop) {
     return (
       <WebLayout headerTitle="Dashboard">
         {content}
@@ -655,6 +658,7 @@ const HomeScreenRedesign = () => {
     );
   }
 
+  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
     <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
       {content}
