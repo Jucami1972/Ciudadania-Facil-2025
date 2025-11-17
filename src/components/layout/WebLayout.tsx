@@ -1,0 +1,77 @@
+import React from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import WebSidebar from './WebSidebar';
+import WebHeader from './WebHeader';
+import { colors } from '../../constants/colors';
+
+interface WebLayoutProps {
+  children: React.ReactNode;
+  headerTitle?: string;
+  showNotifications?: boolean;
+}
+
+const WebLayout: React.FC<WebLayoutProps> = ({ 
+  children, 
+  headerTitle,
+  showNotifications = false 
+}) => {
+  if (Platform.OS !== 'web') {
+    return <>{children}</>;
+  }
+
+  return (
+    <View style={styles.wrapper}>
+      <WebSidebar />
+      <View style={styles.mainContainer}>
+        <WebHeader title={headerTitle} showNotifications={showNotifications} />
+        <View style={styles.content}>
+          {children}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: colors.neutral.background,
+    ...Platform.select({
+      web: {
+        flexDirection: 'row',
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+      },
+    }),
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: colors.neutral.background,
+    ...Platform.select({
+      web: {
+        marginLeft: 280,
+        flex: 1,
+      },
+    }),
+  },
+  content: {
+    flex: 1,
+    backgroundColor: colors.neutral.background,
+    ...Platform.select({
+      web: {
+        marginTop: 64,
+        padding: 24,
+        maxWidth: 1200,
+        alignSelf: 'center',
+        width: '100%',
+      },
+    }),
+  },
+});
+
+export default WebLayout;
+

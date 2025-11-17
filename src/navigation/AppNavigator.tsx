@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -14,6 +15,7 @@ import { RegisterScreen } from '../screens/auth/RegisterScreen';
 
 // Pantallas legacy (fallback)
 import HomeScreen from '../screens/HomeScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 import StudyScreen from '../screens/StudyScreen';
 import SubcategoriasScreen from '../screens/SubcategoriasScreen';
 import StudyCardsScreen from '../screens/StudyCardsScreen';
@@ -171,6 +173,9 @@ const AppTabNavigator = () => (
   </Tab.Navigator>
 );
 
+// Determinar qué componente usar para Home
+const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;
+
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
@@ -184,6 +189,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
+<<<<<<< HEAD
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <RootStack.Screen name="AuthStack" component={AuthStack} />
@@ -191,6 +197,62 @@ export default function AppNavigator() {
           <RootStack.Screen name="AppTabs" component={AppTabNavigator} />
         )}
       </RootStack.Navigator>
+=======
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          gestureEnabled: true,
+        }}
+      >
+        {/* Grupo de pantallas principales */}
+        <Stack.Group>
+          <Stack.Screen 
+            name="Home" 
+            component={HomeComponent}
+            options={{
+              animation: 'fade',
+            }}
+          />
+          <Stack.Screen name="TarjetasDeEstudio" component={StudyScreen} />
+          <Stack.Screen name="Subcategorias" component={SubcategoriasScreen} />
+        </Stack.Group>
+
+        {/* Grupo de wrappers por categoría */}
+        <Stack.Group>
+          <Stack.Screen name="GobiernoAmericano" component={GobiernoAmericanoWrapper} />
+          <Stack.Screen name="HistoriaAmericana" component={HistoriaAmericanaWrapper} />
+          <Stack.Screen name="EducacionCivica" component={EducacionCivicaWrapper} />
+        </Stack.Group>
+
+        {/* Grupo de pantallas de estudio y práctica */}
+        <Stack.Group>
+          <Stack.Screen name="StudyCards" component={StudyCardsScreen} />
+          <Stack.Screen name="PruebaPractica" component={PruebaPracticaScreen} />
+          <Stack.Screen name="CategoryPractice" component={CategoryPracticeScreen} />
+          <Stack.Screen name="RandomPractice" component={RandomPracticeScreen} />
+          <Stack.Screen name="IncorrectPractice" component={IncorrectPracticeScreen} />
+          <Stack.Screen name="MarkedPractice" component={MarkedPracticeScreen} />
+          <Stack.Screen name="Vocabulario" component={VocabularioScreen} />
+          <Stack.Screen name="EntrevistaAI" component={EntrevistaAIScreen} />
+          <Stack.Screen name="Examen" component={ExamenScreen} />
+        </Stack.Group>
+
+        {/* Modal de explicación */}
+        <Stack.Group screenOptions={{
+          presentation: 'modal',
+          animation: 'slide_from_bottom',
+          headerShown: false,
+          gestureEnabled: true,
+        }}>
+          <Stack.Screen 
+            name="Explanation" 
+            component={ExplanationScreen}
+          />
+        </Stack.Group>
+      </Stack.Navigator>
+>>>>>>> fcb4f61919c3ced8be869ff1566245c2a27072d2
     </NavigationContainer>
   );
 }
