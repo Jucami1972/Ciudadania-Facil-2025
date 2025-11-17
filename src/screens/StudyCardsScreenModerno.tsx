@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Dimensions,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -376,6 +377,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      web: {
+        alignItems: 'center',
+      },
+    }),
   },
   header: {
     backgroundColor: '#ffffff',
@@ -391,6 +397,15 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderBottomWidth: 0.5,
     borderBottomColor: '#e5e7eb',
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 1200,
+        paddingHorizontal: 32,
+        paddingVertical: 20,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+      },
+    }),
   },
   headerButton: {
     width: 36,
@@ -439,6 +454,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 0.5,
     borderBottomColor: '#e5e7eb',
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 1200,
+        paddingHorizontal: 32,
+        paddingVertical: 20,
+      },
+    }),
   },
   progressHeader: {
     flexDirection: 'row',
@@ -480,6 +503,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 1200,
+        padding: 32,
+        paddingTop: 24,
+        paddingBottom: 24,
+      },
+    }),
   },
   flipCardWrapper: {
     width: '100%',
@@ -503,6 +535,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: '#e5e7eb',
     backgroundColor: '#fff',
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 1200,
+        paddingHorizontal: 32,
+        paddingVertical: 20,
+        justifyContent: 'center',
+        gap: 24,
+      },
+    }),
   },
   navButton: {
     width: 44,

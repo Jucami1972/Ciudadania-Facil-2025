@@ -14,6 +14,7 @@ import {
   ScrollView,
   Dimensions,
   Image,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -47,6 +48,7 @@ interface FlipCardHandle {
 }
 
 const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
   ({ frontContent, backContent, language, isImportant = false, onFlip }, ref) => {
@@ -55,6 +57,7 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
 
     // Detener el audio cuando el componente se desmonta o cambia de pregunta
     useEffect(() => {
@@ -227,7 +230,15 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
 
     return (
       <View style={styles.container}>
-        <TouchableOpacity onPress={flip} style={styles.flipContainer}>
+        <TouchableOpacity 
+          onPress={flip} 
+          style={[
+            styles.flipContainer,
+            isWeb && isHovered && styles.flipContainerHovered,
+          ]}
+          onMouseEnter={() => isWeb && setIsHovered(true)}
+          onMouseLeave={() => isWeb && setIsHovered(false)}
+        >
           {/* FRENTE */}
           <Animated.View
             style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: frontDeg }], zIndex: flipped.current ? 0 : 1 }]}
@@ -304,6 +315,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 8,
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 700,
+        minHeight: 500,
+        maxHeight: 800,
+        marginTop: 0,
+        marginBottom: 32,
+        paddingHorizontal: 0,
+      },
+    }),
   },
   flipContainer: {
     flex: 1,
@@ -316,6 +338,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 24,
     elevation: 10,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+      },
+    }),
+  },
+  flipContainerHovered: {
+    ...Platform.select({
+      web: {
+        transform: [{ scale: 1.01 }],
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.2)',
+      },
+    }),
   },
   face: {
     width: '100%',
@@ -328,6 +364,11 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'space-between',
     height: '100%',
+    ...Platform.select({
+      web: {
+        padding: 32,
+      },
+    }),
   },
   important: {
     borderWidth: 2,
@@ -379,6 +420,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     overflow: 'hidden',
+    ...Platform.select({
+      web: {
+        paddingTop: 24,
+        paddingBottom: 32,
+        paddingHorizontal: 32,
+        minHeight: 280,
+      },
+    }),
   },
   scrollInner: {
     alignItems: 'center',
@@ -386,6 +435,12 @@ const styles = StyleSheet.create({
     padding: 8,
     flexGrow: 1,
     minHeight: 300,
+    ...Platform.select({
+      web: {
+        padding: 16,
+        minHeight: 350,
+      },
+    }),
   },
   questionText: {
     fontSize: 20,
@@ -397,6 +452,12 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     letterSpacing: 0.1,
+    ...Platform.select({
+      web: {
+        fontSize: 22,
+        lineHeight: 32,
+      },
+    }),
   },
   answerText: {
     fontSize: 18,
@@ -408,6 +469,12 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
     letterSpacing: 0.1,
+    ...Platform.select({
+      web: {
+        fontSize: 20,
+        lineHeight: 30,
+      },
+    }),
   },
   instruction: {
     color: 'rgba(255, 255, 255, 0.85)',

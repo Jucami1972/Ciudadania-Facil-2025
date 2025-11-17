@@ -14,6 +14,7 @@ import {
   Modal,
   Animated,
   Alert,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -23,7 +24,8 @@ import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2; // 2 columnas con padding
+const isWeb = Platform.OS === 'web';
+const CARD_WIDTH = isWeb ? (Math.min(width, 1400) - 96) / 3 : (width - 48) / 2; // 3 columnas en web, 2 en móvil
 
 // ==================== TIPOS ====================
 interface StudyModule {
@@ -187,11 +189,19 @@ const StudyModuleCard = ({
   module: StudyModule;
   onPress: () => void;
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <TouchableOpacity
-      style={[styles.moduleCard, { width: CARD_WIDTH }]}
+      style={[
+        styles.moduleCard,
+        { width: CARD_WIDTH },
+        isWeb && isHovered && styles.moduleCardHovered,
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
+      onMouseEnter={() => isWeb && setIsHovered(true)}
+      onMouseLeave={() => isWeb && setIsHovered(false)}
     >
       <View style={[styles.moduleIconContainer, { backgroundColor: `${module.color}15` }]}>
         <MaterialCommunityIcons name={module.icon as any} size={24} color={module.color} />
@@ -223,6 +233,7 @@ const PracticeModuleCard = ({
   module: PracticeModule;
   onPress: () => void;
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
   const statusConfig = {
     completed: { icon: 'check-circle', color: '#10B981', label: 'Completado' },
     'in-progress': { icon: 'clock-outline', color: '#F59E0B', label: 'En progreso' },
@@ -233,9 +244,15 @@ const PracticeModuleCard = ({
 
   return (
     <TouchableOpacity
-      style={[styles.practiceCard, { width: CARD_WIDTH }]}
+      style={[
+        styles.practiceCard,
+        { width: CARD_WIDTH },
+        isWeb && isHovered && styles.practiceCardHovered,
+      ]}
       onPress={onPress}
       activeOpacity={0.8}
+      onMouseEnter={() => isWeb && setIsHovered(true)}
+      onMouseLeave={() => isWeb && setIsHovered(false)}
     >
       <View style={[styles.practiceIconContainer, { backgroundColor: `${module.color}15` }]}>
         <MaterialCommunityIcons name={module.icon as any} size={24} color={module.color} />
@@ -529,7 +546,7 @@ const HomeScreenRedesign = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+    <SafeAreaView style={[styles.safeArea, { paddingTop: isWeb ? 0 : insets.top }]}>
       <HeaderSection
         userName={user?.email?.split('@')[0] || 'Estudiante'}
         onProfilePress={logout}
@@ -633,13 +650,31 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+    ...Platform.select({
+      web: {
+        alignItems: 'center',
+      },
+    }),
   },
   scrollView: {
     flex: 1,
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 1400,
+      },
+    }),
   },
   scrollContent: {
     paddingHorizontal: 16,
     paddingBottom: 100,
+    ...Platform.select({
+      web: {
+        paddingHorizontal: 32,
+        paddingTop: 24,
+        paddingBottom: 120,
+      },
+    }),
   },
   header: {
     backgroundColor: '#FFFFFF',
@@ -647,6 +682,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    ...Platform.select({
+      web: {
+        width: '100%',
+        maxWidth: 1400,
+        alignSelf: 'center',
+        paddingHorizontal: 32,
+        paddingVertical: 20,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+      },
+    }),
   },
   headerContent: {
     flexDirection: 'row',
@@ -667,17 +712,32 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#9B54FF',
     letterSpacing: 0.3,
+    ...Platform.select({
+      web: {
+        fontSize: 20,
+      },
+    }),
   },
   headerGreeting: {
     fontSize: 22,
     fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
+    ...Platform.select({
+      web: {
+        fontSize: 28,
+      },
+    }),
   },
   headerSubtext: {
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
+    ...Platform.select({
+      web: {
+        fontSize: 16,
+      },
+    }),
   },
   profileButton: {
     width: 44,
@@ -696,6 +756,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 3,
+    ...Platform.select({
+      web: {
+        marginTop: 0,
+        marginBottom: 24,
+        boxShadow: '0 4px 16px rgba(155, 84, 255, 0.2)',
+      },
+    }),
   },
   progressGradient: {
     padding: 14,
@@ -787,6 +854,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    ...Platform.select({
+      web: {
+        marginBottom: 32,
+        boxShadow: '0 6px 20px rgba(155, 84, 255, 0.3)',
+        cursor: 'pointer',
+      },
+    }),
   },
   mainCTAGradient: {
     flexDirection: 'row',
@@ -804,6 +878,11 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 24,
+    ...Platform.select({
+      web: {
+        marginBottom: 40,
+      },
+    }),
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -815,11 +894,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginLeft: 8,
+    ...Platform.select({
+      web: {
+        fontSize: 24,
+        marginBottom: 16,
+      },
+    }),
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    ...Platform.select({
+      web: {
+        gap: 16,
+        justifyContent: 'flex-start',
+      },
+    }),
   },
   moduleCard: {
     backgroundColor: '#FFFFFF',
@@ -833,6 +924,24 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    ...Platform.select({
+      web: {
+        width: CARD_WIDTH,
+        marginBottom: 16,
+        cursor: 'pointer',
+        padding: 16,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+    }),
+  },
+  moduleCardHovered: {
+    ...Platform.select({
+      web: {
+        transform: [{ translateY: -4 }],
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        borderColor: '#9B54FF',
+      },
+    }),
   },
   moduleIconContainer: {
     width: 44,
@@ -847,12 +956,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 3,
+    ...Platform.select({
+      web: {
+        fontSize: 16,
+        marginBottom: 6,
+      },
+    }),
   },
   moduleDescription: {
     fontSize: 11,
     color: '#6B7280',
     lineHeight: 14,
     marginBottom: 8,
+    ...Platform.select({
+      web: {
+        fontSize: 13,
+        lineHeight: 18,
+        marginBottom: 12,
+      },
+    }),
   },
   moduleProgressContainer: {
     flexDirection: 'row',
@@ -889,6 +1011,24 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    ...Platform.select({
+      web: {
+        width: CARD_WIDTH,
+        marginBottom: 16,
+        cursor: 'pointer',
+        padding: 16,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+    }),
+  },
+  practiceCardHovered: {
+    ...Platform.select({
+      web: {
+        transform: [{ translateY: -4 }],
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        borderColor: '#10B981',
+      },
+    }),
   },
   practiceIconContainer: {
     width: 44,
@@ -903,12 +1043,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 3,
+    ...Platform.select({
+      web: {
+        fontSize: 16,
+        marginBottom: 6,
+      },
+    }),
   },
   practiceDescription: {
     fontSize: 11,
     color: '#6B7280',
     lineHeight: 14,
     marginBottom: 8,
+    ...Platform.select({
+      web: {
+        fontSize: 13,
+        lineHeight: 18,
+        marginBottom: 12,
+      },
+    }),
   },
   practiceStatus: {
     flexDirection: 'row',
@@ -936,6 +1089,14 @@ const styles = StyleSheet.create({
     elevation: 2,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    ...Platform.select({
+      web: {
+        width: CARD_WIDTH,
+        marginBottom: 16,
+        padding: 16,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+      },
+    }),
   },
   badgeIconContainer: {
     width: 44,
