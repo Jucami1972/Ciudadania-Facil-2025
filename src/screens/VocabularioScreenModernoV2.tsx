@@ -13,6 +13,7 @@ import {
   FlatList,
   Modal,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -22,8 +23,10 @@ import { BlurView } from 'expo-blur';
 import * as Speech from 'expo-speech';
 
 import { NavigationProps } from '../types/navigation';
+import WebLayout from '../components/layout/WebLayout';
 
 const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 interface VocabularyWord {
   id: string;
@@ -960,15 +963,16 @@ const VocabularioScreenModernoV2 = () => {
     </TouchableOpacity>
   );
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Vocabulario</Text>
-          <Text style={styles.headerSubtitle}>Palabras clave del examen</Text>
+  const content = (
+    <>
+      {!isWeb && (
+        <View style={styles.header}>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>Vocabulario</Text>
+            <Text style={styles.headerSubtitle}>Palabras clave del examen</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Search Bar */}
@@ -1055,6 +1059,8 @@ const VocabularioScreenModernoV2 = () => {
           renderItem={renderWord}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
+          numColumns={isWeb ? 2 : 1}
+          columnWrapperStyle={isWeb ? styles.wordRow : undefined}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons name="text-search" size={48} color="#D1D5DB" />
@@ -1134,6 +1140,20 @@ const VocabularioScreenModernoV2 = () => {
           )}
         </SafeAreaView>
       </Modal>
+    </>
+  );
+
+  if (isWeb) {
+    return (
+      <WebLayout headerTitle="Vocabulario">
+        {content}
+      </WebLayout>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {content}
     </SafeAreaView>
   );
 };
@@ -1263,6 +1283,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
+    ...Platform.select({
+      web: {
+        flex: 1,
+        marginHorizontal: 8,
+        width: '48%',
+        marginBottom: 16,
+      },
+    }),
   },
   wordCardGradient: {
     padding: 18,
@@ -1538,6 +1566,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#7C3AED',
+  },
+  wordRow: {
+    ...Platform.select({
+      web: {
+        justifyContent: 'space-between',
+        gap: 16,
+      },
+    }),
   },
 });
 

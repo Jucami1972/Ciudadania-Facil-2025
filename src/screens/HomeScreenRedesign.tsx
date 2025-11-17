@@ -22,10 +22,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
+import WebLayout from '../components/layout/WebLayout';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const CARD_WIDTH = isWeb ? (Math.min(width, 1400) - 96) / 3 : (width - 48) / 2; // 3 columnas en web, 2 en móvil
+const CARD_WIDTH = isWeb ? (Math.min(width, 1600) - 128) / 3 : (width - 48) / 2; // 3 columnas en web, 2 en móvil
 
 // ==================== TIPOS ====================
 interface StudyModule {
@@ -545,12 +546,14 @@ const HomeScreenRedesign = () => {
     }
   };
 
-  return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: isWeb ? 0 : insets.top }]}>
-      <HeaderSection
-        userName={user?.email?.split('@')[0] || 'Estudiante'}
-        onProfilePress={logout}
-      />
+  const content = (
+    <>
+      {!isWeb && (
+        <HeaderSection
+          userName={user?.email?.split('@')[0] || 'Estudiante'}
+          onProfilePress={logout}
+        />
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -640,7 +643,21 @@ const HomeScreenRedesign = () => {
       </ScrollView>
 
       {/* Botón Flotante FAB */}
-      <AIAssistantFAB onPress={() => {}} />
+      {!isWeb && <AIAssistantFAB onPress={() => {}} />}
+    </>
+  );
+
+  if (isWeb) {
+    return (
+      <WebLayout headerTitle="Dashboard">
+        {content}
+      </WebLayout>
+    );
+  }
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+      {content}
     </SafeAreaView>
   );
 };
@@ -653,6 +670,8 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         alignItems: 'center',
+        backgroundColor: '#F0F4F8',
+        background: 'linear-gradient(135deg, #F0F4F8 0%, #E8F0F5 100%)',
       },
     }),
   },
@@ -661,7 +680,7 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: '100%',
-        maxWidth: 1400,
+        maxWidth: 1600,
       },
     }),
   },
@@ -670,8 +689,8 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
     ...Platform.select({
       web: {
-        paddingHorizontal: 32,
-        paddingTop: 24,
+        paddingHorizontal: 48,
+        paddingTop: 40,
         paddingBottom: 120,
       },
     }),
@@ -759,8 +778,10 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         marginTop: 0,
-        marginBottom: 24,
-        boxShadow: '0 4px 16px rgba(155, 84, 255, 0.2)',
+        marginBottom: 40,
+        borderRadius: 24,
+        boxShadow: '0 8px 32px rgba(155, 84, 255, 0.25)',
+        padding: 8,
       },
     }),
   },
@@ -927,10 +948,14 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: CARD_WIDTH,
-        marginBottom: 16,
+        marginBottom: 24,
         cursor: 'pointer',
-        padding: 16,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        padding: 24,
+        borderRadius: 20,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        minHeight: 180,
       },
     }),
   },
@@ -950,6 +975,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    ...Platform.select({
+      web: {
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        marginBottom: 16,
+      },
+    }),
   },
   moduleTitle: {
     fontSize: 14,
@@ -1014,10 +1047,14 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: CARD_WIDTH,
-        marginBottom: 16,
+        marginBottom: 24,
         cursor: 'pointer',
-        padding: 16,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        padding: 24,
+        borderRadius: 20,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        minHeight: 180,
       },
     }),
   },
@@ -1037,6 +1074,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
+    ...Platform.select({
+      web: {
+        width: 64,
+        height: 64,
+        borderRadius: 16,
+        marginBottom: 16,
+      },
+    }),
   },
   practiceTitle: {
     fontSize: 14,

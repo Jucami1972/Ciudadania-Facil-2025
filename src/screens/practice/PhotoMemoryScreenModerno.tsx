@@ -12,12 +12,14 @@ import {
   Dimensions,
   Modal,
   Image,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NavigationProps } from '../../types/navigation';
+import WebLayout from '../../components/layout/WebLayout';
 
 interface PhotoCard {
   id: number;
@@ -29,7 +31,8 @@ interface PhotoCard {
 }
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 48) / 2;
+const isWeb = Platform.OS === 'web';
+const cardWidth = isWeb ? (Math.min(width, 1600) - 160) / 4 : (width - 48) / 2;
 
 const PhotoMemoryScreenModerno = () => {
   const insets = useSafeAreaInsets();
@@ -143,15 +146,17 @@ const PhotoMemoryScreenModerno = () => {
     </TouchableOpacity>
   );
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Memoria Fotográfica</Text>
-        <View style={styles.headerButton} />
-      </View>
+  const content = (
+    <>
+      {!isWeb && (
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Memoria Fotográfica</Text>
+          <View style={styles.headerButton} />
+        </View>
+      )}
 
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.introCard}>
@@ -168,8 +173,8 @@ const PhotoMemoryScreenModerno = () => {
           data={photoCards}
           renderItem={renderPhotoCard}
           keyExtractor={(item) => item.id.toString()}
-          numColumns={2}
-          columnWrapperStyle={styles.columnWrapper}
+          numColumns={isWeb ? 4 : 2}
+          columnWrapperStyle={isWeb ? styles.columnWrapperWeb : styles.columnWrapper}
           scrollEnabled={false}
           contentContainerStyle={{ paddingBottom: 16 }}
         />
@@ -217,6 +222,20 @@ const PhotoMemoryScreenModerno = () => {
           </View>
         </View>
       </Modal>
+    </>
+  );
+
+  if (isWeb) {
+    return (
+      <WebLayout headerTitle="Memoria Fotográfica">
+        {content}
+      </WebLayout>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {content}
     </SafeAreaView>
   );
 };
@@ -298,6 +317,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  columnWrapperWeb: {
+    ...Platform.select({
+      web: {
+        justifyContent: 'flex-start',
+        gap: 16,
+        marginBottom: 16,
+      },
+    }),
+  },
   photoCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
@@ -307,6 +335,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
     elevation: 3,
+    ...Platform.select({
+      web: {
+        width: cardWidth,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+      },
+    }),
   },
   imageContainer: {
     width: '100%',

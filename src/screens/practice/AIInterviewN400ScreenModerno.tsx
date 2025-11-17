@@ -11,6 +11,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,6 +21,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { NavigationProps } from '../../types/navigation';
 import aiInterviewN400Service, { N400FormData } from '../../services/aiInterviewN400Service';
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
+import WebLayout from '../../components/layout/WebLayout';
+
+const isWeb = Platform.OS === 'web';
 
 interface Message {
   role: 'officer' | 'applicant';
@@ -377,17 +381,19 @@ const AIInterviewN400ScreenModerno = () => {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Entrevista en Curso</Text>
-        <TouchableOpacity onPress={() => setSessionStarted(false)}>
-          <MaterialCommunityIcons name="close" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
+  const content = (
+    <>
+      {!isWeb && (
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Entrevista en Curso</Text>
+          <TouchableOpacity onPress={() => setSessionStarted(false)}>
+            <MaterialCommunityIcons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView
         ref={scrollViewRef}
@@ -466,6 +472,20 @@ const AIInterviewN400ScreenModerno = () => {
           </TouchableOpacity>
         </View>
       </View>
+    </>
+  );
+
+  if (isWeb) {
+    return (
+      <WebLayout headerTitle="Entrevista AI">
+        {content}
+      </WebLayout>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {content}
     </SafeAreaView>
   );
 };
@@ -615,10 +635,24 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
+    ...Platform.select({
+      web: {
+        maxHeight: 'calc(100vh - 200px)',
+      },
+    }),
   },
   messagesContent: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+    ...Platform.select({
+      web: {
+        padding: 24,
+        paddingBottom: 120,
+        maxWidth: 1000,
+        alignSelf: 'center',
+        width: '100%',
+      },
+    }),
   },
   messageBubble: {
     marginBottom: 12,
@@ -695,6 +729,18 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    ...Platform.select({
+      web: {
+        position: 'sticky',
+        bottom: 0,
+        maxWidth: 1000,
+        alignSelf: 'center',
+        width: '100%',
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
+      },
+    }),
   },
   inputRow: {
     flexDirection: 'row',

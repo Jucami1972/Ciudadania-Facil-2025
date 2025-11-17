@@ -22,8 +22,10 @@ import { useSectionProgress } from '../hooks/useSectionProgress';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { questionAudioMap } from '../assets/audio/questions/questionsMap';
 import { answerAudioMap } from '../assets/audio/answers/answersMap';
+import WebLayout from '../components/layout/WebLayout';
 
 const { width } = Dimensions.get('window');
+const isWeb = Platform.OS === 'web';
 
 const StudyCardsScreenModerno = () => {
   const insets = useSafeAreaInsets();
@@ -257,15 +259,16 @@ const StudyCardsScreenModerno = () => {
     stopAudio(); // Detener audio al voltear
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.headerButton}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
-        </TouchableOpacity>
+  const content = (
+    <>
+      {!isWeb && (
+        <View style={styles.header}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.headerButton}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
+          </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
             {subtitle}
@@ -284,7 +287,8 @@ const StudyCardsScreenModerno = () => {
             />
           </TouchableOpacity>
         </View>
-      </View>
+        </View>
+      )}
 
       <View style={styles.progressContainer}>
         <View style={styles.progressHeader}>
@@ -369,6 +373,20 @@ const StudyCardsScreenModerno = () => {
       >
         <MaterialCommunityIcons name="lightbulb-on-outline" size={22} color="#10B981" />
       </TouchableOpacity>
+    </>
+  );
+
+  if (isWeb) {
+    return (
+      <WebLayout headerTitle={subtitle || 'Tarjetas de Estudio'}>
+        {content}
+      </WebLayout>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {content}
     </SafeAreaView>
   );
 };
@@ -506,10 +524,13 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: '100%',
-        maxWidth: 1200,
-        padding: 32,
-        paddingTop: 24,
-        paddingBottom: 24,
+        maxWidth: 1000,
+        padding: 40,
+        paddingTop: 32,
+        paddingBottom: 32,
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
       },
     }),
   },

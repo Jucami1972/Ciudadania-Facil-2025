@@ -64,10 +64,11 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         marginTop: 64,
-        padding: 24,
-        maxWidth: 1200,
+        padding: 32,
+        maxWidth: 1600,
         alignSelf: 'center',
         width: '100%',
+        minHeight: 'calc(100vh - 64px)',
       },
     }),
   },

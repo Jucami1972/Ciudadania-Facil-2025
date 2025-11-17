@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,6 +18,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { RootStackParamList, SubCategory } from '../types/navigation';
 import { questions } from '../data/questions';
+import WebLayout from '../components/layout/WebLayout';
+
+const isWeb = Platform.OS === 'web';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type MainCategoryKey = 'GobiernoAmericano' | 'HistoriaAmericana' | 'EducacionCivica';
@@ -252,9 +256,10 @@ const StudyScreenModerno = () => {
     );
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+  const content = (
+    <>
+      {!isWeb && (
+        <View style={styles.header}>
         <View style={styles.headerContent}>
           <View style={{ width: 36 }} />
           <View style={styles.headerTitleContainer}>
@@ -393,6 +398,22 @@ const StudyScreenModerno = () => {
           </Text>
         </View>
       </ScrollView>
+      </View>
+      )}
+    </>
+  );
+
+  if (isWeb) {
+    return (
+      <WebLayout headerTitle="Estudio por Categoría">
+        {content}
+      </WebLayout>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      {content}
     </SafeAreaView>
   );
 };
