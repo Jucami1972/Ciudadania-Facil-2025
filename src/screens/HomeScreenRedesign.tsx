@@ -27,7 +27,17 @@ import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
-const CARD_WIDTH = isWeb ? (Math.min(width, 1600) - 128) / 3 : (width - 48) / 2; // 3 columnas en web, 2 en móvil
+
+// Función para calcular el ancho de las tarjetas según el tipo de dispositivo
+const getCardWidth = (isWebDesktop: boolean) => {
+  if (isWeb && isWebDesktop) {
+    // Web escritorio: 3 columnas
+    return (Math.min(width, 1600) - 128) / 3;
+  } else {
+    // Web móvil o app nativa: 2 columnas (idéntico)
+    return (width - 48) / 2;
+  }
+};
 
 // ==================== TIPOS ====================
 interface StudyModule {
@@ -187,9 +197,11 @@ const MainCTAButton = ({ onPress }: { onPress: () => void }) => {
 const StudyModuleCard = ({
   module,
   onPress,
+  isWebDesktop,
 }: {
   module: StudyModule;
   onPress: () => void;
+  isWebDesktop: boolean;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -197,7 +209,7 @@ const StudyModuleCard = ({
     <TouchableOpacity
       style={[
         styles.moduleCard,
-        { width: CARD_WIDTH },
+        { width: getCardWidth(isWebDesktop) },
         isWeb && isHovered && styles.moduleCardHovered,
       ]}
       onPress={onPress}
@@ -231,9 +243,11 @@ const StudyModuleCard = ({
 const PracticeModuleCard = ({
   module,
   onPress,
+  isWebDesktop,
 }: {
   module: PracticeModule;
   onPress: () => void;
+  isWebDesktop: boolean;
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const statusConfig = {
@@ -248,7 +262,7 @@ const PracticeModuleCard = ({
     <TouchableOpacity
       style={[
         styles.practiceCard,
-        { width: CARD_WIDTH },
+        { width: getCardWidth(isWebDesktop) },
         isWeb && isHovered && styles.practiceCardHovered,
       ]}
       onPress={onPress}
@@ -274,13 +288,13 @@ const PracticeModuleCard = ({
 };
 
 // Badge de gamificación
-const BadgeCard = ({ badge }: { badge: Badge }) => {
+const BadgeCard = ({ badge, isWebDesktop }: { badge: Badge; isWebDesktop: boolean }) => {
   return (
     <View
       style={[
         styles.badgeCard,
         { opacity: badge.unlocked ? 1 : 0.4 },
-        { width: CARD_WIDTH },
+        { width: getCardWidth(isWebDesktop) },
       ]}
     >
       <View
@@ -608,6 +622,7 @@ const HomeScreenRedesign = () => {
                 key={module.id}
                 module={module}
                 onPress={() => handleModulePress(module)}
+                isWebDesktop={isWebDesktop}
               />
             ))}
           </View>
@@ -625,6 +640,7 @@ const HomeScreenRedesign = () => {
                 key={module.id}
                 module={module}
                 onPress={() => handleModulePress(module)}
+                isWebDesktop={isWebDesktop}
               />
             ))}
           </View>
@@ -638,7 +654,7 @@ const HomeScreenRedesign = () => {
           </View>
           <View style={styles.grid}>
             {badges.map((badge) => (
-              <BadgeCard key={badge.id} badge={badge} />
+              <BadgeCard key={badge.id} badge={badge} isWebDesktop={isWebDesktop} />
             ))}
           </View>
         </View>

@@ -318,9 +318,9 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: '100%',
-        maxWidth: 900,
-        minHeight: 600,
-        maxHeight: 900,
+        maxWidth: 700,
+        minHeight: 500,
+        maxHeight: 700,
         marginTop: 0,
         marginBottom: 48,
         paddingHorizontal: 0,
@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
     height: '100%',
     ...Platform.select({
       web: {
-        padding: 48,
+        padding: 32,
       },
     }),
   },
@@ -423,11 +423,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        paddingTop: 40,
-        paddingBottom: 48,
-        paddingHorizontal: 48,
-        minHeight: 400,
-        borderRadius: 28,
+        paddingTop: 32,
+        paddingBottom: 40,
+        paddingHorizontal: 32,
+        minHeight: 300,
+        borderRadius: 24,
         borderWidth: 2,
       },
     }),
@@ -440,8 +440,8 @@ const styles = StyleSheet.create({
     minHeight: 300,
     ...Platform.select({
       web: {
-        padding: 16,
-        minHeight: 350,
+        padding: 12,
+        minHeight: 250,
       },
     }),
   },
@@ -457,8 +457,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
     ...Platform.select({
       web: {
-        fontSize: 28,
-        lineHeight: 40,
+        fontSize: 24,
+        lineHeight: 36,
         fontWeight: '700',
       },
     }),
@@ -475,8 +475,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
     ...Platform.select({
       web: {
-        fontSize: 24,
-        lineHeight: 36,
+        fontSize: 20,
+        lineHeight: 32,
         fontWeight: '700',
       },
     }),
