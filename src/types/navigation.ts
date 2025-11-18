@@ -108,6 +108,7 @@ export type RootStackParamList = {
   PhotoMemoryHome: undefined;
   VocabularioHome: undefined;
   ExamenHome: undefined;
+  SpacedRepetitionPractice: undefined;
 
   // Pantallas de categorías principales
   GobiernoAmericano: { 

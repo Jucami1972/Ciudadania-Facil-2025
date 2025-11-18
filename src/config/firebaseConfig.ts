@@ -3,7 +3,7 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
-import 'firebase/compat/analytics';
+// NO importar analytics aquí - se importa condicionalmente en analytics.ts solo para web
 import { Platform } from 'react-native';
 
 // Configuración de Firebase

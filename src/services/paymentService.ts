@@ -44,12 +44,37 @@ let purchaseUpdateSubscription: any = null;
 let purchaseErrorSubscription: any = null;
 
 /**
+ * Verificar si estamos en Expo Go (donde IAP no funciona)
+ */
+const isExpoGo = (): boolean => {
+  try {
+    // En Expo Go, Constants.executionEnvironment es 'storeClient'
+    const Constants = require('expo-constants').default;
+    return Constants.executionEnvironment === 'storeClient';
+  } catch {
+    // Si no hay expo-constants, asumimos que no es Expo Go
+    return false;
+  }
+};
+
+/**
  * Inicializar el servicio de pagos
  */
 export const initializePayments = async (): Promise<boolean> => {
   try {
+    // No inicializar en web o Expo Go
     if (Platform.OS === 'web' || !InAppPurchase) {
-      console.log('IAP no disponible en web');
+      if (__DEV__) {
+        console.log('IAP no disponible en web');
+      }
+      return false;
+    }
+
+    // Verificar si estamos en Expo Go
+    if (isExpoGo()) {
+      if (__DEV__) {
+        console.log('⚠️ IAP no disponible en Expo Go. Usa un build nativo para probar compras.');
+      }
       return false;
     }
 
@@ -58,7 +83,18 @@ export const initializePayments = async (): Promise<boolean> => {
     }
 
     // Conectar al servicio de pagos
-    await InAppPurchase.initConnection();
+    try {
+      await InAppPurchase.initConnection();
+    } catch (initError: any) {
+      // Capturar error de NitroModules (Expo Go)
+      if (initError?.message?.includes('Nitro') || initError?.message?.includes('Expo Go')) {
+        if (__DEV__) {
+          console.log('ℹ️ IAP no disponible en Expo Go. Usa un build nativo para probar compras.');
+        }
+        return false;
+      }
+      throw initError; // Re-lanzar otros errores
+    }
     
     // Configurar listeners para actualizaciones de compras
     purchaseUpdateSubscription = InAppPurchase.purchaseUpdatedListener(
@@ -80,10 +116,19 @@ export const initializePayments = async (): Promise<boolean> => {
     }
 
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    // Si es error de NitroModules (Expo Go), no es un error crítico
+    if (error?.message?.includes('Nitro') || error?.message?.includes('Expo Go')) {
+      if (__DEV__) {
+        console.log('ℹ️ IAP no disponible en Expo Go (esto es normal)');
+      }
+      return false;
+    }
+    
+    // Otros errores sí son críticos
     console.error('Error inicializando servicio de pagos:', error);
     captureException(error as Error, { context: 'initializePayments' });
-    return false;
+    return false; // No lanzar error, solo retornar false
   }
 };
 

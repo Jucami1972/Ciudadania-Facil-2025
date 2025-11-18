@@ -1,6 +1,6 @@
 // src/screens/StudyScreenModerno.tsx
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,6 +9,7 @@ import {
   ScrollView,
   SafeAreaView,
   Platform,
+  Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -121,6 +122,7 @@ const StudyScreenModerno = () => {
   const [progressData, setProgressData] = useState<Record<string, number>>({});
   const [selectedCategory, setSelectedCategory] = useState<MainCategoryKey>('GobiernoAmericano');
   const [subcategoryProgress, setSubcategoryProgress] = useState<Record<string, number>>({});
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   // Calcular progreso real desde AsyncStorage
   useEffect(() => {
@@ -202,6 +204,26 @@ const StudyScreenModerno = () => {
     });
   }, [progressData]);
 
+  const handleTabPress = (tab: MainCategoryKey) => {
+    if (tab === selectedCategory) return;
+    
+    // Animación de fade
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
+    setSelectedCategory(tab);
+  };
+
   const handleSubcategoryPress = (subcategory: SubCategory) => {
     const selectedCat = categories.find(c => c.id === selectedCategory);
     navigation.navigate('StudyCards', {
@@ -226,6 +248,8 @@ const StudyScreenModerno = () => {
         style={styles.subcategoryCard}
         onPress={() => handleSubcategoryPress(subcategory)}
         activeOpacity={0.85}
+        accessibilityLabel={`${subcategory.subtitle}. ${subcategory.questionRange} preguntas`}
+        accessibilityRole="button"
       >
         <View style={styles.cardContent}>
           <View style={[styles.iconWrapper, { backgroundColor: `${selectedCategoryData?.color || '#7c3aed'}15` }]}>
@@ -261,14 +285,25 @@ const StudyScreenModerno = () => {
   const content = (
     <>
       {!isWeb && (
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
           <View style={styles.headerContent}>
-            <View style={{ width: 36 }} />
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()} 
+              style={styles.backButton}
+              accessibilityLabel="Volver atrás"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
+            </TouchableOpacity>
             <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>Estudio</Text>
-              <Text style={styles.headerSubtitle}>Por Categoría</Text>
+              <Text 
+                style={styles.headerTitle}
+                accessibilityRole="header"
+              >
+                Estudio por Categoría
+              </Text>
             </View>
-            <View style={{ width: 36 }} />
+            <View style={{ width: 40 }} />
           </View>
         </View>
       )}
@@ -291,8 +326,11 @@ const StudyScreenModerno = () => {
                   isSelected && { backgroundColor: category.color },
                   !isSelected && { backgroundColor: '#f3f4f6' },
                 ]}
-                onPress={() => setSelectedCategory(category.id)}
+                onPress={() => handleTabPress(category.id)}
                 activeOpacity={0.7}
+                accessibilityLabel={`Ver ${category.name}`}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isSelected }}
               >
                 <MaterialCommunityIcons 
                   name={category.icon as any} 
@@ -337,9 +375,10 @@ const StudyScreenModerno = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Información de la categoría seleccionada */}
-        {selectedCategoryData && (
-          <View style={styles.categoryInfoCard}>
+        <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim }]}>
+          {/* Información de la categoría seleccionada */}
+          {selectedCategoryData && (
+            <View style={styles.categoryInfoCard}>
             <View style={[styles.categoryInfoIcon, { backgroundColor: `${selectedCategoryData.color}15` }]}>
               <MaterialCommunityIcons name={selectedCategoryData.icon as any} size={24} color={selectedCategoryData.color} />
             </View>
@@ -400,6 +439,7 @@ const StudyScreenModerno = () => {
             • Marca las preguntas difíciles para revisarlas
           </Text>
         </View>
+        </Animated.View>
       </ScrollView>
     </>
   );
@@ -441,11 +481,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 56,
+    height: Platform.select({ web: 56, ios: 60, android: 70 }) as number,
     paddingHorizontal: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 0.5,
+    borderColor: '#e5e7eb',
   },
   headerTitleContainer: {
     alignItems: 'center',
+    flex: 1,
+  },
+  contentWrapper: {
     flex: 1,
   },
   headerTitle: {

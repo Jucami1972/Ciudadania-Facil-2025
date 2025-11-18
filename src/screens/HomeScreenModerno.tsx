@@ -1,5 +1,4 @@
 // src/screens/HomeScreenModerno.tsx
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -7,37 +6,35 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
+  Dimensions,
+  Platform,
   SafeAreaView,
+  StatusBar,
+  ImageBackground,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NavigationProps } from '../types/navigation';
+import { PracticeMode } from '../types/question';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-type NavCardProps = {
-  icon: string;
+const { width } = Dimensions.get('window');
+const BREAKPOINT = 768;
+const isWeb = Platform.OS === 'web';
+const isDesktop = isWeb && width >= BREAKPOINT;
+
+interface MenuItem {
+  id: string;
   title: string;
   subtitle: string;
+  icon: string;
   color: string;
-  onPress: () => void;
-};
-
-const NavCard = ({ icon, title, subtitle, color, onPress }: NavCardProps) => (
-  <TouchableOpacity 
-    style={[styles.card, { borderLeftColor: color }]} 
-    onPress={onPress} 
-    activeOpacity={0.85}
-  >
-    <View style={[styles.iconContainer, { backgroundColor: `${color}12` }]}>
-      <MaterialCommunityIcons name={icon as any} size={22} color={color} />
-    </View>
-    <View style={styles.textContainer}>
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardSubtitle}>{subtitle}</Text>
-    </View>
-    <MaterialCommunityIcons name="chevron-right" size={18} color="#d1d5db" />
-  </TouchableOpacity>
-);
+  route: string;
+  stackRoute?: string; // Ruta dentro del stack
+  params?: any;
+  disabled?: boolean;
+}
 
 const HomeScreenModerno = () => {
   const navigation = useNavigation<any>();
@@ -52,127 +49,342 @@ const HomeScreenModerno = () => {
         const total = 128;
         const pct = Math.max(0, Math.min(100, Math.round((viewed.size / total) * 100)));
         setStudyProgress(pct);
-      } catch (error) {
-        console.error('Error loading progress:', error);
-      }
+      } catch {}
     };
     const unsubscribe = navigation.addListener('focus', loadProgress);
     loadProgress();
     return unsubscribe;
   }, [navigation]);
 
-  const navigateToPracticeStack = (screenName: string, params?: Record<string, any>) => {
-    navigation.navigate('Practice', { screen: screenName, params });
+  // Helpers para navegación a stacks
+  const navigateToPracticeStack = (screenName: string) => {
+    navigation.navigate('Practice', { screen: screenName });
   };
 
   const navigateToStudyStack = (screenName: string) => {
     navigation.navigate('Study', { screen: screenName });
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Ciudadanía Fácil</Text>
-            <Text style={styles.headerSubtitle}>Preparación para el examen</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.profileButton}
-            onPress={logout}
-          >
-            <MaterialCommunityIcons name="account-circle" size={24} color="#1f2937" />
-          </TouchableOpacity>
+  const menuItems: MenuItem[] = [
+    {
+      id: 'study-cards',
+      title: 'Tarjetas de Estudio',
+      subtitle: 'Aprende con tarjetas interactivas',
+      icon: 'cards-heart',
+      color: '#7c3aed',
+      route: 'Study',
+      stackRoute: 'StudyHome', // Primero va a StudyHome (categorías), luego el usuario selecciona
+    },
+    {
+      id: 'practice-test',
+      title: 'Prueba Práctica',
+      subtitle: 'Simula el examen de Ciudadanía',
+      icon: 'clipboard-check',
+      color: '#ec4899',
+      route: 'Practice',
+      stackRoute: 'PruebaPracticaHome',
+    },
+    {
+      id: 'vocabulary',
+      title: 'Vocabulario',
+      subtitle: 'Palabras clave del examen',
+      icon: 'book-open-variant',
+      color: '#06b6d4',
+      route: 'Practice',
+      stackRoute: 'VocabularioHome',
+    },
+    {
+      id: 'photo-memory',
+      title: 'Memoria Fotográfica',
+      subtitle: 'Asocia imágenes con respuestas',
+      icon: 'image-outline',
+      color: '#8b5cf6',
+      route: 'Practice',
+      stackRoute: 'PhotoMemoryHome',
+    },
+    {
+      id: 'ai-interview-placeholder',
+      title: 'Entrevista AI (Próximamente)',
+      subtitle: 'Oficial virtual para practicar la entrevista N-400',
+      icon: 'microphone-outline',
+      color: '#9ca3af',
+      route: 'Practice',
+      stackRoute: 'EntrevistaAIHome',
+      disabled: true,
+    },
+    {
+      id: 'exam',
+      title: 'Examen',
+      subtitle: '20 preguntas (pasa con 12)',
+      icon: 'star-outline',
+      color: '#14b8a6',
+      route: 'Practice',
+      stackRoute: 'ExamenHome',
+    },
+  ];
+
+  const handleMenuPress = (item: MenuItem) => {
+    if (item.disabled) {
+      return;
+    }
+    
+    if (item.route === 'Study' && item.stackRoute) {
+      navigateToStudyStack(item.stackRoute);
+    } else if (item.route === 'Practice' && item.stackRoute) {
+      navigateToPracticeStack(item.stackRoute);
+    } else {
+      // Fallback para rutas directas (si existen)
+      navigation.navigate(item.route as any, item.params);
+    }
+  };
+
+  const renderMobileLayout = () => (
+    <ScrollView 
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      {/* TARJETA DE PROGRESO */}
+      <View style={styles.progressCard}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressTitle}>Tu Progreso</Text>
+          <Text style={styles.progressPercentage}>{studyProgress}%</Text>
         </View>
+        <View style={styles.progressBarBackground}>
+          <View 
+            style={[
+              styles.progressBarFill,
+              { width: `${studyProgress}%` }
+            ]} 
+          />
+        </View>
+        <Text style={styles.progressText}>
+          {studyProgress === 0 
+            ? 'Comienza tu preparación' 
+            : `¡Vas muy bien! Continúa practicando`}
+        </Text>
       </View>
 
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      {/* GRID DE OPCIONES */}
+      <View style={styles.menuGrid}>
+        {menuItems.map((item) => (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.menuItemWrapper}
+            onPress={() => handleMenuPress(item)}
+            activeOpacity={0.8}
+            disabled={item.disabled}
+          >
+            <View style={[styles.menuItem, { borderLeftColor: item.color, opacity: item.disabled ? 0.5 : 1 }]}>
+              <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
+                <MaterialCommunityIcons 
+                  name={item.icon as any} 
+                  size={24} 
+                  color="#fff" 
+                />
+              </View>
+              <View style={styles.menuTextContainer}>
+                <Text style={styles.menuTitle} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                <Text style={styles.menuSubtitle} numberOfLines={2}>
+                  {item.subtitle}
+                </Text>
+              </View>
+              <MaterialCommunityIcons 
+                name="chevron-right" 
+                size={20} 
+                color="#ccc" 
+              />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* SECCIÓN DE CONSEJOS */}
+      <View style={styles.tipsSection}>
+        <Text style={styles.tipsSectionTitle}>Consejos para Estudiar</Text>
+        
+        <View style={styles.tipCard}>
+          <View style={[styles.tipIcon, { backgroundColor: '#fef3c7' }]}>
+            <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
+          </View>
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Practica Diariamente</Text>
+            <Text style={styles.tipText}>
+              Dedica 30 minutos al día para mejorar tu retención
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.tipCard}>
+          <View style={[styles.tipIcon, { backgroundColor: '#dbeafe' }]}>
+            <MaterialCommunityIcons name="microphone" size={20} color="#06b6d4" />
+          </View>
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Usa la Entrevista AI</Text>
+            <Text style={styles.tipText}>
+              Practica pronunciación y respuestas orales
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.tipCard}>
+          <View style={[styles.tipIcon, { backgroundColor: '#dcfce7' }]}>
+            <MaterialCommunityIcons name="image" size={20} color="#10b981" />
+          </View>
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Memoria Visual</Text>
+            <Text style={styles.tipText}>
+              Asocia imágenes con preguntas para mejor retención
+            </Text>
+          </View>
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  const renderDesktopLayout = () => (
+    <View style={styles.desktopContainer}>
+      {/* Columna Izquierda: Progreso y Opciones */}
+      <View style={styles.desktopLeftColumn}>
+        {/* TARJETA DE PROGRESO */}
         <View style={styles.progressCard}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Tu progreso</Text>
+            <Text style={styles.progressTitle}>Tu Progreso</Text>
             <Text style={styles.progressPercentage}>{studyProgress}%</Text>
           </View>
-          <View style={styles.progressBarContainer}>
+          <View style={styles.progressBarBackground}>
             <View 
-              style={[styles.progressBarFill, { width: `${studyProgress}%` }]} 
+              style={[
+                styles.progressBarFill,
+                { width: `${studyProgress}%` }
+              ]} 
             />
           </View>
-          <Text style={styles.progressSubtitle}>
-            {studyProgress < 50 
-              ? '¡Sigue estudiando para tu examen!' 
-              : studyProgress < 100 
-              ? '¡Vas muy bien, continúa así!'
-              : '¡Felicidades, has completado todo!'}
+          <Text style={styles.progressText}>
+            {studyProgress === 0 
+              ? 'Comienza tu preparación' 
+              : `¡Vas muy bien! Continúa practicando`}
           </Text>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="book-open-variant" size={18} color="#7c3aed" />
-            <Text style={styles.sectionHeaderText}>Estudio</Text>
+        {/* GRID DE OPCIONES (2 Columnas) */}
+        <View style={styles.desktopMenuGrid}>
+          {menuItems.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.desktopMenuItemWrapper}
+              onPress={() => handleMenuPress(item)}
+              activeOpacity={0.8}
+              disabled={item.disabled}
+            >
+              <View style={[styles.desktopMenuItem, { borderLeftColor: item.color, opacity: item.disabled ? 0.5 : 1 }]}>
+                <View style={[styles.iconContainer, { backgroundColor: item.color }]}>
+                  <MaterialCommunityIcons 
+                    name={item.icon as any} 
+                    size={24} 
+                    color="#fff" 
+                  />
+                </View>
+                <View style={styles.menuTextContainer}>
+                  <Text style={styles.menuTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={styles.menuSubtitle} numberOfLines={2}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Columna Derecha: Consejos y Estadísticas (Tips Section) */}
+      <View style={styles.desktopRightColumn}>
+        <Text style={styles.tipsSectionTitle}>Consejos para Estudiar</Text>
+        
+        <View style={styles.tipCard}>
+          <View style={[styles.tipIcon, { backgroundColor: '#fef3c7' }]}>
+            <MaterialCommunityIcons name="lightbulb" size={20} color="#f59e0b" />
           </View>
-          <NavCard
-            icon="book-open-variant"
-            title="Tarjetas de Estudio"
-            subtitle="Aprende las 128 preguntas por categoría"
-            color="#7c3aed"
-            onPress={() => navigateToStudyStack('StudyHome')}
-          />
-          <NavCard
-            icon="image-multiple"
-            title="Memoria Fotográfica"
-            subtitle="Asocia preguntas con imágenes"
-            color="#10b981"
-            onPress={() => navigateToPracticeStack('PhotoMemoryHome')}
-          />
-          <NavCard
-            icon="alphabetical-variant"
-            title="Vocabulario"
-            subtitle="Palabras clave con pronunciación"
-            color="#f59e0b"
-            onPress={() => navigateToPracticeStack('VocabularioHome')}
-          />
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Practica Diariamente</Text>
+            <Text style={styles.tipText}>
+              Dedica 30 minutos al día para mejorar tu retención
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="pencil-box" size={18} color="#10b981" />
-            <Text style={styles.sectionHeaderText}>Práctica</Text>
+        <View style={styles.tipCard}>
+          <View style={[styles.tipIcon, { backgroundColor: '#dbeafe' }]}>
+            <MaterialCommunityIcons name="microphone" size={20} color="#06b6d4" />
           </View>
-          <NavCard
-            icon="microphone-variant"
-            title="Entrevista AI (N-400)"
-            subtitle="Simula una entrevista real"
-            color="#ef4444"
-            onPress={() => navigateToPracticeStack('EntrevistaAIHome')}
-          />
-          <NavCard
-            icon="format-list-numbered"
-            title="Práctica por Tipo"
-            subtitle="¿Quién?, ¿Qué?, ¿Cuándo?"
-            color="#06b6d4"
-            onPress={() => navigateToPracticeStack('QuestionTypePracticeHome')}
-          />
-          <NavCard
-            icon="clipboard-check"
-            title="Examen de 20 Preguntas"
-            subtitle="Simulación real, necesitas 12 correctas"
-            color="#7c3aed"
-            onPress={() => navigateToPracticeStack('Random20PracticeHome')}
-          />
-          <NavCard
-            icon="pencil-box-multiple"
-            title="Prueba Práctica"
-            subtitle="Categorías, aleatorias, incorrectas y marcadas"
-            color="#10b981"
-            onPress={() => navigateToPracticeStack('PruebaPracticaHome')}
-          />
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Usa la Entrevista AI</Text>
+            <Text style={styles.tipText}>
+              Practica pronunciación y respuestas orales
+            </Text>
+          </View>
         </View>
-      </ScrollView>
+
+        <View style={styles.tipCard}>
+          <View style={[styles.tipIcon, { backgroundColor: '#dcfce7' }]}>
+            <MaterialCommunityIcons name="image" size={20} color="#10b981" />
+          </View>
+          <View style={styles.tipContent}>
+            <Text style={styles.tipTitle}>Memoria Visual</Text>
+            <Text style={styles.tipText}>
+              Asocia imágenes con preguntas para mejor retención
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#7c3aed" />
+      
+      {/* HEADER MODERNO (Solo visible en móvil, en desktop se usa el Sidebar) */}
+      {!isDesktop && (
+        <View style={styles.headerWrapper}>
+          <ImageBackground
+            source={require('../assets/portada.webp')}
+            style={styles.headerBackground}
+            resizeMode="cover"
+          >
+            <View style={styles.headerOverlay} />
+            <View style={styles.header}>
+              <View style={styles.headerContent}>
+                <Text style={styles.headerTitle}>Ciudadanía Fácil</Text>
+                <Text style={styles.headerSubtitle}>Prepárate para el examen</Text>
+              </View>
+              {user && (
+                <TouchableOpacity 
+                  style={styles.profileButton}
+                  onPress={logout}
+                >
+                  <MaterialCommunityIcons name="logout" size={20} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </ImageBackground>
+        </View>
+      )}
+
+      {isDesktop ? renderDesktopLayout() : renderMobileLayout()}
+
+      {/* FOOTER (Solo visible en móvil o en la parte inferior del scroll en desktop) */}
+      {!isDesktop && (
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            {user ? `Conectado como: ${user.email}` : 'Versión 2.1'}
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -180,162 +392,242 @@ const HomeScreenModerno = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8f9fa',
+  },
+  headerWrapper: {
+    width: '100%',
+    height: 100,
+    overflow: 'hidden',
+    borderBottomRightRadius: 45,
+    ...Platform.select({
+      web: {
+        marginHorizontal: 'auto',
+        maxWidth: 1200,
+        borderRadius: 20,
+        marginTop: 10,
+        marginBottom: 20,
+      },
+    }),
+  },
+  headerBackground: {
+    width: '100%',
+    height: '100%',
+  },
+  headerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Platform.OS === 'web' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.4)',
   },
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
-  },
-  headerContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 16,
   },
-  headerTitleContainer: {
+  desktopContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    padding: 24,
+    maxWidth: 1200,
+    marginHorizontal: 'auto',
+  },
+  desktopLeftColumn: {
+    flex: 2, // Ocupa 2/3 del espacio
+    marginRight: 24,
+  },
+  desktopRightColumn: {
+    flex: 1, // Ocupa 1/3 del espacio
+    paddingTop: 16,
+  },
+  headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   headerSubtitle: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 1,
-    letterSpacing: 0.1,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
   },
   profileButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f9fafb',
-    alignItems: 'center',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    alignItems: 'center',
   },
   container: {
     flex: 1,
+    paddingHorizontal: 16,
   },
   scrollContent: {
-    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
   },
   progressCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 14,
-    marginBottom: 20,
+    padding: 20,
+    marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    shadowRadius: 4,
+    elevation: 2,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   progressTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
   progressPercentage: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#7c3aed',
   },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 3,
+  progressBarBackground: {
+    height: 8,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   progressBarFill: {
     height: '100%',
     backgroundColor: '#7c3aed',
-    borderRadius: 3,
+    borderRadius: 4,
   },
-  progressSubtitle: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 6,
-  },
-  sectionHeaderText: {
+  progressText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#111827',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#666',
   },
-  card: {
+  menuGrid: {
+    marginBottom: 24,
+  },
+  desktopMenuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  desktopMenuItemWrapper: {
+    width: '48%', // Dos columnas
+    marginBottom: 16,
+  },
+  desktopMenuItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    borderLeftWidth: 3,
+    borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    height: 80, // Altura fija para uniformidad
+  },
+  menuItemWrapper: {
+    marginBottom: 12,
+  },
+  menuItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuTextContainer: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  menuSubtitle: {
+    fontSize: 12,
+    color: '#999',
+    lineHeight: 16,
+  },
+  tipsSection: {
+    marginBottom: 24,
+  },
+  tipsSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
+  tipCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  tipIcon: {
+    width: 44,
+    height: 44,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  textContainer: {
+  tipContent: {
     flex: 1,
   },
-  cardTitle: {
+  tipTitle: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
-  cardSubtitle: {
-    fontSize: 11,
-    color: '#6b7280',
-    fontWeight: '500',
-    lineHeight: 14,
+  tipText: {
+    fontSize: 12,
+    color: '#666',
+    lineHeight: 16,
+  },
+  footer: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#999',
   },
 });
 

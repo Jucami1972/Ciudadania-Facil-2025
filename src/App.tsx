@@ -5,6 +5,8 @@ import { StatusBar } from 'react-native';
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { theme } from './config/theme';
 import AppNavigator from './navigation/AppNavigator';
+import { QuestionsProvider } from './context/QuestionsContext';
+import { UserStatsProvider } from './context/UserStatsContext';
 
 export default function App(): JSX.Element {
   useEffect(() => {
@@ -30,8 +32,12 @@ export default function App(): JSX.Element {
   return (
     <SafeAreaProvider>
       <PaperProvider theme={theme}>
-        <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
-        <AppNavigator />
+        <QuestionsProvider>
+          <UserStatsProvider>
+            <StatusBar backgroundColor={theme.colors.background} barStyle="dark-content" />
+            <AppNavigator />
+          </UserStatsProvider>
+        </QuestionsProvider>
       </PaperProvider>
     </SafeAreaProvider>
   );

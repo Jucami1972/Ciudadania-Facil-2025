@@ -33,6 +33,7 @@ import MarkedPracticeScreen from '../screens/MarkedPracticeScreen';
 import QuestionTypePracticeScreen from '../screens/practice/QuestionTypePracticeScreen';
 import Random20PracticeScreen from '../screens/practice/Random20PracticeScreen';
 import PhotoMemoryScreen from '../screens/practice/PhotoMemoryScreen';
+import SpacedRepetitionPracticeScreen from '../screens/practice/SpacedRepetitionPracticeScreen';
 
 // Pantallas modernas
 import HomeScreenModerno from '../screens/HomeScreenModerno';
@@ -132,6 +133,10 @@ const PracticeStack = () => (
       component={VocabularioScreenModernoV2 || VocabularioScreen}
     />
     <PracticeStackNavigator.Screen name="ExamenHome" component={ExamenScreen} />
+    <PracticeStackNavigator.Screen
+      name="SpacedRepetitionPractice"
+      component={SpacedRepetitionPracticeScreen}
+    />
   </PracticeStackNavigator.Navigator>
 );
 
@@ -168,7 +173,7 @@ const AppTabNavigator = () => (
   >
     <Tab.Screen
       name="Home"
-      component={HomeScreenRedesign || HomeScreenModerno || HomeScreen}
+      component={HomeScreenModerno || HomeScreenRedesign || HomeScreen}
       options={{ tabBarLabel: 'Inicio' }}
     />
     <Tab.Screen name="Study" component={StudyStack} options={{ tabBarLabel: 'Estudio' }} />
@@ -181,7 +186,7 @@ const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
-  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading, refresh: refreshOnboarding } = useOnboardingStatus();
+  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading } = useOnboardingStatus();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const routeNameRef = useRef<string | undefined>();
@@ -221,17 +226,14 @@ export default function AppNavigator() {
     routeNameRef.current = currentRouteName;
   };
 
-  const handleOnboardingComplete = async () => {
-    // Ocultar onboarding inmediatamente
+  const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    // Forzar actualización del estado de onboarding
-    if (refreshOnboarding) {
-      // Esperar un momento para que AsyncStorage se guarde
-      setTimeout(() => {
-        refreshOnboarding();
-      }, 200);
-    }
   };
+
+  // TEMPORAL: Para resetear onboarding durante desarrollo
+  // Ejecutar en consola: AsyncStorage.removeItem('@onboarding:completed')
+  // O descomentar esta línea para forzar mostrar onboarding:
+  // useEffect(() => { AsyncStorage.removeItem('@onboarding:completed'); }, []);
 
   if (loading || onboardingLoading) {
     return (

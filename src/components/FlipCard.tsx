@@ -32,7 +32,7 @@ interface FlipCardProps {
   };
   backContent: {
     answer: string;
-    answerEn: string;
+    answerEn: string | string[];
   };
   language: 'en' | 'es';
   isImportant?: boolean;
@@ -199,7 +199,11 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
     }));
 
     const qText = language === 'en' ? frontContent.questionEn : frontContent.question;
-    const aText = language === 'en' ? backContent.answerEn : backContent.answer;
+    // Manejar respuestas como string o array
+    const answerRaw = language === 'en' ? backContent.answerEn : backContent.answer;
+    const aText = Array.isArray(answerRaw) 
+      ? answerRaw.join('\n• ') 
+      : (answerRaw || '');
 
     const getFontSize = (text: string) => {
       const length = text.length;

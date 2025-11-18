@@ -2,8 +2,8 @@ export interface Question {
   id: number;
   questionEn: string;
   questionEs: string;
-  answerEn: string;
-  answerEs: string;
+  answerEn: string | string[]; // Cambiado a string | string[] para compatibilidad
+  answerEs: string | string[]; // Cambiado a string | string[] para compatibilidad
   explanationEn: string;
   explanationEs: string;
   category: 'government' | 'history' | 'symbols_holidays';

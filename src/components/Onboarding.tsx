@@ -51,13 +51,6 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     color: '#10B981',
   },
   {
-    id: 'ai',
-    icon: 'robot',
-    title: 'Entrevista AI',
-    description: 'Simula una entrevista real con nuestra IA. Responde preguntas sobre tu formulario N-400 y prepárate para el gran día.',
-    color: '#EF4444',
-  },
-  {
     id: 'progress',
     icon: 'chart-line',
     title: 'Rastrea tu Progreso',
@@ -103,33 +96,45 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       }
 
       // Trackear progreso
-      trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
-        feature: 'onboarding',
-        step: nextStep,
-        step_name: ONBOARDING_STEPS[nextStep].id,
-      });
+      try {
+        trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
+          feature: 'onboarding',
+          step: nextStep,
+          step_name: ONBOARDING_STEPS[nextStep].id,
+        });
+      } catch (error) {
+        // Ignorar errores de analytics
+      }
     } else {
       handleComplete();
     }
   };
 
   const handleSkip = () => {
-    trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
-      feature: 'onboarding',
-      action: 'skipped',
-      step: currentStep,
-    });
+    try {
+      trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
+        feature: 'onboarding',
+        action: 'skipped',
+        step: currentStep,
+      });
+    } catch (error) {
+      // Ignorar errores de analytics
+    }
     handleComplete();
   };
 
   const handleComplete = async () => {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, 'true');
-      trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
-        feature: 'onboarding',
-        action: 'completed',
-        total_steps: ONBOARDING_STEPS.length,
-      });
+      try {
+        trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
+          feature: 'onboarding',
+          action: 'completed',
+          total_steps: ONBOARDING_STEPS.length,
+        });
+      } catch (error) {
+        // Ignorar errores de analytics
+      }
       onComplete();
     } catch (error) {
       console.error('Error guardando estado de onboarding:', error);

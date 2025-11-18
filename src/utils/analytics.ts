@@ -3,20 +3,50 @@
 import { Platform } from 'react-native';
 import { getFirebaseApp } from '../config/firebaseConfig';
 import firebase from 'firebase/compat/app';
-import 'firebase/compat/analytics';
 
 // Inicializar Analytics
 let analytics: firebase.analytics.Analytics | null = null;
 
-try {
-  const app = getFirebaseApp();
-  analytics = firebase.analytics(app);
-  
-  if (__DEV__) {
-    console.log('✅ Firebase Analytics inicializado');
+// Firebase Analytics solo funciona en Web
+// En React Native móvil, usar @react-native-firebase/analytics o deshabilitar
+const isWeb = Platform.OS === 'web';
+
+if (isWeb) {
+  try {
+    // Solo importar analytics en web
+    require('firebase/compat/analytics');
+    
+    // Solo inicializar Analytics si estamos en web
+    const app = getFirebaseApp();
+    
+    // Intentar inicializar con manejo de errores robusto
+    try {
+      analytics = firebase.analytics(app);
+      if (__DEV__) {
+        console.log('✅ Firebase Analytics inicializado (Web)');
+      }
+    } catch (initError: any) {
+      // Si hay error de inicialización, silenciar y continuar sin analytics
+      if (__DEV__) {
+        console.warn('⚠️ Firebase Analytics no disponible:', initError?.message || initError);
+      }
+      analytics = null;
+    }
+  } catch (error: any) {
+    // Silenciar errores de Analytics para que no rompan la app
+    if (__DEV__) {
+      console.warn('⚠️ Error inicializando Firebase Analytics:', error?.message || error);
+    }
+    analytics = null;
   }
-} catch (error) {
-  console.warn('⚠️ Firebase Analytics no disponible:', error);
+} else {
+  // En React Native móvil, Analytics no está disponible con firebase/compat
+  // Para usar Analytics en móvil, necesitarías @react-native-firebase/analytics
+  if (__DEV__) {
+    console.log('ℹ️ Firebase Analytics deshabilitado en React Native móvil');
+    console.log('   Para habilitar, instala: @react-native-firebase/analytics');
+  }
+  analytics = null;
 }
 
 // Tipos de eventos
@@ -74,7 +104,12 @@ export interface AnalyticsParams {
  * Trackea una pantalla vista
  */
 export const trackScreenView = (screenName: string, params?: AnalyticsParams) => {
-  if (!analytics) return;
+  if (!analytics) {
+    if (__DEV__) {
+      console.log(`📊 Screen View (no analytics): ${screenName}`, params);
+    }
+    return;
+  }
   
   try {
     analytics.logEvent(AnalyticsEvent.SCREEN_VIEW, {
@@ -87,8 +122,11 @@ export const trackScreenView = (screenName: string, params?: AnalyticsParams) =>
     if (__DEV__) {
       console.log(`📊 Screen View: ${screenName}`, params);
     }
-  } catch (error) {
-    console.warn('Error tracking screen view:', error);
+  } catch (error: any) {
+    // Silenciar errores de Analytics para que no rompan la app
+    if (__DEV__) {
+      console.warn('Error tracking screen view:', error?.message || error);
+    }
   }
 };
 
@@ -96,7 +134,12 @@ export const trackScreenView = (screenName: string, params?: AnalyticsParams) =>
  * Trackea un evento personalizado
  */
 export const trackEvent = (eventName: AnalyticsEvent | string, params?: AnalyticsParams) => {
-  if (!analytics) return;
+  if (!analytics) {
+    if (__DEV__) {
+      console.log(`📊 Event (no analytics): ${eventName}`, params);
+    }
+    return;
+  }
   
   try {
     analytics.logEvent(eventName, {
@@ -108,8 +151,11 @@ export const trackEvent = (eventName: AnalyticsEvent | string, params?: Analytic
     if (__DEV__) {
       console.log(`📊 Event: ${eventName}`, params);
     }
-  } catch (error) {
-    console.warn('Error tracking event:', error);
+  } catch (error: any) {
+    // Silenciar errores de Analytics para que no rompan la app
+    if (__DEV__) {
+      console.warn('Error tracking event:', error?.message || error);
+    }
   }
 };
 
@@ -117,7 +163,12 @@ export const trackEvent = (eventName: AnalyticsEvent | string, params?: Analytic
  * Establece propiedades del usuario
  */
 export const setUserProperties = (properties: { [key: string]: string | number | boolean | null }) => {
-  if (!analytics) return;
+  if (!analytics) {
+    if (__DEV__) {
+      console.log('📊 User Properties (no analytics):', properties);
+    }
+    return;
+  }
   
   try {
     Object.entries(properties).forEach(([key, value]) => {
@@ -129,8 +180,11 @@ export const setUserProperties = (properties: { [key: string]: string | number |
     if (__DEV__) {
       console.log('📊 User Properties:', properties);
     }
-  } catch (error) {
-    console.warn('Error setting user properties:', error);
+  } catch (error: any) {
+    // Silenciar errores de Analytics para que no rompan la app
+    if (__DEV__) {
+      console.warn('Error setting user properties:', error?.message || error);
+    }
   }
 };
 
@@ -138,7 +192,12 @@ export const setUserProperties = (properties: { [key: string]: string | number |
  * Establece el ID de usuario
  */
 export const setUserId = (userId: string | null) => {
-  if (!analytics) return;
+  if (!analytics) {
+    if (__DEV__) {
+      console.log('📊 User ID (no analytics):', userId);
+    }
+    return;
+  }
   
   try {
     if (userId) {
@@ -150,8 +209,11 @@ export const setUserId = (userId: string | null) => {
     if (__DEV__) {
       console.log('📊 User ID:', userId);
     }
-  } catch (error) {
-    console.warn('Error setting user ID:', error);
+  } catch (error: any) {
+    // Silenciar errores de Analytics para que no rompan la app
+    if (__DEV__) {
+      console.warn('Error setting user ID:', error?.message || error);
+    }
   }
 };
 

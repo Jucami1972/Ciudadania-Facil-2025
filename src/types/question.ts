@@ -4,7 +4,7 @@
 export type PracticeType = 'written' | 'oral';
 export type PracticeInputMode = 'visual' | 'audio';
 
-export type PracticeMode = 'random' | 'category' | 'incorrect' | 'marked';
+export type PracticeMode = 'random' | 'category' | 'incorrect' | 'marked' | 'spaced_repetition';
 
 // Tipos básicos
 export type QuestionCategory = 
@@ -79,6 +79,17 @@ export interface Question {
     averageTime: number;
     lastAnswered?: Date;
   };
+  
+  // Datos de Repetición Espaciada (SRS)
+  srsData?: {
+    questionId: number;
+    easeFactor: number;
+    interval: number; // días
+    repetitions: number;
+    lastReviewDate: string | null; // ISO string para serialización
+    nextReviewDate: string | null; // ISO string para serialización
+    quality: number;
+  };
 }
 
 // Interfaz para respuestas de usuario
@@ -133,6 +144,7 @@ export interface PracticeConfig {
   difficulty?: QuestionDifficulty;
   includeIncorrect?: boolean;
   includeMarked?: boolean;
+  useSpacedRepetition?: boolean; // Activar SRS para este modo
 }
 
 // Interfaz para el estado de la práctica

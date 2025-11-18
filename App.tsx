@@ -42,8 +42,15 @@ export default function App(): JSX.Element {
     const setupPayments = async () => {
       try {
         await initializePayments();
-      } catch (error) {
-        console.warn('Error inicializando servicio de pagos:', error);
+      } catch (error: any) {
+        // IAP no funciona en Expo Go, esto es esperado
+        if (error?.message?.includes('Nitro') || error?.message?.includes('Expo Go')) {
+          if (__DEV__) {
+            console.log('ℹ️ IAP no disponible en Expo Go (esto es normal)');
+          }
+        } else {
+          console.warn('Error inicializando servicio de pagos:', error?.message || error);
+        }
       }
     };
 

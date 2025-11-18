@@ -90,6 +90,15 @@ const PruebaPracticaScreenModerno = () => {
       color: '#8b5cf6',
       route: 'EntrevistaAIHome',
     },
+    {
+      id: 'spaced_repetition',
+      title: 'Repaso Inteligente',
+      subtitle: 'Memorización optimizada',
+      description: 'Sistema de repetición espaciada que adapta las preguntas a tu ritmo de aprendizaje',
+      icon: 'brain',
+      color: '#6366f1',
+      route: 'SpacedRepetitionPractice',
+    },
   ];
 
   const handlePracticePress = (option: PracticeOption) => {
@@ -165,6 +174,9 @@ const PruebaPracticaScreenModerno = () => {
           </Text>
           <Text style={styles.tipsText}>
             • Marca preguntas importantes para revisarlas después
+          </Text>
+          <Text style={styles.tipsText}>
+            • Usa Repaso Inteligente para memorización a largo plazo
           </Text>
         </View>
       </ScrollView>
