@@ -352,7 +352,7 @@ const HomeScreenModerno = () => {
       {!isDesktop && (
         <View style={styles.headerWrapper}>
           <ImageBackground
-            source={require('../assets/portada.webp')}
+            source={require('../assets/header.webp')}
             style={styles.headerBackground}
             resizeMode="cover"
           >
