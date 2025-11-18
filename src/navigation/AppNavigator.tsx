@@ -181,15 +181,22 @@ const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
-  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading } = useOnboardingStatus();
+  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading, refresh: refreshOnboarding } = useOnboardingStatus();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const routeNameRef = useRef<string | undefined>();
 
   // Mostrar onboarding si el usuario está autenticado y no lo ha completado
+  // NO mostrar onboarding en web
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      setShowOnboarding(false);
+      return;
+    }
     if (!loading && !onboardingLoading && user && onboardingCompleted === false) {
       setShowOnboarding(true);
+    } else if (onboardingCompleted === true) {
+      setShowOnboarding(false);
     }
   }, [loading, onboardingLoading, user, onboardingCompleted]);
 
@@ -214,8 +221,16 @@ export default function AppNavigator() {
     routeNameRef.current = currentRouteName;
   };
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
+    // Ocultar onboarding inmediatamente
     setShowOnboarding(false);
+    // Forzar actualización del estado de onboarding
+    if (refreshOnboarding) {
+      // Esperar un momento para que AsyncStorage se guarde
+      setTimeout(() => {
+        refreshOnboarding();
+      }, 200);
+    }
   };
 
   if (loading || onboardingLoading) {
