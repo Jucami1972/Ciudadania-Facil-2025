@@ -967,7 +967,6 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     ...Platform.select({
       web: {
-        width: CARD_WIDTH,
         marginBottom: 24,
         cursor: 'pointer',
         padding: 24,
@@ -1066,7 +1065,6 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     ...Platform.select({
       web: {
-        width: CARD_WIDTH,
         marginBottom: 24,
         cursor: 'pointer',
         padding: 24,
@@ -1156,7 +1154,6 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     ...Platform.select({
       web: {
-        width: CARD_WIDTH,
         marginBottom: 16,
         padding: 16,
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
