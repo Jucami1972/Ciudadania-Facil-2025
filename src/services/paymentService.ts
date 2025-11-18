@@ -1,7 +1,17 @@
 // src/services/paymentService.ts
 // Servicio para manejar compras in-app usando react-native-iap
 import { Platform } from 'react-native';
-import * as InAppPurchase from 'react-native-iap';
+
+// react-native-iap solo funciona en móvil, no en web
+let InAppPurchase: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    InAppPurchase = require('react-native-iap');
+  } catch (error) {
+    console.warn('react-native-iap no disponible:', error);
+  }
+}
+
 import { activatePremium } from '../context/PremiumContext';
 import { trackEvent, AnalyticsEvent } from '../utils/analytics';
 import { captureException } from '../config/sentry';
@@ -38,6 +48,11 @@ let purchaseErrorSubscription: any = null;
  */
 export const initializePayments = async (): Promise<boolean> => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      console.log('IAP no disponible en web');
+      return false;
+    }
+
     if (isInitialized) {
       return true;
     }
@@ -47,13 +62,13 @@ export const initializePayments = async (): Promise<boolean> => {
     
     // Configurar listeners para actualizaciones de compras
     purchaseUpdateSubscription = InAppPurchase.purchaseUpdatedListener(
-      async (purchase: InAppPurchase.Purchase) => {
+      async (purchase: any) => {
         await handlePurchaseUpdate(purchase);
       }
     );
 
     purchaseErrorSubscription = InAppPurchase.purchaseErrorListener(
-      (error: InAppPurchase.PurchaseError) => {
+      (error: any) => {
         handlePurchaseError(error);
       }
     );
@@ -75,8 +90,12 @@ export const initializePayments = async (): Promise<boolean> => {
 /**
  * Obtener productos disponibles
  */
-export const getAvailableProducts = async (): Promise<InAppPurchase.Product[]> => {
+export const getAvailableProducts = async (): Promise<any[]> => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      return [];
+    }
+
     if (!isInitialized) {
       await initializePayments();
     }
@@ -99,8 +118,12 @@ export const getAvailableProducts = async (): Promise<InAppPurchase.Product[]> =
 /**
  * Obtener compras restauradas
  */
-export const getRestoredPurchases = async (): Promise<InAppPurchase.Purchase[]> => {
+export const getRestoredPurchases = async (): Promise<any[]> => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      return [];
+    }
+
     if (!isInitialized) {
       await initializePayments();
     }
@@ -125,8 +148,12 @@ export const getRestoredPurchases = async (): Promise<InAppPurchase.Purchase[]> 
 export const purchaseProduct = async (
   productId: string,
   userId: string
-): Promise<InAppPurchase.Purchase> => {
+): Promise<any> => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      throw new Error('IAP no disponible en web');
+    }
+
     if (!isInitialized) {
       await initializePayments();
     }
@@ -168,8 +195,12 @@ export const purchaseProduct = async (
 /**
  * Manejar actualización de compra
  */
-const handlePurchaseUpdate = async (purchase: InAppPurchase.Purchase) => {
+const handlePurchaseUpdate = async (purchase: any) => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      return;
+    }
+
     const { transactionReceipt, productId, transactionId } = purchase;
 
     // Determinar tipo de suscripción basado en productId
@@ -226,7 +257,10 @@ const handlePurchaseUpdate = async (purchase: InAppPurchase.Purchase) => {
 /**
  * Manejar errores de compra
  */
-const handlePurchaseError = (error: InAppPurchase.PurchaseError) => {
+const handlePurchaseError = (error: any) => {
+  if (Platform.OS === 'web') {
+    return;
+  }
   console.error('Error en compra:', error);
 
   // Trackear error
@@ -242,8 +276,11 @@ const handlePurchaseError = (error: InAppPurchase.PurchaseError) => {
 /**
  * Validar compra (simplificado - en producción deberías validar con tu backend)
  */
-const validatePurchase = async (purchase: InAppPurchase.Purchase): Promise<boolean> => {
+const validatePurchase = async (purchase: any): Promise<boolean> => {
   try {
+    if (Platform.OS === 'web') {
+      return false;
+    }
     // En producción, deberías enviar el receipt a tu backend
     // para validarlo con Apple/Google
     // Por ahora, retornamos true si tiene transactionReceipt
@@ -259,6 +296,10 @@ const validatePurchase = async (purchase: InAppPurchase.Purchase): Promise<boole
  */
 export const restorePurchases = async (userId: string): Promise<boolean> => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      return false;
+    }
+
     if (!isInitialized) {
       await initializePayments();
     }
@@ -287,6 +328,10 @@ export const restorePurchases = async (userId: string): Promise<boolean> => {
  */
 export const disconnectPayments = async (): Promise<void> => {
   try {
+    if (Platform.OS === 'web' || !InAppPurchase) {
+      return;
+    }
+
     if (purchaseUpdateSubscription) {
       purchaseUpdateSubscription.remove();
       purchaseUpdateSubscription = null;

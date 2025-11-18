@@ -1,13 +1,22 @@
 // src/config/sentry.ts
 // Configuración de Sentry para error tracking y crash reporting
-import * as Sentry from '@sentry/react-native';
 import { Platform } from 'react-native';
+
+// Sentry solo funciona en móvil, no en web
+let Sentry: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    Sentry = require('@sentry/react-native');
+  } catch (error) {
+    console.warn('Sentry no disponible:', error);
+  }
+}
 
 // Inicializar Sentry solo si tenemos la DSN configurada
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
 
-if (SENTRY_DSN && !__DEV__) {
-  // Solo inicializar en producción
+if (SENTRY_DSN && !__DEV__ && Sentry && Platform.OS !== 'web') {
+  // Solo inicializar en producción y en móvil
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: __DEV__ ? 'development' : 'production',
@@ -36,14 +45,14 @@ if (SENTRY_DSN && !__DEV__) {
       
       return event;
     },
-    integrations: [
+    integrations: Platform.OS !== 'web' ? [
       new Sentry.ReactNativeTracing({
         // Opciones de tracing
         routingInstrumentation: new Sentry.ReactNavigationInstrumentation(),
-        enableNativeFramesTracking: Platform.OS !== 'web',
+        enableNativeFramesTracking: true,
         enableStallTracking: true,
       }),
-    ],
+    ] : [],
   });
 
   if (__DEV__) {
@@ -59,7 +68,7 @@ if (SENTRY_DSN && !__DEV__) {
  * Captura una excepción manualmente
  */
 export const captureException = (error: Error, context?: Record<string, any>) => {
-  if (!SENTRY_DSN || __DEV__) {
+  if (!SENTRY_DSN || __DEV__ || Platform.OS === 'web' || !Sentry) {
     console.error('Error capturado:', error, context);
     return;
   }
@@ -74,8 +83,8 @@ export const captureException = (error: Error, context?: Record<string, any>) =>
 /**
  * Captura un mensaje
  */
-export const captureMessage = (message: string, level: Sentry.SeverityLevel = 'info') => {
-  if (!SENTRY_DSN || __DEV__) {
+export const captureMessage = (message: string, level: any = 'info') => {
+  if (!SENTRY_DSN || __DEV__ || Platform.OS === 'web' || !Sentry) {
     console.log(`[${level.toUpperCase()}] ${message}`);
     return;
   }
@@ -87,7 +96,7 @@ export const captureMessage = (message: string, level: Sentry.SeverityLevel = 'i
  * Establece el usuario actual en Sentry
  */
 export const setSentryUser = (user: { id: string; email?: string; username?: string } | null) => {
-  if (!SENTRY_DSN || __DEV__) return;
+  if (!SENTRY_DSN || __DEV__ || Platform.OS === 'web' || !Sentry) return;
 
   if (user) {
     Sentry.setUser({
@@ -104,7 +113,7 @@ export const setSentryUser = (user: { id: string; email?: string; username?: str
  * Agrega contexto adicional a los eventos
  */
 export const setSentryContext = (key: string, context: Record<string, any>) => {
-  if (!SENTRY_DSN || __DEV__) return;
+  if (!SENTRY_DSN || __DEV__ || Platform.OS === 'web' || !Sentry) return;
 
   Sentry.setContext(key, context);
 };
@@ -115,10 +124,10 @@ export const setSentryContext = (key: string, context: Record<string, any>) => {
 export const addBreadcrumb = (breadcrumb: {
   message: string;
   category?: string;
-  level?: Sentry.SeverityLevel;
+  level?: any;
   data?: Record<string, any>;
 }) => {
-  if (!SENTRY_DSN || __DEV__) return;
+  if (!SENTRY_DSN || __DEV__ || Platform.OS === 'web' || !Sentry) return;
 
   Sentry.addBreadcrumb({
     message: breadcrumb.message,
@@ -133,7 +142,7 @@ export const addBreadcrumb = (breadcrumb: {
  * Inicia una transacción para medir performance
  */
 export const startTransaction = (name: string, op: string = 'navigation') => {
-  if (!SENTRY_DSN || __DEV__) return null;
+  if (!SENTRY_DSN || __DEV__ || Platform.OS === 'web' || !Sentry) return null;
 
   return Sentry.startTransaction({
     name,
