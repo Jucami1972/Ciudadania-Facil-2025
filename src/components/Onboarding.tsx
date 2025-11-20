@@ -1,6 +1,6 @@
 // src/components/Onboarding.tsx
-// Componente de onboarding/tutorial para nuevos usuarios
-import React, { useState, useRef } from 'react';
+// Versión sin Reanimated - usando solo Animated nativo de React Native
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,32 @@ import {
   Dimensions,
   Animated,
   Platform,
+  Image,
+  Easing,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trackEvent, AnalyticsEvent } from '../utils/analytics';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
+
+// Importar el SVG con manejo de errores
+let LogoComponent: React.ComponentType<any> | null = null;
+
+const loadLogo = () => {
+  if (LogoComponent !== null) return LogoComponent;
+  
+  try {
+    const svgModule = require('../assets/logoappredondovector.svg');
+    LogoComponent = svgModule.default || svgModule;
+    console.log('✅ SVG cargado correctamente');
+  } catch (error) {
+    console.warn('⚠️ No se pudo cargar el SVG, usando PNG como fallback:', error);
+    LogoComponent = null;
+  }
+  
+  return LogoComponent;
+};
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -33,15 +53,15 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'welcome',
     icon: 'book-education',
     title: 'Bienvenido a Ciudadanía Fácil',
-    description: 'La forma más fácil de prepararte para el examen de ciudadanía estadounidense. Aprende las 128 preguntas oficiales de manera interactiva.',
-    color: '#7C3AED',
+    description: 'Prepárate para el Examen de Ciudadanía de EE.UU. 2020-2025 de forma interactiva.',
+    color: '#1E40AF',
   },
   {
     id: 'study',
     icon: 'cards',
     title: 'Tarjetas de Estudio',
     description: 'Estudia con tarjetas interactivas que puedes voltear. Escucha la pronunciación en inglés y español para cada pregunta.',
-    color: '#9B54FF',
+    color: '#1E40AF',
   },
   {
     id: 'practice',
@@ -71,6 +91,45 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const isWebDesktop = useIsWebDesktop();
 
+  // Animaciones con Animated nativo de React Native
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.5)).current;
+
+  // Efecto de animación
+  useEffect(() => {
+    if (currentStep === 0) {
+      // Animación de entrada elegante
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Reset suave
+      Animated.parallel([
+        Animated.timing(logoOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoScale, {
+          toValue: 0.5,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [currentStep]);
+
   const handleNext = () => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
       // Animación de fade
@@ -90,12 +149,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
 
-      // Scroll automático en web
       if (isWeb && scrollViewRef.current) {
         scrollViewRef.current.scrollTo({ x: nextStep * width, animated: true });
       }
 
-      // Trackear progreso
       try {
         trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
           feature: 'onboarding',
@@ -153,9 +210,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     }
   };
 
-  const currentStepData = ONBOARDING_STEPS[currentStep];
   const isLastStep = currentStep === ONBOARDING_STEPS.length - 1;
   const isFirstStep = currentStep === 0;
+
+  // Estilos animados para el logo
+  const logoAnimatedStyle = {
+    opacity: logoOpacity,
+    transform: [{ scale: logoScale }],
+  };
 
   return (
     <View style={styles.container}>
@@ -196,19 +258,43 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             ]}
           >
             <View style={styles.stepContent}>
-              {/* Icono */}
-              <View style={[styles.iconContainer, { backgroundColor: `${step.color}15` }]}>
-                <MaterialCommunityIcons
-                  name={step.icon as any}
-                  size={isWebDesktop ? 80 : 64}
-                  color={step.color}
-                />
-              </View>
+              {step.id === 'welcome' ? (
+                <Animated.View
+                  style={[
+                    styles.iconContainer,
+                    styles.logoContainer,
+                  ]}
+                >
+                  <Animated.View style={logoAnimatedStyle}>
+                    {(() => {
+                      const Logo = loadLogo();
+                      return Logo ? (
+                        <Logo
+                          width={isWebDesktop ? 144 : 108}
+                          height={isWebDesktop ? 144 : 108}
+                          style={styles.logoSVG}
+                        />
+                      ) : (
+                        <Image
+                          source={require('../assets/logoapp1.png')}
+                          style={styles.logoImage}
+                          resizeMode="contain"
+                        />
+                      );
+                    })()}
+                  </Animated.View>
+                </Animated.View>
+              ) : (
+                <View style={[styles.iconContainer, { backgroundColor: `${step.color}15` }]}>
+                  <MaterialCommunityIcons
+                    name={step.icon as any}
+                    size={isWebDesktop ? 80 : 64}
+                    color={step.color}
+                  />
+                </View>
+              )}
 
-              {/* Título */}
               <Text style={styles.stepTitle}>{step.title}</Text>
-
-              {/* Descripción */}
               <Text style={styles.stepDescription}>{step.description}</Text>
             </View>
           </Animated.View>
@@ -218,11 +304,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       {/* Botones de navegación */}
       <View style={styles.navigationContainer}>
         {!isFirstStep && (
-          <TouchableOpacity
-            style={styles.navButton}
-            onPress={handlePrevious}
-          >
-            <MaterialCommunityIcons name="chevron-left" size={24} color="#7C3AED" />
+          <TouchableOpacity style={styles.navButton} onPress={handlePrevious}>
+            <MaterialCommunityIcons name="chevron-left" size={24} color="#1E40AF" />
           </TouchableOpacity>
         )}
 
@@ -234,7 +317,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={isLastStep ? ['#10B981', '#059669'] : ['#7C3AED', '#6D28D9']}
+            colors={isLastStep ? ['#10B981', '#059669'] : ['#1E40AF', '#1E3A8A']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.nextButtonGradient}
@@ -286,7 +369,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progressDotActive: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#1E40AF',
   },
   skipButton: {
     paddingHorizontal: 16,
@@ -333,12 +416,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
+    overflow: 'hidden',
     ...Platform.select({
       web: {
         width: 160,
         height: 160,
         borderRadius: 80,
         marginBottom: 48,
+      },
+    }),
+  },
+  logoContainer: {
+    backgroundColor: '#F3F4F6', // Gris claro suave
+  },
+  logoSVG: {
+    alignSelf: 'center',
+  },
+  logoImage: {
+    width: '90%',
+    height: '90%',
+    ...Platform.select({
+      web: {
+        borderRadius: 72,
+      },
+      default: {
+        borderRadius: 54,
       },
     }),
   },
@@ -388,7 +490,7 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     borderWidth: 2,
-    borderColor: '#7C3AED',
+    borderColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -431,9 +533,6 @@ const styles = StyleSheet.create({
 
 export default Onboarding;
 
-/**
- * Hook para verificar si el onboarding ya fue completado
- */
 export const useOnboardingStatus = () => {
   const [isCompleted, setIsCompleted] = React.useState<boolean | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -454,6 +553,8 @@ export const useOnboardingStatus = () => {
     checkOnboardingStatus();
   }, []);
 
-  return { isCompleted, isLoading };
+  return { 
+    isCompleted: isCompleted ?? false,
+    isLoading 
+  };
 };
-

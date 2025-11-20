@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'react-native';
@@ -8,17 +8,26 @@ import { AuthProvider } from './src/context/AuthContext';
 import { PremiumProvider } from './src/context/PremiumContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
-// Inicializar Sentry (solo en producción)
-import './src/config/sentry';
-// Inicializar servicio de pagos
-import { initializePayments, disconnectPayments } from './src/services/paymentService';
-// Configurar notificaciones
-import { setupNotificationListeners, requestPermissions } from './src/services/notificationService';
-// Configurar sincronización offline
-import { setupConnectionListener } from './src/utils/offlineSync';
 
-export default function App(): JSX.Element {
+export default function App(): React.ReactElement {
+  const cleanupRef = useRef<{
+    notificationListeners: any;
+    connectionCleanup: (() => void) | null;
+    disconnectPayments: (() => void) | null;
+  }>({
+    notificationListeners: null,
+    connectionCleanup: null,
+    disconnectPayments: null,
+  });
+
   useEffect(() => {
+    // Inicializar Sentry (solo en producción) - con manejo de errores
+    try {
+      require('./src/config/sentry');
+    } catch (error) {
+      console.warn('Error cargando Sentry:', error);
+    }
+
     const configureAudio = async () => {
       try {
         await Audio.setAudioModeAsync({
@@ -29,10 +38,6 @@ export default function App(): JSX.Element {
           interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
           shouldDuckAndroid: true,
           playThroughEarpieceAndroid: false,
-          // Optimizaciones adicionales para mejor rendimiento
-          shouldRouteThroughEarpiece: false,
-          staysActiveInBackground: false,
-          allowsRecordingIOS: false,
         });
       } catch (error) {
         console.warn('Error configurando modo de audio:', error);
@@ -41,7 +46,13 @@ export default function App(): JSX.Element {
 
     const setupPayments = async () => {
       try {
-        await initializePayments();
+        const paymentService = require('./src/services/paymentService');
+        const initializePayments = paymentService.initializePayments;
+        if (initializePayments) {
+          await initializePayments();
+        }
+        // Guardar referencia para cleanup
+        cleanupRef.current.disconnectPayments = paymentService.disconnectPayments;
       } catch (error: any) {
         // IAP no funciona en Expo Go, esto es esperado
         if (error?.message?.includes('Nitro') || error?.message?.includes('Expo Go')) {
@@ -56,61 +67,80 @@ export default function App(): JSX.Element {
 
     const setupNotifications = async () => {
       try {
+        const notificationService = require('./src/services/notificationService');
+        const requestPermissions = notificationService.requestPermissions;
+        const setupNotificationListeners = notificationService.setupNotificationListeners;
+        
+        if (!requestPermissions || !setupNotificationListeners) return null;
+        
         // Solicitar permisos
         await requestPermissions();
         
         // Configurar listeners
         const listeners = setupNotificationListeners(
-          (notification) => {
+          (notification: any) => {
             // Notificación recibida
             console.log('Notificación recibida:', notification);
           },
-          (response) => {
+          (response: any) => {
             // Usuario tocó la notificación
             console.log('Notificación tocada:', response);
             // Aquí puedes navegar a una pantalla específica si es necesario
           }
         );
 
-        // Cleanup al desmontar
-        return () => {
-          listeners.remove();
-        };
+        return listeners;
       } catch (error) {
         console.warn('Error configurando notificaciones:', error);
+        return null;
       }
     };
 
     const setupOfflineSync = () => {
-      // Configurar listener de conexión
-      const connectionCleanup = setupConnectionListener(async (isConnected) => {
-        if (isConnected) {
-          // Cuando vuelve online, intentar sincronizar
-          const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-          const userId = await AsyncStorage.getItem('@user:uid');
-          if (userId) {
-            const { loadFromFirestore } = require('./src/utils/offlineSync');
-            await loadFromFirestore(userId);
+      try {
+        const offlineSync = require('./src/utils/offlineSync');
+        const setupConnectionListener = offlineSync.setupConnectionListener;
+        
+        if (!setupConnectionListener) return null;
+        
+        // Configurar listener de conexión
+        const connectionCleanup = setupConnectionListener(async (isConnected: boolean) => {
+          if (isConnected) {
+            // Cuando vuelve online, intentar sincronizar
+            const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+            const userId = await AsyncStorage.getItem('@user:uid');
+            if (userId) {
+              const { loadFromFirestore } = require('./src/utils/offlineSync');
+              await loadFromFirestore(userId);
+            }
           }
-        }
-      });
+        });
 
-      return connectionCleanup;
+        return connectionCleanup;
+      } catch (error) {
+        console.warn('Error configurando sincronización offline:', error);
+        return null;
+      }
     };
 
-    configureAudio();
-    setupPayments();
-    const notificationCleanup = setupNotifications();
-    const connectionCleanup = setupOfflineSync();
+    // Configurar todo de forma asíncrona
+    (async () => {
+      await configureAudio();
+      await setupPayments();
+      cleanupRef.current.notificationListeners = await setupNotifications();
+      cleanupRef.current.connectionCleanup = setupOfflineSync();
+    })();
 
     // Cleanup al desmontar
     return () => {
-      disconnectPayments();
-      if (notificationCleanup) {
-        notificationCleanup.then(cleanup => cleanup && cleanup());
+      if (cleanupRef.current.disconnectPayments) {
+        cleanupRef.current.disconnectPayments();
       }
-      if (connectionCleanup) {
-        connectionCleanup();
+      if (cleanupRef.current.notificationListeners?.remove) {
+        cleanupRef.current.notificationListeners.remove();
+      }
+      if (cleanupRef.current.connectionCleanup) {
+        cleanupRef.current.connectionCleanup();
       }
     };
   }, []);
