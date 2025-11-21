@@ -50,7 +50,15 @@ export const AnswerResultCard: React.FC<AnswerResultCardProps> = ({
           <MaterialCommunityIcons name="replay" size={20} color={colors.primary.main} />
           <Text style={styles.secondaryButtonText}>Repetir</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.primaryButton} onPress={onNext}>
+        <TouchableOpacity 
+          style={[styles.primaryButton, { opacity: 1 }]} 
+          onPress={() => {
+            console.log('🔘 AnswerResultCard: Botón Siguiente presionado');
+            onNext();
+          }}
+          activeOpacity={0.8}
+          disabled={false}
+        >
           <Text style={styles.primaryButtonText}>Siguiente</Text>
           <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
         </TouchableOpacity>

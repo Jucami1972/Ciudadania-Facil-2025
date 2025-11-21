@@ -70,6 +70,9 @@
       "backgroundColor": "#ffffff",
       "display": "standalone",
       "orientation": "portrait"
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

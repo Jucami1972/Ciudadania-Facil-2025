@@ -90,7 +90,7 @@ const SubcategoriasScreenModerno = () => {
     >
       <View style={styles.cardContent}>
         <View style={styles.iconWrapper}>
-          <MaterialCommunityIcons name="folder-open" size={20} color="#7c3aed" />
+          <MaterialCommunityIcons name="folder-open" size={20} color="#1E40AF" />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.subcategoryName} numberOfLines={2}>{item.subtitle}</Text>
@@ -104,12 +104,12 @@ const SubcategoriasScreenModerno = () => {
                 styles.progressBarFill,
                 {
                   width: `${item.progress}%`,
-                  backgroundColor: item.progress > 0 ? '#7c3aed' : '#e5e7eb',
+                  backgroundColor: item.progress > 0 ? '#1E40AF' : '#e5e7eb',
                 },
               ]}
             />
           </View>
-          <Text style={[styles.progressText, { color: item.progress > 0 ? '#7c3aed' : '#9ca3af' }]}>
+          <Text style={[styles.progressText, { color: item.progress > 0 ? '#1E40AF' : '#9ca3af' }]}>
             {item.progress}%
           </Text>
         </View>
@@ -143,7 +143,7 @@ const SubcategoriasScreenModerno = () => {
       >
         <View style={styles.introCard}>
           <View style={styles.introIconContainer}>
-            <MaterialCommunityIcons name="book-open-variant" size={24} color="#7c3aed" />
+            <MaterialCommunityIcons name="book-open-variant" size={24} color="#1E40AF" />
           </View>
           <Text style={styles.introTitle}>Elige un Tema de Estudio</Text>
           <Text style={styles.introSubtitle}>

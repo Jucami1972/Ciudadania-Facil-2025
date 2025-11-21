@@ -71,7 +71,7 @@ const HomeScreenModerno = () => {
       title: 'Tarjetas de Estudio',
       subtitle: 'Aprende con tarjetas interactivas',
       icon: 'cards-heart',
-      color: '#7c3aed',
+      color: '#1E40AF', // Azul profesional
       route: 'Study',
       stackRoute: 'StudyHome', // Primero va a StudyHome (categorías), luego el usuario selecciona
     },
@@ -98,7 +98,7 @@ const HomeScreenModerno = () => {
       title: 'Memoria Fotográfica',
       subtitle: 'Asocia imágenes con respuestas',
       icon: 'image-outline',
-      color: '#8b5cf6',
+      color: '#1E40AF', // Azul profesional
       route: 'Practice',
       stackRoute: 'PhotoMemoryHome',
     },
@@ -346,7 +346,7 @@ const HomeScreenModerno = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#7c3aed" />
+      <StatusBar barStyle="light-content" backgroundColor="#1E40AF" />
       
       {/* HEADER MODERNO (Solo visible en móvil, en desktop se usa el Sidebar) */}
       {!isDesktop && (
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   progressPercentage: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
   },
   progressBarBackground: {
     height: 8,
@@ -505,7 +505,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF',
     borderRadius: 4,
   },
   progressText: {

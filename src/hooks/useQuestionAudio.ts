@@ -1,23 +1,20 @@
 /**
  * Hook para manejar la reproducción de audio de preguntas
+ * Usa AudioManagerService para evitar múltiples audios simultáneos
  */
 
-import { useState, useEffect } from 'react';
-import { Audio } from 'expo-av';
+import { useEffect } from 'react';
 import { Alert } from 'react-native';
 import { questionAudioMap } from '../assets/audio/questions/questionsMap';
+import { audioManager } from '../services/AudioManagerService';
 
 export const useQuestionAudio = (questionId: number | null) => {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-
   // Limpiar audio al desmontar o cambiar pregunta
   useEffect(() => {
     return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
+      audioManager.stopCurrentAudio().catch(console.error);
     };
-  }, [sound, questionId]);
+  }, [questionId]);
 
   const playAudio = async () => {
     if (!questionId) return;
@@ -25,33 +22,13 @@ export const useQuestionAudio = (questionId: number | null) => {
     try {
       console.log('Playing audio for question:', questionId);
 
-      // Detener audio anterior si está reproduciéndose
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(null);
-      }
-
       // Crear nuevo audio usando el ID de la pregunta
       const audioFile = questionAudioMap[questionId];
       if (audioFile) {
         console.log('Audio file found:', audioFile);
-
-        const { sound: newSound } = await Audio.Sound.createAsync(audioFile);
-        setSound(newSound);
-
-        // Configurar callback para cuando termine
-        newSound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            console.log('Audio finished playing');
-            newSound.unloadAsync();
-            setSound(null);
-          }
-        });
-
-        // Reproducir audio
-        console.log('Starting audio playback...');
-        await newSound.playAsync();
+        // El AudioManagerService se encarga de detener cualquier audio anterior
+        await audioManager.playAudio(audioFile);
+        console.log('Audio playback started');
       } else {
         console.error('No audio file found for question:', questionId);
         Alert.alert('Error', 'No se encontró el archivo de audio para esta pregunta');

@@ -113,7 +113,7 @@ const Random20PracticeScreenModerno = () => {
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7c3aed" />
+          <ActivityIndicator size="large" color="#1E40AF" />
           <Text style={styles.loadingText}>Cargando preguntas...</Text>
         </View>
       </SafeAreaView>
@@ -137,7 +137,7 @@ const Random20PracticeScreenModerno = () => {
         >
           <View style={styles.welcomeCard}>
             <View style={styles.iconWrapper}>
-              <MaterialCommunityIcons name="clipboard-check" size={64} color="#7c3aed" />
+              <MaterialCommunityIcons name="clipboard-check" size={64} color="#1E40AF" />
             </View>
             <Text style={styles.welcomeTitle}>Examen Simulado</Text>
             <Text style={styles.welcomeSubtitle}>
@@ -296,7 +296,7 @@ const Random20PracticeScreenModerno = () => {
           <MaterialCommunityIcons 
             name="arrow-left" 
             size={20} 
-            color={currentQuestion === 0 ? '#999' : '#7c3aed'} 
+            color={currentQuestion === 0 ? '#999' : '#1E40AF'} // Azul profesional 
           />
         </TouchableOpacity>
 
@@ -329,13 +329,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingHorizontal: 16,
     paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
   },
   container: {
     flex: 1,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     padding: 28,
     alignItems: 'center',
     marginVertical: 20,
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -485,7 +485,7 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 2.5,
-    borderColor: '#7c3aed',
+    borderColor: '#1E40AF', // Azul profesional
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -513,14 +513,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   primaryButton: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 25,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
   scoreValue: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
     letterSpacing: -0.5,
   },
   secondaryButton: {
@@ -598,12 +598,12 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: '#7c3aed',
+    borderColor: '#1E40AF', // Azul profesional
     alignItems: 'center',
     marginTop: 12,
   },
   secondaryButtonText: {
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
     fontSize: 16,
     fontWeight: '700',
   },

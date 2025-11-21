@@ -102,7 +102,7 @@ export const questionCategories: QuestionCategory[] = [
     title: 'Por Tipo de Pregunta',
     description: 'Categorías basadas en cómo empieza la pregunta',
     icon: 'format-question',
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
     filter: () => true, // Esta es una categoría padre
   },
   {
@@ -119,7 +119,7 @@ export const questionCategories: QuestionCategory[] = [
     title: 'Preguntas "Quién" (Who)',
     description: 'Preguntas que comienzan con "Who"',
     icon: 'account-question',
-    color: '#8b5cf6',
+    color: '#3B82F6', // Azul claro
     questionType: 'who',
     filter: (q) => getQuestionType(q.question) === 'who',
   },
@@ -128,7 +128,7 @@ export const questionCategories: QuestionCategory[] = [
     title: 'Preguntas "Cuándo" (When)',
     description: 'Preguntas sobre fechas y momentos históricos',
     icon: 'calendar-question',
-    color: '#a855f7',
+    color: '#3B82F6', // Azul claro
     questionType: 'when',
     filter: (q) => getQuestionType(q.question) === 'when',
   },

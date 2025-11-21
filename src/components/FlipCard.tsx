@@ -252,9 +252,9 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
           <Animated.View
             style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: frontDeg }], zIndex: flipped.current ? 0 : 1 }]}
           >
-            {/* LADO FRONTAL - GRADIENTE MORADO */}
+            {/* LADO FRONTAL - GRADIENTE AZUL PROFESIONAL */}
             <LinearGradient 
-              colors={['#A277FF', '#7C4DFF']} 
+              colors={['#3B82F6', '#1E40AF']} 
               start={{ x: 0.2, y: 0 }}
               end={{ x: 0.8, y: 1 }}
               style={[styles.gradient, isImportant && styles.important]}
@@ -282,9 +282,9 @@ const FlipCard = forwardRef<FlipCardHandle, FlipCardProps>(
           <Animated.View
             style={[styles.face, { transform: [{ perspective: 1000 }, { rotateY: backDeg }], position: 'absolute', top: 0 }]}
           >
-            {/* LADO POSTERIOR - GRADIENTE MORADO OSCURO */}
+            {/* LADO POSTERIOR - GRADIENTE AZUL PROFESIONAL OSCURO */}
             <LinearGradient 
-              colors={['#6D28D9', '#9333EA', '#A855F7']} 
+              colors={['#1E3A8A', '#1E40AF', '#3B82F6']} 
               start={{ x: 0.2, y: 0 }}
               end={{ x: 0.8, y: 1 }}
               locations={[0, 0.5, 1]}
@@ -327,12 +327,13 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: '100%',
-        maxWidth: 700,
-        minHeight: 500,
-        maxHeight: 700,
+        maxWidth: 600,
+        minHeight: 450,
+        maxHeight: 600,
         marginTop: 0,
         marginBottom: 48,
         paddingHorizontal: 0,
+        overflow: 'hidden',
       },
     }),
   },
@@ -352,6 +353,8 @@ const styles = StyleSheet.create({
         cursor: 'pointer',
         borderRadius: 32,
         boxShadow: '0 12px 48px rgba(0, 0, 0, 0.2)',
+        maxHeight: '100%',
+        height: '100%',
       },
     }),
   },
@@ -432,10 +435,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     ...Platform.select({
       web: {
-        paddingTop: 32,
-        paddingBottom: 40,
-        paddingHorizontal: 32,
-        minHeight: 300,
+        paddingTop: 24,
+        paddingBottom: 32,
+        paddingHorizontal: 28,
+        minHeight: 250,
+        maxHeight: 400,
         borderRadius: 24,
         borderWidth: 2,
       },

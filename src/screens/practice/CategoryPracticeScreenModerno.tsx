@@ -33,7 +33,7 @@ const CategoryPracticeScreenModerno = () => {
         id: 'government',
         name: CATEGORY_LABELS.government,
         icon: 'bank',
-        color: '#7c3aed',
+        color: '#1E40AF', // Azul profesional
         questionCount: questions.filter(q => q.category === 'government').length,
       },
       {
@@ -101,7 +101,7 @@ const CategoryPracticeScreenModerno = () => {
       >
         <View style={styles.introCard}>
           <View style={styles.introIconContainer}>
-            <MaterialCommunityIcons name="target" size={24} color="#7c3aed" />
+            <MaterialCommunityIcons name="target" size={24} color="#1E40AF" />
           </View>
           <Text style={styles.introTitle}>Domina por Tema</Text>
           <Text style={styles.introSubtitle}>

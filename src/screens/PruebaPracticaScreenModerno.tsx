@@ -33,7 +33,7 @@ const PruebaPracticaScreenModerno = () => {
       subtitle: 'Selecciona una categoría',
       description: 'Practica preguntas de una categoría específica',
       icon: 'folder-multiple',
-      color: '#7c3aed',
+      color: '#1E40AF', // Azul profesional
       route: 'CategoryPracticeHome',
     },
     {
@@ -87,7 +87,7 @@ const PruebaPracticaScreenModerno = () => {
       subtitle: 'Oficial virtual',
       description: 'Practica con un oficial de inmigración AI',
       icon: 'robot-happy',
-      color: '#8b5cf6',
+      color: '#1E40AF', // Azul profesional
       route: 'EntrevistaAIHome',
     },
     {
@@ -130,7 +130,7 @@ const PruebaPracticaScreenModerno = () => {
       >
         <View style={styles.introCard}>
           <View style={styles.introIconContainer}>
-            <MaterialCommunityIcons name="clipboard-check" size={24} color="#7c3aed" />
+            <MaterialCommunityIcons name="clipboard-check" size={24} color="#1E40AF" />
           </View>
           <Text style={styles.introTitle}>Elige tu Modo de Práctica</Text>
           <Text style={styles.introSubtitle}>

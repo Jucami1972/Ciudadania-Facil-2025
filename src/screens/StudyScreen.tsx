@@ -181,48 +181,50 @@ const StudyScreen: React.FC = () => {
         </Animated.View>
       </ScrollView>
 
-      {/* BOTTOM NAVIGATION */}
-      <View style={[styles.bottomNav, { paddingBottom: insets.bottom }]}>
-        {navigationItems.map((item, idx) => (
-          <TouchableOpacity
-            key={idx}
-            style={styles.navItemContainer}
-            onPress={() => {
-              if (item.route === 'Home') {
-                navigation.navigate('Home' as const);
-              } else if (item.route === 'TarjetasDeEstudio') {
-                navigation.navigate('TarjetasDeEstudio' as const);
-              } else if (item.route === 'PruebaPractica') {
-                navigation.navigate('PruebaPractica' as const, {
-                  category: 'all',
-                  section: 'all',
-                  mode: 'random' as const
-                });
-              } else if (item.route === 'Examen') {
-                navigation.navigate('Examen' as const);
-              } else if (item.route === 'Vocabulario') {
-                navigation.navigate('Vocabulario' as const);
-              } else if (item.route === 'EntrevistaAI') {
-                navigation.navigate('EntrevistaAI' as const);
-              }
-            }}
-            accessibilityLabel={`Ir a ${item.title}`}
-            accessibilityRole="button"
-          >
-            <LinearGradient
-              colors={idx % 2 === 0 ? ['#270483', '#8146cc'] : ['#470a56', '#ce32b1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.navItem}
+      {/* BOTTOM NAVIGATION - Solo mostrar en web, en móvil el Tab Navigator ya proporciona navegación */}
+      {Platform.OS === 'web' && (
+        <View style={[styles.bottomNav, { paddingBottom: insets.bottom }]}>
+          {navigationItems.map((item, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={styles.navItemContainer}
+              onPress={() => {
+                if (item.route === 'Home') {
+                  navigation.navigate('Home' as const);
+                } else if (item.route === 'TarjetasDeEstudio') {
+                  navigation.navigate('TarjetasDeEstudio' as const);
+                } else if (item.route === 'PruebaPractica') {
+                  navigation.navigate('PruebaPractica' as const, {
+                    category: 'all',
+                    section: 'all',
+                    mode: 'random' as const
+                  });
+                } else if (item.route === 'Examen') {
+                  navigation.navigate('Examen' as const);
+                } else if (item.route === 'Vocabulario') {
+                  navigation.navigate('Vocabulario' as const);
+                } else if (item.route === 'EntrevistaAI') {
+                  navigation.navigate('EntrevistaAI' as const);
+                }
+              }}
+              accessibilityLabel={`Ir a ${item.title}`}
+              accessibilityRole="button"
             >
-              <View style={styles.navContent}>
-                <MaterialCommunityIcons name={item.icon} size={bottomIconSize} color="white" />
-                <Text style={styles.navText}>{item.title}</Text>
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
-        ))}
-      </View>
+              <LinearGradient
+                colors={idx % 2 === 0 ? ['#270483', '#8146cc'] : ['#470a56', '#ce32b1']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.navItem}
+              >
+                <View style={styles.navContent}>
+                  <MaterialCommunityIcons name={item.icon} size={bottomIconSize} color="white" />
+                  <Text style={styles.navText}>{item.title}</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };

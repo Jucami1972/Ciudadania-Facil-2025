@@ -35,7 +35,7 @@ const ExplanationScreenModerno = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.questionCard}>
-          <MaterialCommunityIcons name="comment-question-outline" size={24} color="#7c3aed" />
+          <MaterialCommunityIcons name="comment-question-outline" size={24} color="#1E40AF" />
           <Text style={styles.questionText}>{questionTitle}</Text>
         </View>
 
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 24,
     borderLeftWidth: 4,
-    borderLeftColor: '#7c3aed',
+    borderLeftColor: '#1E40AF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   languageLabel: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#7c3aed',
+    color: '#1E40AF',
     marginBottom: 8,
   },
   explanationText: {

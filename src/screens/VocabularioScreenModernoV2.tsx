@@ -41,9 +41,9 @@ interface VocabularyWord {
 }
 
 const categories = [
-  { id: 'government', name: 'Gobierno Americano', icon: 'bank', color: '#7C3AED' },
-  { id: 'history', name: 'Historia Americana', icon: 'book-open-variant', color: '#9333EA' },
-  { id: 'symbols_holidays', name: 'Educación Cívica', icon: 'school', color: '#8B5CF6' },
+  { id: 'government', name: 'Gobierno Americano', icon: 'bank', color: '#1E40AF' }, // Azul profesional
+  { id: 'history', name: 'Historia Americana', icon: 'book-open-variant', color: '#1E3A8A' }, // Azul oscuro
+  { id: 'symbols_holidays', name: 'Educación Cívica', icon: 'school', color: '#60A5FA' }, // Azul claro
 ];
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -818,7 +818,7 @@ const getDifficultyColor = (difficulty: string) => {
     case 'difícil':
       return '#EF4444';
     default:
-      return '#7C3AED';
+      return '#1E40AF'; // Azul profesional
   }
 };
 
@@ -948,7 +948,7 @@ const VocabularioScreenModernoV2 = () => {
         </View>
         <Text style={styles.definition}>{item.definition}</Text>
         <View style={styles.exampleContainer}>
-          <MaterialCommunityIcons name="format-quote-open" size={16} color="#7C3AED" />
+          <MaterialCommunityIcons name="format-quote-open" size={16} color="#1E40AF" />
           <Text style={styles.example}>{item.example}</Text>
         </View>
         <TouchableOpacity
@@ -959,7 +959,7 @@ const VocabularioScreenModernoV2 = () => {
           }}
           activeOpacity={0.7}
         >
-          <MaterialCommunityIcons name="volume-high" size={18} color="#7C3AED" />
+          <MaterialCommunityIcons name="volume-high" size={18} color="#1E40AF" />
         </TouchableOpacity>
       </LinearGradient>
     </TouchableOpacity>
@@ -980,7 +980,7 @@ const VocabularioScreenModernoV2 = () => {
         {/* Search Bar */}
         <View style={styles.searchContainer}>
           <BlurView intensity={10} tint="light" style={styles.searchBlur}>
-            <MaterialCommunityIcons name="magnify" size={20} color="#7C3AED" />
+            <MaterialCommunityIcons name="magnify" size={20} color="#1E40AF" />
             <TextInput
               style={styles.searchInput}
               placeholder="Buscar en español (ej: enmienda, ciudadanía)..."
@@ -1041,7 +1041,7 @@ const VocabularioScreenModernoV2 = () => {
               onPress={() => setSelectedLetter(null)}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons name="close-circle" size={16} color="#7C3AED" />
+              <MaterialCommunityIcons name="close-circle" size={16} color="#1E40AF" />
               <Text style={styles.clearLetterText}>Limpiar filtro</Text>
             </TouchableOpacity>
           )}
@@ -1087,7 +1087,7 @@ const VocabularioScreenModernoV2 = () => {
           {selectedWord && (
             <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
               <LinearGradient
-                colors={['#A277FF', '#7C3AED', '#6D28D9']}
+                colors={['#3B82F6', '#1E40AF', '#1E3A8A']} // Gradiente azul profesional
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.modalWordCard}
@@ -1113,7 +1113,7 @@ const VocabularioScreenModernoV2 = () => {
 
               <View style={styles.infoCard}>
                 <View style={styles.sectionHeaderCard}>
-                  <MaterialCommunityIcons name="book-open-page-variant" size={20} color="#7C3AED" />
+                  <MaterialCommunityIcons name="book-open-page-variant" size={20} color="#1E40AF" />
                   <Text style={styles.sectionTitle}>Definición</Text>
                 </View>
                 <Text style={styles.sectionText}>{selectedWord.definition}</Text>
@@ -1121,7 +1121,7 @@ const VocabularioScreenModernoV2 = () => {
 
               <View style={styles.infoCard}>
                 <View style={styles.sectionHeaderCard}>
-                  <MaterialCommunityIcons name="format-quote-open" size={20} color="#7C3AED" />
+                  <MaterialCommunityIcons name="format-quote-open" size={20} color="#1E40AF" />
                   <Text style={styles.sectionTitle}>Ejemplo</Text>
                 </View>
                 <View style={styles.exampleDetail}>
@@ -1131,7 +1131,7 @@ const VocabularioScreenModernoV2 = () => {
 
               <View style={styles.infoCard}>
                 <View style={styles.sectionHeaderCard}>
-                  <MaterialCommunityIcons name="tag" size={20} color="#7C3AED" />
+                  <MaterialCommunityIcons name="tag" size={20} color="#1E40AF" />
                   <Text style={styles.sectionTitle}>Categoría</Text>
                 </View>
                 <Text style={styles.sectionText}>
@@ -1282,7 +1282,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 20,
     overflow: 'hidden',
-    shadowColor: '#7C3AED',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
@@ -1349,7 +1349,7 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#7C3AED',
+    borderLeftColor: '#1E40AF',
     marginBottom: 8,
   },
   example: {
@@ -1369,13 +1369,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7C3AED',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1.5,
-    borderColor: 'rgba(124, 58, 237, 0.15)',
+    borderColor: 'rgba(30, 64, 175, 0.15)', // Azul profesional con transparencia
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1433,7 +1433,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     gap: 16,
-    shadowColor: '#7C3AED',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -1538,8 +1538,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   alphabetButtonActive: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
+    backgroundColor: '#1E40AF', // Azul profesional
+    borderColor: '#1E40AF',
   },
   alphabetButtonDisabled: {
     opacity: 0.3,
@@ -1569,7 +1569,7 @@ const styles = StyleSheet.create({
   clearLetterText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#7C3AED',
+    color: '#1E40AF', // Azul profesional
   },
   wordRow: {
     ...Platform.select({

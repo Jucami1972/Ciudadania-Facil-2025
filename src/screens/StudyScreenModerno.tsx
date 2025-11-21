@@ -103,7 +103,7 @@ const sections: Record<MainCategoryKey, SubCategory[]> = {
 const categoryConfig = {
   GobiernoAmericano: {
     icon: 'bank',
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
   },
   HistoriaAmericana: {
     icon: 'book-open-variant',
@@ -252,8 +252,8 @@ const StudyScreenModerno = () => {
         accessibilityRole="button"
       >
         <View style={styles.cardContent}>
-          <View style={[styles.iconWrapper, { backgroundColor: `${selectedCategoryData?.color || '#7c3aed'}15` }]}>
-            <MaterialCommunityIcons name="folder-open" size={20} color={selectedCategoryData?.color || '#7c3aed'} />
+          <View style={[styles.iconWrapper, { backgroundColor: `${selectedCategoryData?.color || '#1E40AF'}15` }]}>
+            <MaterialCommunityIcons name="folder-open" size={20} color={selectedCategoryData?.color || '#1E40AF'} />
           </View>
           <View style={styles.textContainer}>
             <Text style={styles.subcategoryName} numberOfLines={2}>{subcategory.subtitle}</Text>
@@ -267,12 +267,12 @@ const StudyScreenModerno = () => {
                   styles.progressBarFill,
                   {
                     width: `${progress}%`,
-                    backgroundColor: progress > 0 ? (selectedCategoryData?.color || '#7c3aed') : '#e5e7eb',
+                    backgroundColor: progress > 0 ? (selectedCategoryData?.color || '#1E40AF') : '#e5e7eb',
                   },
                 ]}
               />
             </View>
-            <Text style={[styles.progressText, { color: progress > 0 ? (selectedCategoryData?.color || '#7c3aed') : '#9ca3af' }]}>
+            <Text style={[styles.progressText, { color: progress > 0 ? (selectedCategoryData?.color || '#1E40AF') : '#9ca3af' }]}>
               {progress}%
             </Text>
           </View>

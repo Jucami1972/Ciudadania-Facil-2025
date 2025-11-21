@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   button: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,

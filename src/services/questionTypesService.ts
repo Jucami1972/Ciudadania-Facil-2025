@@ -27,7 +27,7 @@ export const QUESTION_TYPES: QuestionType[] = [
     nameEn: 'Who',
     description: 'Preguntas sobre personas y líderes',
     icon: 'account-multiple',
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
     pattern: /^¿Quién|^Who/i,
     questionCount: 0,
   },
@@ -57,7 +57,7 @@ export const QUESTION_TYPES: QuestionType[] = [
     nameEn: 'Why',
     description: 'Preguntas sobre razones',
     icon: 'lightbulb',
-    color: '#8b5cf6',
+    color: '#3B82F6', // Azul claro
     pattern: /^¿Por qué|^Why/i,
     questionCount: 0,
   },

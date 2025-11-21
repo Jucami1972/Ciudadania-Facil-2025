@@ -338,7 +338,7 @@ const StudyCardsScreenModerno = () => {
           <MaterialCommunityIcons 
             name="chevron-left" 
             size={20} 
-            color={currentIndex === 0 ? '#d1d5db' : '#7C4DFF'} 
+            color={currentIndex === 0 ? '#d1d5db' : '#1E40AF'} // Azul profesional 
           />
         </TouchableOpacity>
 
@@ -350,7 +350,7 @@ const StudyCardsScreenModerno = () => {
           <MaterialCommunityIcons 
             name={isPlaying ? 'stop' : 'play'} 
             size={20} 
-            color="#7C4DFF" 
+            color="#1E40AF" // Azul profesional 
           />
         </TouchableOpacity>
 
@@ -362,7 +362,7 @@ const StudyCardsScreenModerno = () => {
           <MaterialCommunityIcons 
             name="chevron-right" 
             size={20} 
-            color={currentIndex === filteredQuestions.length - 1 ? '#d1d5db' : '#7C4DFF'} 
+            color={currentIndex === filteredQuestions.length - 1 ? '#d1d5db' : '#1E40AF'} // Azul profesional 
           />
         </TouchableOpacity>
       </View>
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
   languageText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#7C4DFF',
+    color: '#1E40AF', // Azul profesional
   },
   progressBarBackground: {
     height: 5,
@@ -517,7 +517,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#A277FF',
+    backgroundColor: '#3B82F6', // Azul profesional
     borderRadius: 3,
   },
   cardContainer: {
@@ -528,9 +528,10 @@ const styles = StyleSheet.create({
     ...Platform.select({
       web: {
         width: '100%',
-        maxWidth: 1000,
-        padding: 40,
-        paddingTop: 32,
+        maxWidth: 700,
+        padding: 24,
+        paddingTop: 20,
+        overflow: 'hidden',
         paddingBottom: 32,
         display: 'flex',
         justifyContent: 'center',
@@ -576,7 +577,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#A277FF',
+    borderColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -592,7 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#7C4DFF',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

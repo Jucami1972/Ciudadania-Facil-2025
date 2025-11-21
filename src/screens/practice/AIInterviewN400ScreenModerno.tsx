@@ -327,7 +327,7 @@ const AIInterviewN400ScreenModerno = () => {
         >
           <View style={styles.welcomeCard}>
             <View style={styles.iconWrapper}>
-              <MaterialCommunityIcons name="robot-happy" size={64} color="#7c3aed" />
+              <MaterialCommunityIcons name="robot-happy" size={64} color="#1E40AF" />
             </View>
             <Text style={styles.welcomeTitle}>Entrevista de Ciudadanía</Text>
             <Text style={styles.welcomeSubtitle}>
@@ -336,19 +336,19 @@ const AIInterviewN400ScreenModerno = () => {
 
             <View style={styles.featuresList}>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="keyboard" size={20} color="#7c3aed" />
+                <MaterialCommunityIcons name="keyboard" size={20} color="#1E40AF" />
                 <Text style={styles.featureText}>Responde escribiendo (voz opcional)</Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="file-pdf-box" size={20} color="#7c3aed" />
+                <MaterialCommunityIcons name="file-pdf-box" size={20} color="#1E40AF" />
                 <Text style={styles.featureText}>Carga tu formulario N-400</Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="chat" size={20} color="#7c3aed" />
+                <MaterialCommunityIcons name="chat" size={20} color="#1E40AF" />
                 <Text style={styles.featureText}>Conversación realista</Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="volume-high" size={20} color="#7c3aed" />
+                <MaterialCommunityIcons name="volume-high" size={20} color="#1E40AF" />
                 <Text style={styles.featureText}>El oficial habla automáticamente</Text>
               </View>
             </View>
@@ -367,7 +367,7 @@ const AIInterviewN400ScreenModerno = () => {
               style={styles.n400Button}
               onPress={handlePickN400}
             >
-              <MaterialCommunityIcons name="file-pdf-box" size={20} color="#7c3aed" />
+              <MaterialCommunityIcons name="file-pdf-box" size={20} color="#1E40AF" />
               <Text style={styles.n400ButtonText}>
                 {n400Loaded 
                   ? (n400FileName ? `N-400: ${n400FileName}` : 'N-400 Cargado ✓')
@@ -426,7 +426,7 @@ const AIInterviewN400ScreenModerno = () => {
               <MaterialCommunityIcons
                 name={message.role === 'officer' ? 'robot-happy' : 'account'}
                 size={16}
-                color={message.role === 'officer' ? '#7c3aed' : '#666'}
+                color={message.role === 'officer' ? '#1E40AF' : '#666'}
               />
               <Text style={styles.messageSender}>
                 {message.role === 'officer' ? 'Oficial' : 'Tú'}
@@ -442,13 +442,13 @@ const AIInterviewN400ScreenModerno = () => {
         ))}
         {isLoading && (
           <View style={styles.loadingBubble}>
-            <ActivityIndicator color="#7c3aed" />
+            <ActivityIndicator color="#1E40AF" />
             <Text style={styles.loadingText}>El oficial está pensando...</Text>
           </View>
         )}
         {isSpeaking && (
           <View style={styles.speakingIndicator}>
-            <MaterialCommunityIcons name="volume-high" size={16} color="#7c3aed" />
+            <MaterialCommunityIcons name="volume-high" size={16} color="#1E40AF" />
             <Text style={styles.speakingText}>El oficial está hablando...</Text>
           </View>
         )}
@@ -464,7 +464,7 @@ const AIInterviewN400ScreenModerno = () => {
             <MaterialCommunityIcons
               name={isListening ? 'microphone' : 'microphone-outline'}
               size={24}
-              color={isListening ? '#ef4444' : (!voiceSupported ? '#9ca3af' : '#7c3aed')}
+              color={isListening ? '#ef4444' : (!voiceSupported ? '#9ca3af' : '#1E40AF')}
             />
           </TouchableOpacity>
 
@@ -512,13 +512,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingHorizontal: 16,
     paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     padding: 28,
     alignItems: 'center',
     marginVertical: 20,
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -618,26 +618,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#7c3aed',
+    borderColor: '#1E40AF', // Azul profesional
     borderRadius: 12,
     paddingVertical: 12,
     marginBottom: 16,
   },
   n400ButtonText: {
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
   },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingVertical: 16,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -681,11 +681,11 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     backgroundColor: '#e0e7ff',
     borderLeftWidth: 4,
-    borderLeftColor: '#7c3aed',
+    borderLeftColor: '#1E40AF',
   },
   applicantBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
   },
   messageHeader: {
     flexDirection: 'row',
@@ -731,12 +731,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#7c3aed',
+    borderColor: '#1E40AF', // Azul profesional
   },
   speakingText: {
     marginLeft: 8,
     fontSize: 12,
-    color: '#7c3aed',
+    color: '#1E40AF', // Azul profesional
     fontWeight: '600',
   },
   inputArea: {
@@ -789,11 +789,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,

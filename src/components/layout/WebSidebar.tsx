@@ -25,31 +25,31 @@ const sidebarItems: SidebarItem[] = [
   {
     label: 'Tarjetas de Estudio',
     icon: '📚',
-    route: 'TarjetasDeEstudio',
+    route: 'Study' as any,
     gradient: ['#270483', '#8146cc'],
   },
   {
     label: 'Prueba Práctica',
     icon: '✍️',
-    route: 'PruebaPractica' as any,
+    route: 'Practice' as any,
     gradient: ['#470a56', '#ce32b1'],
   },
   {
     label: 'Vocabulario',
     icon: '📖',
-    route: 'Vocabulario',
+    route: 'Practice' as any,
     gradient: ['#270483', '#8146cc'],
   },
   {
     label: 'Entrevista AI',
     icon: '🤖',
-    route: 'EntrevistaAI',
+    route: 'Practice' as any,
     gradient: ['#470a56', '#ce32b1'],
   },
   {
     label: 'Examen',
     icon: '📝',
-    route: 'Examen',
+    route: 'Practice' as any,
     gradient: ['#1B5E20', '#4CAF50'],
   },
 ];
@@ -58,16 +58,24 @@ const WebSidebar: React.FC = () => {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute();
 
-  const handleNavigate = (routeName: keyof RootStackParamList) => {
-    if (routeName === 'PruebaPractica') {
-      navigation.navigate('PruebaPractica', {
-        mode: 'random' as PracticeMode,
-        category: 'all',
-        section: 'all',
-      });
-    } else if (routeName === 'Home') {
+  const handleNavigate = (routeName: keyof RootStackParamList, index: number) => {
+    if (routeName === 'Home') {
       navigation.navigate('Home');
+    } else if (routeName === 'Study') {
+      // Navegar a Study tab y luego a StudyHome
+      navigation.navigate('Study', { screen: 'StudyHome' });
+    } else if (routeName === 'Practice') {
+      // Navegar a Practice tab y luego a la pantalla correspondiente
+      const practiceRoutes: Record<number, string> = {
+        2: 'PruebaPracticaHome', // Prueba Práctica
+        3: 'VocabularioHome',     // Vocabulario
+        4: 'EntrevistaAIHome',    // Entrevista AI
+        5: 'ExamenHome',          // Examen
+      };
+      const targetScreen = practiceRoutes[index] || 'PruebaPracticaHome';
+      navigation.navigate('Practice', { screen: targetScreen });
     } else {
+      // Fallback para otras rutas
       (navigation as any).navigate(routeName);
     }
   };
@@ -88,13 +96,25 @@ const WebSidebar: React.FC = () => {
       {/* Navigation Items */}
       <View style={styles.navSection}>
         {sidebarItems.map((item, index) => {
-          const isActive = route.name === item.route || 
-            (item.route === 'Home' && route.name === 'Home');
+          // Determinar si el item está activo basado en la ruta actual
+          const isActive = 
+            (item.route === 'Home' && (route.name === 'Home' || route.name === 'AppTabs')) ||
+            (item.route === 'Study' && (route.name === 'StudyHome' || route.name === 'StudyCards' || route.name === 'Subcategorias' || route.name === 'StudyCardsByType')) ||
+            (item.route === 'Practice' && (
+              route.name === 'PruebaPracticaHome' ||
+              route.name === 'VocabularioHome' ||
+              route.name === 'EntrevistaAIHome' ||
+              route.name === 'ExamenHome' ||
+              route.name === 'CategoryPracticeHome' ||
+              route.name === 'QuestionTypePracticeHome' ||
+              route.name === 'Random20PracticeHome' ||
+              route.name === 'PhotoMemoryHome'
+            ));
           
           return (
             <TouchableOpacity
               key={index}
-              onPress={() => handleNavigate(item.route)}
+              onPress={() => handleNavigate(item.route, index)}
               style={styles.navItem}
             >
               {isActive ? (

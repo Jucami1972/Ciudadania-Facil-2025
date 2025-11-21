@@ -1,21 +1,21 @@
 export const homeGradients = {
-  study: ['#270483', '#8146cc'] as const,
-  practice: ['#470a56', '#ce32b1'] as const,
-  exam: ['#1B5E20', '#4CAF50'] as const,
+  study: ['#1E40AF', '#3B82F6'] as const, // Azul profesional
+  practice: ['#1E3A8A', '#2563EB'] as const, // Azul más oscuro
+  exam: ['#1B5E20', '#4CAF50'] as const, // Verde (mantener para diferenciar)
 } as const;
 
 export const sectionGradients = {
-  GobiernoAmericano: ['#9057e3', '#5e13b3'] as const,
-  HistoriaAmericana: ['#a51890', '#6c1e74'] as const,
-  EducacionCivica: ['#9057e3', '#5e13b3'] as const,
+  GobiernoAmericano: ['#1E40AF', '#3B82F6'] as const, // Azul profesional
+  HistoriaAmericana: ['#1E3A8A', '#2563EB'] as const, // Azul oscuro
+  EducacionCivica: ['#1E40AF', '#60A5FA'] as const, // Azul con acento claro
 } as const;
 
 export const colors = {
   primary: {
-    main: '#5637A4',
-    light: '#7247C4',
-    dark: '#422980',
-    gradient: ['#5637A4', '#9747FF'] as const,
+    main: '#1E40AF', // Azul 800 - Profesional y confiable
+    light: '#3B82F6', // Azul 500 - Más claro para acentos
+    dark: '#1E3A8A', // Azul 900 - Más oscuro para profundidad
+    gradient: ['#1E40AF', '#3B82F6'] as const, // Gradiente profesional
   },
   secondary: {
     yellow: '#FFCB1F',

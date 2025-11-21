@@ -303,7 +303,7 @@ const StudyCardsByTypeScreen = () => {
           <MaterialCommunityIcons 
             name="chevron-left" 
             size={20} 
-            color={currentIndex === 0 ? '#d1d5db' : '#7C4DFF'} 
+            color={currentIndex === 0 ? '#d1d5db' : '#1E40AF'} // Azul profesional 
           />
         </TouchableOpacity>
 
@@ -315,7 +315,7 @@ const StudyCardsByTypeScreen = () => {
           <MaterialCommunityIcons 
             name={isPlaying ? 'stop' : 'play'} 
             size={20} 
-            color="#7C4DFF" 
+            color="#1E40AF" // Azul profesional 
           />
         </TouchableOpacity>
 
@@ -327,7 +327,7 @@ const StudyCardsByTypeScreen = () => {
           <MaterialCommunityIcons 
             name="chevron-right" 
             size={20} 
-            color={currentIndex === filteredQuestions.length - 1 ? '#d1d5db' : '#7C4DFF'} 
+            color={currentIndex === filteredQuestions.length - 1 ? '#d1d5db' : '#1E40AF'} // Azul profesional 
           />
         </TouchableOpacity>
       </View>
@@ -341,7 +341,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     borderRadius: 2,
   },
   cardContainer: {
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#7C4DFF',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

@@ -1,5 +1,5 @@
 // src/components/Onboarding.tsx
-// Versión sin Reanimated - usando solo Animated nativo de React Native
+// Versión PREMIUM con textos optimizados para conversión
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -45,6 +45,7 @@ interface OnboardingStep {
   icon: string;
   title: string;
   description: string;
+  features?: string[];
   color: string;
 }
 
@@ -53,28 +54,50 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'welcome',
     icon: 'book-education',
     title: 'Bienvenido a Ciudadanía Fácil',
-    description: 'Prepárate para el Examen de Ciudadanía de EE.UU. 2020-2025 de forma interactiva.',
+    description: 'La app #1 para aprobar el examen de ciudadanía estadounidense. Domina las 128 preguntas oficiales con más de 10 formas diferentes de estudiar.',
+    features: [
+      '✨ 10+ formas diferentes de practicar',
+      '✅ 128 preguntas oficiales',
+      '🎯 Nueva edición 2025',
+    ],
     color: '#1E40AF',
   },
   {
-    id: 'study',
-    icon: 'cards',
-    title: 'Tarjetas de Estudio',
-    description: 'Estudia con tarjetas interactivas que puedes voltear. Escucha la pronunciación en inglés y español para cada pregunta.',
+    id: 'smart-study',
+    icon: 'brain',
+    title: 'Aprende de Forma Inteligente',
+    description: 'Sistema de repetición espaciada que se adapta a tu ritmo. Tarjetas bilingües con audio profesional en inglés para practicar pronunciación.',
+    features: [
+      '🎯 Repetición espaciada inteligente',
+      '🔊 Audio profesional en inglés',
+      '📚 Tarjetas en inglés y español',
+    ],
     color: '#1E40AF',
   },
   {
-    id: 'practice',
-    icon: 'pencil-box',
-    title: 'Practica y Aprende',
-    description: 'Pon a prueba tus conocimientos con diferentes modos de práctica: por categoría, aleatorio, o enfocado en tus errores.',
+    id: 'practice-modes',
+    icon: 'trophy',
+    title: '10+ Modos de Práctica Diferentes',
+    description: 'Desde exámenes simulados hasta práctica visual con memoria fotográfica. Practica como quieras, cuando quieras.',
+    features: [
+      '🎲 Exámenes aleatorios de 20',
+      '📸 Memoria fotográfica visual',
+      '🎯 Práctica enfocada en errores',
+      '📝 Práctica por tipo de pregunta',
+    ],
     color: '#10B981',
   },
   {
-    id: 'progress',
-    icon: 'chart-line',
-    title: 'Rastrea tu Progreso',
-    description: 'Ve cuánto has avanzado, mantén tu racha de estudio y alcanza tus metas diarias. Cada día te acerca más a tu objetivo.',
+    id: 'achieve-goals',
+    icon: 'star',
+    title: 'Mantén tu Motivación',
+    description: 'Sistema de rachas diarias, badges desbloqueables y estadísticas detalladas. Ve tu progreso día a día hasta conseguir tu ciudadanía.',
+    features: [
+      '🔥 Sistema de rachas diarias',
+      '🏆 Badges y logros',
+      '📊 Estadísticas detalladas',
+      '✨ Progreso visual en tiempo real',
+    ],
     color: '#F59E0B',
   },
 ];
@@ -95,10 +118,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.5)).current;
 
+  // Animaciones para las features (aparecer una por una)
+  const feature1Opacity = useRef(new Animated.Value(0)).current;
+  const feature2Opacity = useRef(new Animated.Value(0)).current;
+  const feature3Opacity = useRef(new Animated.Value(0)).current;
+  const feature4Opacity = useRef(new Animated.Value(0)).current;
+
   // Efecto de animación
   useEffect(() => {
     if (currentStep === 0) {
-      // Animación de entrada elegante
+      // Animación del logo en pantalla de bienvenida
       Animated.parallel([
         Animated.timing(logoOpacity, {
           toValue: 1,
@@ -112,9 +141,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           tension: 40,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        // Después del logo, animar features
+        animateFeatures();
+      });
     } else {
-      // Reset suave
+      // Reset del logo
       Animated.parallel([
         Animated.timing(logoOpacity, {
           toValue: 0,
@@ -127,27 +159,66 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           useNativeDriver: true,
         }),
       ]).start();
+
+      // Animar features para otros pasos
+      animateFeatures();
     }
   }, [currentStep]);
 
+  const animateFeatures = () => {
+    // Reset features
+    feature1Opacity.setValue(0);
+    feature2Opacity.setValue(0);
+    feature3Opacity.setValue(0);
+    feature4Opacity.setValue(0);
+
+    // Animar features en secuencia
+    Animated.stagger(150, [
+      Animated.timing(feature1Opacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(feature2Opacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(feature3Opacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(feature4Opacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   const handleNext = () => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
-      // Animación de fade
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
+      const nextStep = currentStep + 1;
+      
+      // CRÍTICO: Primero hacer fade out, LUEGO cambiar el paso, LUEGO fade in
+      // Esto asegura que el contenido correcto se muestre
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        // Cambiar paso DESPUÉS del fade out completo
+        setCurrentStep(nextStep);
+        
+        // Reset fadeAnim a 0 y hacer fade in del nuevo paso
+        fadeAnim.setValue(0);
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 200,
           useNativeDriver: true,
-        }),
-      ]).start();
-
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
+        }).start();
+      });
 
       if (isWeb && scrollViewRef.current) {
         scrollViewRef.current.scrollTo({ x: nextStep * width, animated: true });
@@ -219,6 +290,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     transform: [{ scale: logoScale }],
   };
 
+  // Array de opacidades de features
+  const featureOpacities = [feature1Opacity, feature2Opacity, feature3Opacity, feature4Opacity];
+
   return (
     <View style={styles.container}>
       {/* Indicadores de progreso */}
@@ -249,16 +323,32 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
       >
-        {ONBOARDING_STEPS.map((step, index) => (
-          <Animated.View
-            key={step.id}
-            style={[
-              styles.stepContainer,
-              { opacity: index === currentStep ? fadeAnim : 0 },
-            ]}
-          >
-            <View style={styles.stepContent}>
-              {step.id === 'welcome' ? (
+        {ONBOARDING_STEPS.map((step, index) => {
+          // CRÍTICO: Determinar si este es el paso actual
+          const isCurrentStep = index === currentStep;
+          
+          return (
+            <Animated.View
+              key={step.id}
+              style={[
+                styles.stepContainer,
+                { 
+                  // Solo el paso actual es visible y tiene opacidad animada
+                  opacity: isCurrentStep ? fadeAnim : 0,
+                  // Ocultar completamente los pasos no actuales sin afectar layout
+                  position: isCurrentStep ? 'relative' : 'absolute',
+                  width: isCurrentStep ? width : 0,
+                  height: isCurrentStep ? 'auto' : 0,
+                  overflow: 'hidden',
+                },
+              ]}
+              pointerEvents={isCurrentStep ? 'auto' : 'none'}
+              collapsable={!isCurrentStep}
+            >
+              <View style={styles.stepContent}>
+                {/* CRÍTICO: Usar index === 0 en lugar de step.id === 'welcome' para garantizar que solo el primer paso muestre el logo */}
+                {index === 0 ? (
+                // Pantalla 1: Logo animado
                 <Animated.View
                   style={[
                     styles.iconContainer,
@@ -285,7 +375,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   </Animated.View>
                 </Animated.View>
               ) : (
-                <View style={[styles.iconContainer, { backgroundColor: `${step.color}15` }]}>
+                // Pantallas 2, 3, 4: Iconos con colores específicos
+                // CRÍTICO: Usar index para determinar el color de fondo en lugar de step.id
+                <View style={[
+                  styles.iconContainer, 
+                  { 
+                    backgroundColor: index === 1 ? '#1E40AF15' :  // smart-study
+                                   index === 2 ? '#10B98115' :  // practice-modes
+                                   index === 3 ? '#F59E0B15' :  // achieve-goals
+                                   '#F3F4F6'
+                  }
+                ]}>
                   <MaterialCommunityIcons
                     name={step.icon as any}
                     size={isWebDesktop ? 80 : 64}
@@ -296,9 +396,29 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
               <Text style={styles.stepTitle}>{step.title}</Text>
               <Text style={styles.stepDescription}>{step.description}</Text>
+
+              {/* Features animadas */}
+              {step.features && step.features.length > 0 && (
+                <View style={styles.featuresContainer}>
+                  {step.features.map((feature, featureIndex) => (
+                    <Animated.View
+                      key={featureIndex}
+                      style={[
+                        styles.featureItem,
+                        {
+                          opacity: featureOpacities[featureIndex] || 1,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.featureText}>{feature}</Text>
+                    </Animated.View>
+                  ))}
+                </View>
+              )}
             </View>
           </Animated.View>
-        ))}
+        );
+        })}
       </ScrollView>
 
       {/* Botones de navegación */}
@@ -323,7 +443,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             style={styles.nextButtonGradient}
           >
             <Text style={styles.nextButtonText}>
-              {isLastStep ? 'Comenzar' : 'Siguiente'}
+              {isLastStep ? '¡Comienza tu Preparación!' : 'Siguiente'}
             </Text>
             {!isLastStep && (
               <MaterialCommunityIcons name="chevron-right" size={20} color="#FFFFFF" />
@@ -415,19 +535,19 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24,
     overflow: 'hidden',
     ...Platform.select({
       web: {
         width: 160,
         height: 160,
         borderRadius: 80,
-        marginBottom: 48,
+        marginBottom: 32,
       },
     }),
   },
   logoContainer: {
-    backgroundColor: '#F3F4F6', // Gris claro suave
+    backgroundColor: '#F3F4F6',
   },
   logoSVG: {
     alignSelf: 'center',
@@ -449,11 +569,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     ...Platform.select({
       web: {
         fontSize: 36,
-        marginBottom: 24,
+        marginBottom: 16,
       },
     }),
   },
@@ -462,10 +582,38 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 24,
+    marginBottom: 20,
     ...Platform.select({
       web: {
         fontSize: 18,
         lineHeight: 28,
+        marginBottom: 24,
+      },
+    }),
+  },
+  featuresContainer: {
+    width: '100%',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: '#1E40AF',
+  },
+  featureText: {
+    fontSize: 15,
+    color: '#374151',
+    fontWeight: '500',
+    flex: 1,
+    ...Platform.select({
+      web: {
+        fontSize: 16,
       },
     }),
   },
@@ -509,10 +657,10 @@ const styles = StyleSheet.create({
     }),
   },
   nextButtonFinal: {
-    minWidth: 200,
+    minWidth: 220,
     ...Platform.select({
       web: {
-        minWidth: 240,
+        minWidth: 280,
       },
     }),
   },

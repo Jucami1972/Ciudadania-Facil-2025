@@ -98,7 +98,7 @@ const HeaderSection = ({ userName, onProfilePress }: { userName: string; onProfi
       <View style={styles.headerContent}>
         <View style={styles.headerTextContainer}>
           <View style={styles.headerTitleRow}>
-            <MaterialCommunityIcons name="book-education" size={20} color="#9B54FF" />
+            <MaterialCommunityIcons name="book-education" size={20} color="#1E40AF" />
             <Text style={styles.headerAppTitle}>Ciudadanía Fácil</Text>
           </View>
           <Text style={styles.headerGreeting}>
@@ -107,7 +107,7 @@ const HeaderSection = ({ userName, onProfilePress }: { userName: string; onProfi
           <Text style={styles.headerSubtext}>{message}</Text>
         </View>
         <TouchableOpacity style={styles.profileButton} onPress={onProfilePress}>
-          <MaterialCommunityIcons name="account-circle" size={32} color="#9B54FF" />
+          <MaterialCommunityIcons name="account-circle" size={32} color="#1E40AF" />
         </TouchableOpacity>
       </View>
     </View>
@@ -133,7 +133,7 @@ const ProgressCard = ({
   return (
     <View style={styles.progressCard}>
       <LinearGradient
-        colors={['#9B54FF', '#7C3AED']}
+        colors={['#3B82F6', '#1E40AF']} // Azul profesional
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.progressGradient}
@@ -181,7 +181,7 @@ const MainCTAButton = ({ onPress }: { onPress: () => void }) => {
   return (
     <TouchableOpacity style={styles.mainCTA} onPress={onPress} activeOpacity={0.9}>
       <LinearGradient
-        colors={['#9B54FF', '#7C3AED']}
+        colors={['#3B82F6', '#1E40AF']} // Azul profesional
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.mainCTAGradient}
@@ -253,7 +253,7 @@ const PracticeModuleCard = ({
   const statusConfig = {
     completed: { icon: 'check-circle', color: '#10B981', label: 'Completado' },
     'in-progress': { icon: 'clock-outline', color: '#F59E0B', label: 'En progreso' },
-    available: { icon: 'play-circle', color: '#9B54FF', label: 'Disponible' },
+    available: { icon: 'play-circle', color: '#1E40AF', label: 'Disponible' },
   };
 
   const config = statusConfig[module.status];
@@ -301,7 +301,7 @@ const BadgeCard = ({ badge, isWebDesktop }: { badge: Badge; isWebDesktop: boolea
         style={[
           styles.badgeIconContainer,
           {
-            backgroundColor: badge.unlocked ? '#9B54FF' : '#E5E7EB',
+            backgroundColor: badge.unlocked ? '#1E40AF' : '#E5E7EB',
           },
         ]}
       >
@@ -340,7 +340,7 @@ const AIAssistantFAB = ({ onPress }: { onPress: () => void }) => {
         activeOpacity={0.9}
       >
         <LinearGradient
-          colors={['#9B54FF', '#7C3AED']}
+          colors={['#3B82F6', '#1E40AF']} // Azul profesional
           style={styles.fabGradient}
         >
           <MaterialCommunityIcons name="robot" size={28} color="#FFFFFF" />
@@ -370,7 +370,7 @@ const AIAssistantFAB = ({ onPress }: { onPress: () => void }) => {
                     setShowMenu(false);
                   }}
                 >
-                  <MaterialCommunityIcons name={action.icon as any} size={20} color="#9B54FF" />
+                  <MaterialCommunityIcons name={action.icon as any} size={20} color="#1E40AF" />
                   <Text style={styles.fabMenuItemText}>{action.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -403,7 +403,7 @@ const HomeScreenRedesign = () => {
       title: 'Tarjetas de Estudio',
       description: 'Aprende las 128 preguntas',
       icon: 'cards',
-      color: '#9B54FF',
+      color: '#1E40AF', // Azul profesional
       progress: 5,
       route: 'StudyHome',
     },
@@ -613,7 +613,7 @@ const HomeScreenRedesign = () => {
         {/* Sección de Estudio */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="book-open-variant" size={20} color="#9B54FF" />
+            <MaterialCommunityIcons name="book-open-variant" size={20} color="#1E40AF" />
             <Text style={styles.sectionTitle}>Estudio</Text>
           </View>
           <View style={styles.grid}>
@@ -749,7 +749,7 @@ const styles = StyleSheet.create({
   headerAppTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#9B54FF',
+    color: '#1E40AF', // Azul profesional
     letterSpacing: 0.3,
     ...Platform.select({
       web: {
@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#9B54FF',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#9B54FF',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
       web: {
         transform: [{ translateY: -4 }],
         boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-        borderColor: '#9B54FF',
+        borderColor: '#1E40AF', // Azul profesional
       },
     }),
   },
@@ -1184,7 +1184,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    shadowColor: '#9B54FF',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

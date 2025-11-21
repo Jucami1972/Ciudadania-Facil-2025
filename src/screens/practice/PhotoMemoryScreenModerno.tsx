@@ -163,7 +163,7 @@ const PhotoMemoryScreenModerno = () => {
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         <View style={styles.introCard}>
           <View style={styles.iconWrapper}>
-            <MaterialCommunityIcons name="image-multiple" size={48} color="#7c3aed" />
+            <MaterialCommunityIcons name="image-multiple" size={48} color="#1E40AF" />
           </View>
           <Text style={styles.introTitle}>Aprende con Imágenes</Text>
           <Text style={styles.introSubtitle}>
@@ -250,13 +250,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingHorizontal: 16,
     paddingBottom: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -458,11 +458,11 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   modalButton: {
-    backgroundColor: '#7c3aed',
+    backgroundColor: '#1E40AF', // Azul profesional
     borderRadius: 30,
     paddingVertical: 12,
     alignItems: 'center',
-    shadowColor: '#7c3aed',
+    shadowColor: '#1E40AF', // Azul profesional
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,

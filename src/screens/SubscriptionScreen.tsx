@@ -304,7 +304,7 @@ const SubscriptionScreen = () => {
       {/* Planes */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color="#1E40AF" />
           <Text style={styles.loadingText}>Cargando planes...</Text>
         </View>
       ) : (
@@ -320,10 +320,10 @@ const SubscriptionScreen = () => {
         disabled={restoring}
       >
         {restoring ? (
-          <ActivityIndicator color="#7C3AED" />
+          <ActivityIndicator color="#1E40AF" />
         ) : (
           <>
-            <MaterialCommunityIcons name="refresh" size={20} color="#7C3AED" />
+            <MaterialCommunityIcons name="refresh" size={20} color="#1E40AF" />
             <Text style={styles.restoreButtonText}>Restaurar compras</Text>
           </>
         )}
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     minHeight: 500,
   },
   planCardPopular: {
-    borderColor: '#7C3AED',
+    borderColor: '#1E40AF', // Azul profesional
     borderWidth: 3,
     transform: [{ scale: 1.05 }],
     ...Platform.select({
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     top: -12,
     left: '50%',
     transform: [{ translateX: -60 }],
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingHorizontal: 16,
     paddingVertical: 4,
     borderRadius: 12,
@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   planPrice: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#7C3AED',
+    color: '#1E40AF', // Azul profesional
   },
   planPeriod: {
     fontSize: 16,
@@ -529,14 +529,14 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   purchaseButton: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#1E40AF', // Azul profesional
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   purchaseButtonPopular: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#1E40AF', // Azul profesional
   },
   purchaseButtonDisabled: {
     opacity: 0.6,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   restoreButtonText: {
-    color: '#7C3AED',
+    color: '#1E40AF', // Azul profesional
     fontSize: 15,
     fontWeight: '600',
   },

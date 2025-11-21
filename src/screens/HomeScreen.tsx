@@ -156,7 +156,7 @@ const HomeScreen = () => {
           onPress={() => navigation.navigate('QuestionTypePractice' as any)}
         >
           <LinearGradient
-            colors={['#7c3aed', '#a855f7']}
+            colors={['#1E40AF', '#3B82F6']} // Azul profesional
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.menuItem}
