@@ -72,41 +72,55 @@ const loadOnboarding = () => {
 const useOnboardingStatusSafe = () => {
   const [isCompleted, setIsCompleted] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
+  const checkOnboardingStatus = async () => {
     if (Platform.OS === 'web') {
       setIsCompleted(true);
       setIsLoading(false);
       return;
     }
 
-    const checkOnboardingStatus = async () => {
-      setIsLoading(true);
-      try {
-        // NO llamar useOnboardingStatusHook() aquí porque es un hook y no puede ser llamado condicionalmente
-        // Siempre usar AsyncStorage directamente para mantener consistencia
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        const completed = await AsyncStorage.getItem('@onboarding:completed');
-        // Si es null o undefined, significa que es cuenta nueva y debe mostrar onboarding (false)
-        // Si es 'true', está completado
-        // Si es 'false', no está completado
-        if (completed === null || completed === undefined) {
-          setIsCompleted(false); // Cuenta nueva, mostrar onboarding
-        } else {
-          setIsCompleted(completed === 'true');
-        }
-      } catch (error) {
-        console.warn('Error checking onboarding status:', error);
-        setIsCompleted(false); // En caso de error, mostrar onboarding para estar seguro
-      } finally {
-        setIsLoading(false);
+    setIsLoading(true);
+    try {
+      // NO llamar useOnboardingStatusHook() aquí porque es un hook y no puede ser llamado condicionalmente
+      // Siempre usar AsyncStorage directamente para mantener consistencia
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const completed = await AsyncStorage.getItem('@onboarding:completed');
+      // Si es null o undefined, significa que es cuenta nueva y debe mostrar onboarding (false)
+      // Si es 'true', está completado
+      // Si es 'false', no está completado
+      if (completed === null || completed === undefined) {
+        setIsCompleted(false); // Cuenta nueva, mostrar onboarding
+      } else {
+        setIsCompleted(completed === 'true');
       }
-    };
+    } catch (error) {
+      console.warn('Error checking onboarding status:', error);
+      setIsCompleted(false); // En caso de error, mostrar onboarding para estar seguro
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     checkOnboardingStatus();
-  }, []);
+  }, [refreshTrigger]);
 
-  return { isCompleted: isCompleted ?? false, isLoading };
+  // Función para forzar actualización (se expone para uso externo)
+  const refresh = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  // Retornar el estado del onboarding
+  // Si isCompleted es null, aún está cargando (isLoading debería ser true)
+  // Si isCompleted es false, no está completado (cuenta nueva o no completado) - DEBE mostrar onboarding
+  // Si isCompleted es true, está completado - NO debe mostrar onboarding
+  return { 
+    isCompleted: isCompleted ?? false, // Si es null, retornar false (cuenta nueva)
+    isLoading, 
+    refresh 
+  };
 };
 
 // Pantallas de autenticación
@@ -193,6 +207,7 @@ const StudyStack = () => (
 
 const PracticeStack = () => (
   <PracticeStackNavigator.Navigator
+    initialRouteName="PruebaPracticaHome"
     screenOptions={{
       headerShown: false,
       animation: 'slide_from_right',
@@ -295,21 +310,30 @@ export default function AppNavigator() {
 
   // IMPORTANTE: Llamar useOnboardingStatusSafe ANTES de cualquier return condicional
   // para cumplir con las reglas de los hooks de React
-  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading } = useOnboardingStatusSafe();
+  const { isCompleted: onboardingCompleted, isLoading: onboardingLoading, refresh: refreshOnboardingStatus } = useOnboardingStatusSafe();
 
   // Cargar Onboarding de forma lazy solo cuando hay usuario autenticado
+  // IMPORTANTE: Cargar el módulo tan pronto como haya usuario, incluso si aún está cargando
+  // para que esté disponible cuando se necesite
   useEffect(() => {
     if (Platform.OS === 'web') {
       // No cargar Onboarding en web
       return;
     }
     
-    // Cargar Onboarding cuando hay usuario autenticado y no está cargando
-    if (!loading && user && !onboardingModule) {
+    // Cargar Onboarding cuando hay usuario autenticado (incluso si aún está verificando)
+    // Esto asegura que el módulo esté disponible cuando se determine si debe mostrarse
+    if (user && !onboardingModule) {
       const module = loadOnboarding();
       setOnboardingModule(module);
+      if (__DEV__) {
+        console.log('📦 Módulo de onboarding cargado:', {
+          hasOnboarding: !!module.Onboarding,
+          hasHook: !!module.useOnboardingStatus,
+        });
+      }
     }
-  }, [loading, user, onboardingModule]);
+  }, [user, onboardingModule]);
 
   // Trackear sesión al iniciar
   useEffect(() => {
@@ -333,8 +357,17 @@ export default function AppNavigator() {
   };
 
   const handleOnboardingComplete = () => {
-    // El onboarding se ocultará automáticamente porque onboardingCompleted cambiará
-    // Este callback solo confirma que se completó
+    // Forzar actualización del estado del onboarding
+    // Esto asegura que se re-lea AsyncStorage y se actualice el estado inmediatamente
+    if (refreshOnboardingStatus) {
+      refreshOnboardingStatus();
+    }
+    // Pequeño delay para asegurar que AsyncStorage se haya guardado
+    setTimeout(() => {
+      if (refreshOnboardingStatus) {
+        refreshOnboardingStatus();
+      }
+    }, 100);
   };
 
   // Manejar cuando el splash termina
@@ -358,6 +391,15 @@ export default function AppNavigator() {
   // Determinar qué mostrar ANTES de cualquier return
   // Esta lógica debe ser calculada después de todos los hooks pero antes de los returns
   const isInitializing = loading || onboardingLoading;
+  // Mostrar onboarding si:
+  // 1. No está inicializando (terminó de cargar auth y onboarding status)
+  // 2. No está mostrando splash
+  // 3. Hay usuario autenticado
+  // 4. El módulo de onboarding está cargado
+  // 5. El onboarding NO está completado (false significa no completado - cuenta nueva o no completado)
+  // 6. No es web
+  // IMPORTANTE: No verificar null aquí porque isLoading ya maneja eso
+  // Si isLoading es false y onboardingCompleted es false, significa cuenta nueva y debe mostrar onboarding
   const shouldShowOnboarding = !isInitializing && 
                                 !showSplash &&
                                 user && 

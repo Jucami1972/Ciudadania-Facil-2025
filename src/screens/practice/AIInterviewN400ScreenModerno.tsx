@@ -1,6 +1,6 @@
 // src/screens/practice/AIInterviewN400ScreenModerno.tsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -51,7 +51,7 @@ const AIInterviewN400ScreenModerno = () => {
   const scrollViewRef = useRef<ScrollView>(null);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Hook de reconocimiento de voz
+  // Hook de reconocimiento de voz - siempre se llama (requisito de React)
   const {
     isRecording: isListening,
     isSupported: voiceSupported,
@@ -176,27 +176,230 @@ const AIInterviewN400ScreenModerno = () => {
     }
   };
 
+  // Función para convertir números a palabras en inglés (para mejor pronunciación TTS)
+  const numberToWords = (num: number): string => {
+    if (num === 0) return 'zero';
+    if (num === 1) return 'one';
+    if (num === 2) return 'two';
+    if (num === 3) return 'three';
+    if (num === 4) return 'four';
+    if (num === 5) return 'five';
+    if (num === 6) return 'six';
+    if (num === 7) return 'seven';
+    if (num === 8) return 'eight';
+    if (num === 9) return 'nine';
+    if (num === 10) return 'ten';
+    if (num === 11) return 'eleven';
+    if (num === 12) return 'twelve';
+    if (num === 13) return 'thirteen';
+    if (num === 14) return 'fourteen';
+    if (num === 15) return 'fifteen';
+    if (num === 16) return 'sixteen';
+    if (num === 17) return 'seventeen';
+    if (num === 18) return 'eighteen';
+    if (num === 19) return 'nineteen';
+    if (num === 20) return 'twenty';
+    if (num < 30) return `twenty-${numberToWords(num - 20)}`;
+    if (num < 40) return `thirty-${numberToWords(num - 30)}`;
+    if (num < 100) return `${numberToWords(Math.floor(num / 10) * 10)}-${numberToWords(num % 10)}`;
+    if (num === 100) return 'one hundred';
+    if (num === 200) return 'two hundred';
+    if (num === 300) return 'three hundred';
+    if (num === 400) return 'four hundred';
+    if (num < 1000) {
+      const hundreds = Math.floor(num / 100);
+      const remainder = num % 100;
+      return remainder === 0 
+        ? `${numberToWords(hundreds)} hundred`
+        : `${numberToWords(hundreds)} hundred ${numberToWords(remainder)}`;
+    }
+    // Para números más grandes, devolver el número original
+    return num.toString();
+  };
+
+  // Función para preparar el texto para TTS en inglés correcto
+  // Convierte números y términos técnicos a su pronunciación en inglés
+  const prepareTextForTTS = (text: string): string => {
+    let processedText = text;
+    
+    // CRÍTICO: Reemplazar "N-400" por "N four hundred" para pronunciación correcta
+    processedText = processedText.replace(/\bN-400\b/gi, 'N four hundred');
+    processedText = processedText.replace(/\bN 400\b/gi, 'N four hundred');
+    
+    // Convertir números de 3 dígitos (400, 128, etc.) a palabras
+    processedText = processedText.replace(/\b400\b/g, 'four hundred');
+    processedText = processedText.replace(/\b128\b/g, 'one hundred twenty-eight');
+    processedText = processedText.replace(/\b200\b/g, 'two hundred');
+    processedText = processedText.replace(/\b300\b/g, 'three hundred');
+    
+    // Convertir números de 2 dígitos comunes
+    processedText = processedText.replace(/\b10\b/g, 'ten');
+    processedText = processedText.replace(/\b20\b/g, 'twenty');
+    processedText = processedText.replace(/\b30\b/g, 'thirty');
+    processedText = processedText.replace(/\b40\b/g, 'forty');
+    processedText = processedText.replace(/\b50\b/g, 'fifty');
+    processedText = processedText.replace(/\b60\b/g, 'sixty');
+    processedText = processedText.replace(/\b70\b/g, 'seventy');
+    processedText = processedText.replace(/\b80\b/g, 'eighty');
+    processedText = processedText.replace(/\b90\b/g, 'ninety');
+    
+    // Convertir números de 1 dígito (solo si están aislados, no en medio de palabras)
+    processedText = processedText.replace(/\b0\b/g, 'zero');
+    processedText = processedText.replace(/\b1\b/g, 'one');
+    processedText = processedText.replace(/\b2\b/g, 'two');
+    processedText = processedText.replace(/\b3\b/g, 'three');
+    processedText = processedText.replace(/\b4\b/g, 'four');
+    processedText = processedText.replace(/\b5\b/g, 'five');
+    processedText = processedText.replace(/\b6\b/g, 'six');
+    processedText = processedText.replace(/\b7\b/g, 'seven');
+    processedText = processedText.replace(/\b8\b/g, 'eight');
+    processedText = processedText.replace(/\b9\b/g, 'nine');
+    
+    // Remover comillas que pueden causar problemas en TTS
+    processedText = processedText.replace(/['"]/g, '');
+    
+    // Normalizar espacios múltiples y limpiar
+    processedText = processedText.replace(/\s+/g, ' ').trim();
+    
+    return processedText;
+  };
+
+  // Función para verificar si TTS está disponible
+  const checkTTSAvailability = async (): Promise<boolean> => {
+    try {
+      // Intentar verificar si Speech está disponible
+      if (!Speech || typeof Speech.speak !== 'function') {
+        if (__DEV__) {
+          console.warn('⚠️ expo-speech no está disponible');
+        }
+        return false;
+      }
+      
+      // En Expo Go, verificar si funciona haciendo una prueba silenciosa
+      if (Platform.OS !== 'web') {
+        try {
+          const Constants = require('expo-constants');
+          const constants = Constants?.default || Constants;
+          const isExpoGo = constants?.executionEnvironment === 'storeClient' || constants?.appOwnership === 'expo';
+          
+          if (isExpoGo) {
+            // En Expo Go, expo-speech puede no funcionar
+            if (__DEV__) {
+              console.warn('⚠️ expo-speech puede tener limitaciones en Expo Go');
+            }
+            // Aún así intentamos usarlo, puede funcionar en algunos casos
+            return true;
+          }
+        } catch (e) {
+          // Si no podemos detectar, asumir que funciona
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('⚠️ Error verificando TTS:', error);
+      }
+      return false;
+    }
+  };
+
   // Función para hablar un mensaje
   const speakMessage = async (text: string): Promise<void> => {
+    // Verificar si TTS está disponible
+    const ttsAvailable = await checkTTSAvailability();
+    if (!ttsAvailable) {
+      if (__DEV__) {
+        console.warn('⚠️ TTS no disponible, el mensaje no se hablará');
+      }
+      return;
+    }
+
+    // Detener cualquier speech previo
+    try {
+      Speech.stop();
+      // Dar un pequeño delay para asegurar que se detuvo
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      // Ignorar errores al detener
+    }
+
+    // Preparar el texto para TTS correcto
+    const processedText = prepareTextForTTS(text);
+    
+    if (!processedText || processedText.trim().length === 0) {
+      if (__DEV__) {
+        console.warn('⚠️ Texto vacío para TTS');
+      }
+      return;
+    }
+
     return new Promise((resolve) => {
       setIsSpeaking(true);
-      Speech.speak(text, {
-        language: 'en-US',
-        rate: 0.85,
-        pitch: 1.0,
-        onDone: () => {
-          setIsSpeaking(false);
-          resolve();
-        },
-        onStopped: () => {
-          setIsSpeaking(false);
-          resolve();
-        },
-        onError: () => {
-          setIsSpeaking(false);
-          resolve();
-        },
-      });
+      
+      // Timeout de seguridad: si después de 10 segundos no se ha completado, resolver
+      const timeoutId = setTimeout(() => {
+        if (__DEV__) {
+          console.warn('⚠️ TTS timeout, forzando resolución');
+        }
+        setIsSpeaking(false);
+        resolve();
+      }, 10000);
+      
+      try {
+        // Configuración de TTS optimizada para inglés correcto
+        const speechOptions: any = {
+          language: 'en-US', // Idioma inglés americano - CRÍTICO para pronunciación correcta
+          rate: 0.85, // Velocidad normal (0.0 a 1.0)
+          pitch: 1.0, // Tono normal (0.5 a 2.0)
+          volume: 1.0, // Volumen máximo
+          onStart: () => {
+            clearTimeout(timeoutId);
+            if (__DEV__) {
+              console.log('🔊 TTS iniciado en inglés:', processedText.substring(0, 50));
+            }
+          },
+          onDone: () => {
+            clearTimeout(timeoutId);
+            setIsSpeaking(false);
+            resolve();
+          },
+          onStopped: () => {
+            clearTimeout(timeoutId);
+            setIsSpeaking(false);
+            resolve();
+          },
+          onError: (error: any) => {
+            clearTimeout(timeoutId);
+            console.error('❌ Error en TTS:', error);
+            if (__DEV__) {
+              console.warn('💡 El TTS puede no estar disponible en Expo Go. Considera usar un development build.');
+            }
+            setIsSpeaking(false);
+            resolve();
+          },
+        };
+
+        // Solo agregar quality si está disponible (puede no estar en todas las plataformas)
+        try {
+          if (Speech.VoiceQuality && Speech.VoiceQuality.Enhanced) {
+            speechOptions.quality = Speech.VoiceQuality.Enhanced;
+          }
+        } catch (e) {
+          // Quality puede no estar disponible en todas las plataformas
+        }
+
+        // Intentar hablar
+        Speech.speak(processedText, speechOptions);
+      } catch (error: any) {
+        clearTimeout(timeoutId);
+        console.error('❌ Error iniciando TTS:', error?.message || error);
+        if (__DEV__) {
+          console.warn('💡 expo-speech puede no estar disponible en Expo Go. Requiere un development build para funcionar correctamente.');
+        }
+        setIsSpeaking(false);
+        resolve();
+      }
     });
   };
 

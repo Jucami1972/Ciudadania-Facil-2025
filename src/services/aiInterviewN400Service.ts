@@ -72,6 +72,29 @@ interface InterviewMessage {
   content: string;
   timestamp: Date;
   shouldSpeak?: boolean; // Indica si el mensaje debe hablarse automáticamente
+  fluencyEvaluation?: FluencyEvaluation; // Evaluación de fluidez (opcional)
+}
+
+// Tipos de estado de la entrevista
+export type InterviewStage = 
+  | 'VERIFICACION_IDENTIDAD' 
+  | 'REVISION_N400' 
+  | 'PREGUNTA_CIVICA' 
+  | 'PRUEBA_LECTURA'
+  | 'PRUEBA_ESCRITURA'
+  | 'CIERRE';
+
+// Evaluación de fluidez del usuario
+export interface FluencyEvaluation {
+  puntaje_pronunciacion_y_gramatica: string; // Formato: "X/10"
+  mejora_sugerida: string; // Sugerencia en español
+}
+
+// Respuesta JSON estructurada del oficial
+export interface OfficerResponseJSON {
+  respuesta_oficial: string; // La pregunta/declaración del oficial (en inglés)
+  evaluacion_fluidez: FluencyEvaluation; // Evaluación de la respuesta del usuario
+  estado_entrevista: InterviewStage; // Estado actual de la entrevista
 }
 
 interface InterviewSession {
@@ -100,7 +123,17 @@ class AIInterviewN400Service {
    */
   private isOpenAIAvailable(): boolean {
     const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-    return !!apiKey && apiKey.trim().length > 0;
+    const isAvailable = !!apiKey && apiKey.trim().length > 0;
+    
+    if (__DEV__) {
+      if (isAvailable) {
+        console.log('✅ OpenAI API Key detectada');
+      } else {
+        console.warn('⚠️ OpenAI API Key no encontrada. Usando respuestas predefinidas.');
+      }
+    }
+    
+    return isAvailable;
   }
 
   /**
@@ -124,19 +157,45 @@ class AIInterviewN400Service {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: messages,
-          temperature: 0.7,
-          max_tokens: 300,
+          temperature: 0.3, // Lower temperature for more consistent, professional responses
+          max_tokens: 250, // Limit length to ensure concise, clear speech
+          // 🔑 CRÍTICO: Forzar respuesta en formato JSON
+          response_format: { type: "json_object" }
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error('Error en OpenAI API:', response.status, errorData);
+        const errorCode = errorData?.error?.code;
+        const errorType = errorData?.error?.type;
+        const isQuotaError = response.status === 429 && (errorCode === 'insufficient_quota' || errorType === 'insufficient_quota');
+        
+        // Manejar error de cuota insuficiente específicamente
+        if (isQuotaError) {
+          // Solo mostrar un mensaje informativo claro, sin detalles de error innecesarios
+          if (__DEV__) {
+            console.warn('⚠️ OpenAI API: Cuota insuficiente. Se usará respuesta predefinida automáticamente.');
+            console.warn('💡 Para resolver: Verifica tu plan y facturación en https://platform.openai.com/account/billing');
+          }
+          // Retornar null para activar fallback predefinido (sin log de error detallado)
+          return null;
+        }
+        
+        // Para otros errores (no cuota), mostrar log completo para debugging
+        console.error('❌ Error en OpenAI API:', response.status, errorData);
+        if (__DEV__) {
+          console.error('Error details:', JSON.stringify(errorData, null, 2));
+        }
         return null;
       }
 
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
+      
+      if (__DEV__ && content) {
+        console.log('✅ Respuesta de OpenAI recibida:', content.substring(0, 100) + '...');
+      }
+      
       return content ? content.trim() : null;
     } catch (error) {
       console.error('Error llamando a OpenAI API:', error);
@@ -166,18 +225,18 @@ class AIInterviewN400Service {
     this.sessions.set(sessionId, session);
 
     // Generar saludo inicial del oficial (se habla automáticamente)
-    const greeting = await this.generateOfficerMessage(
+    const greetingResponse = await this.generateOfficerMessage(
       sessionId,
-      `You are a professional and friendly USCIS immigration officer. You must greet ${context.applicantName} cordially and begin the citizenship interview. 
-      Be professional but friendly. Briefly explain the interview process.
-      Respond in English clearly and concisely.`
+      `You are a professional and friendly USCIS immigration officer conducting a naturalization interview. You must greet ${context.applicantName} cordially and begin the citizenship interview. Be professional but friendly. Briefly explain the interview process in clear, well-structured sentences.`,
+      undefined
     );
 
     const greetingMessage: InterviewMessage = {
       role: 'officer',
-      content: greeting,
+      content: greetingResponse.respuesta_oficial,
       timestamp: new Date(),
       shouldSpeak: true, // SIEMPRE se habla automáticamente
+      fluencyEvaluation: greetingResponse.evaluacion_fluidez,
     };
 
     session.messages.push(greetingMessage);
@@ -291,7 +350,7 @@ class AIInterviewN400Service {
   async processApplicantResponse(
     sessionId: string,
     applicantResponse: string
-  ): Promise<{ officerResponse: string; isCorrect?: boolean; feedback?: string; shouldSpeak?: boolean }> {
+  ): Promise<{ officerResponse: string; isCorrect?: boolean; feedback?: string; shouldSpeak?: boolean; fluencyEvaluation?: FluencyEvaluation }> {
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error('Sesión no encontrada');
@@ -307,42 +366,78 @@ class AIInterviewN400Service {
     let officerResponse = '';
     let isCorrect: boolean | undefined = undefined;
     let feedback: string | undefined = undefined;
+    let fluencyEvaluation: FluencyEvaluation | undefined = undefined;
 
     // Manejar diferentes etapas de la entrevista
     switch (session.stage) {
-      case 'identity':
-        officerResponse = await this.generateIdentityFollowUp(sessionId, applicantResponse);
+      case 'identity': {
+        const jsonResponse = await this.generateOfficerMessage(
+          sessionId,
+          `You are a professional USCIS immigration officer. Confirm that the information is correct and proceed to the next stage. If there is N-400 form data, mention that you will review the form.`,
+          applicantResponse
+        );
+        officerResponse = jsonResponse.respuesta_oficial;
+        fluencyEvaluation = jsonResponse.evaluacion_fluidez;
         break;
-      case 'n400_review':
-        officerResponse = await this.generateN400Question(sessionId, applicantResponse);
+      }
+      case 'n400_review': {
+        const jsonResponse = await this.generateOfficerMessage(
+          sessionId,
+          `You are a professional USCIS immigration officer conducting a naturalization interview. Ask the next question about the N-400 form.`,
+          applicantResponse
+        );
+        officerResponse = jsonResponse.respuesta_oficial;
+        fluencyEvaluation = jsonResponse.evaluacion_fluidez;
         session.n400QuestionsAsked++;
         break;
-      case 'oath':
+      }
+      case 'oath': {
         // El juramento se confirma, luego pasa automáticamente a civismo
-        officerResponse = await this.generateOathConfirmation(sessionId, applicantResponse);
+        const jsonResponse = await this.generateOfficerMessage(
+          sessionId,
+          `You are a professional USCIS immigration officer. The applicant has taken or confirmed the oath of allegiance. Thank them for their commitment and proceed to the civics questions section.`,
+          applicantResponse
+        );
+        officerResponse = jsonResponse.respuesta_oficial;
+        fluencyEvaluation = jsonResponse.evaluacion_fluidez;
         break;
-      case 'civics':
+      }
+      case 'civics': {
         const civicsResult = await this.generateNextCivicsQuestion(sessionId, applicantResponse);
         officerResponse = civicsResult.question;
         isCorrect = civicsResult.isCorrect;
         feedback = civicsResult.feedback;
+        fluencyEvaluation = civicsResult.fluencyEvaluation;
         session.civicsQuestionsAsked++;
         break;
-      case 'reading':
-        const readingResult = await this.generateReadingResult(sessionId, applicantResponse);
-        officerResponse = readingResult.response;
-        isCorrect = readingResult.isCorrect;
+      }
+      case 'reading': {
+        const jsonResponse = await this.generateOfficerMessage(
+          sessionId,
+          `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant read: "${applicantResponse}". Evaluate if the reading was correct. If correct, confirm and proceed to the writing test.`,
+          applicantResponse
+        );
+        officerResponse = jsonResponse.respuesta_oficial;
+        fluencyEvaluation = jsonResponse.evaluacion_fluidez;
+        isCorrect = applicantResponse.length > 10; // Evaluación simple
         break;
-      case 'writing':
-        const writingResult = await this.generateWritingResult(sessionId, applicantResponse);
-        officerResponse = writingResult.response;
-        isCorrect = writingResult.isCorrect;
+      }
+      case 'writing': {
+        const jsonResponse = await this.generateOfficerMessage(
+          sessionId,
+          `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant wrote: "${applicantResponse}". Evaluate if the writing was correct. If correct, confirm and proceed to close the interview.`,
+          applicantResponse
+        );
+        officerResponse = jsonResponse.respuesta_oficial;
+        fluencyEvaluation = jsonResponse.evaluacion_fluidez;
+        isCorrect = applicantResponse.length > 10; // Evaluación simple
         break;
+      }
       case 'closing':
-        officerResponse = 'La entrevista ha finalizado. Gracias por su tiempo.';
+        officerResponse = 'The interview has concluded. Thank you for your time.';
         break;
       default:
-        officerResponse = 'Gracias por su respuesta.';
+        officerResponse = 'Thank you for your response.';
     }
 
     const message: InterviewMessage = {
@@ -350,11 +445,12 @@ class AIInterviewN400Service {
       content: officerResponse,
       timestamp: new Date(),
       shouldSpeak: true, // Todos los mensajes del oficial se hablan
+      fluencyEvaluation: fluencyEvaluation,
     };
 
     session.messages.push(message);
 
-    return { officerResponse, isCorrect, feedback, shouldSpeak: true };
+    return { officerResponse, isCorrect, feedback, shouldSpeak: true, fluencyEvaluation };
   }
 
   /**
@@ -393,10 +489,10 @@ class AIInterviewN400Service {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `You are a USCIS immigration officer. You must verify the identity of applicant ${session.context.applicantName}.
-    Ask them to confirm their full name and date of birth. Be professional and friendly. Respond in English.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You must verify the identity of applicant ${session.context.applicantName}. Ask them to confirm their full name and date of birth. Be professional and friendly.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return response.respuesta_oficial;
   }
 
   /**
@@ -406,11 +502,10 @@ class AIInterviewN400Service {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `The applicant responded about their identity: "${response}".
-    Confirm that the information is correct and proceed to the next stage. If there is N-400 form data, mention that you will review the form.
-    Respond in English in a professional and concise manner.`;
+    const prompt = `You are a professional USCIS immigration officer. Confirm that the information is correct and proceed to the next stage. If there is N-400 form data, mention that you will review the form.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, response);
+    return jsonResponse.respuesta_oficial;
   }
 
   /**
@@ -425,12 +520,10 @@ class AIInterviewN400Service {
       return 'Continuemos con la entrevista.';
     }
 
-    const prompt = `You are a USCIS immigration officer. You have the N-400 form from applicant ${session.context.applicantName}.
-    Now you must ask questions about the form data to verify that the information is correct and up to date.
-    Start with a question about basic personal information (address, work, family, etc.).
-    Be professional and friendly. Respond in English.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You have the N-400 form from applicant ${session.context.applicantName}. Now you must ask questions about the form data to verify that the information is correct and up to date. Start with a question about basic personal information (address, work, family, etc.). Be professional and friendly.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return response.respuesta_oficial;
   }
 
   /**
@@ -442,27 +535,26 @@ class AIInterviewN400Service {
 
     const n400Data = session.context.n400FormData;
     if (!n400Data) {
-      return await this.generateFirstCivicsQuestion(sessionId);
+      const civicsResponse = await this.generateFirstCivicsQuestion(sessionId);
+      return civicsResponse;
     }
 
     const questions = [
-      { field: 'currentAddress', question: '¿Puede confirmar su dirección actual?' },
-      { field: 'currentOccupation', question: '¿Cuál es su ocupación actual?' },
-      { field: 'maritalStatus', question: '¿Cuál es su estado civil?' },
-      { field: 'children', question: '¿Tiene hijos? Si es así, ¿cuántos?' },
-      { field: 'tripsOutsideUS', question: '¿Ha viajado fuera de Estados Unidos desde que presentó su solicitud?' },
-      { field: 'taxReturns', question: '¿Ha presentado sus declaraciones de impuestos?' },
+      { field: 'currentAddress', question: 'Can you confirm your current address?' },
+      { field: 'currentOccupation', question: 'What is your current occupation?' },
+      { field: 'maritalStatus', question: 'What is your marital status?' },
+      { field: 'children', question: 'Do you have children? If so, how many?' },
+      { field: 'tripsOutsideUS', question: 'Have you traveled outside the United States since you filed your application?' },
+      { field: 'taxReturns', question: 'Have you filed your tax returns?' },
     ];
 
     const questionIndex = session.n400QuestionsAsked % questions.length;
     const selectedQuestion = questions[questionIndex];
 
-    const prompt = `You are a USCIS immigration officer. The applicant responded: "${previousResponse}".
-    Now ask the next question about the N-400 form: "${selectedQuestion.question}"
-    If you have form data, verify that the response matches.
-    Respond in English in a professional manner.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Now ask the next question about the N-400 form: "${selectedQuestion.question}". If you have form data, verify that the response matches.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, previousResponse);
+    return jsonResponse.respuesta_oficial;
   }
 
   /**
@@ -471,24 +563,20 @@ class AIInterviewN400Service {
   private async generateOathPrompt(sessionId: string): Promise<string> {
     const oathText = `"I hereby declare, on oath, that I absolutely and entirely renounce and abjure all allegiance and fidelity to any foreign prince, potentate, state, or sovereignty, of whom or which I have heretofore been a subject or citizen; that I will support and defend the Constitution and laws of the United States of America against all enemies, foreign and domestic; that I will bear true faith and allegiance to the same; that I will bear arms on behalf of the United States when required by the law; that I will perform noncombatant service in the Armed Forces of the United States when required by the law; that I will perform work of national importance under civilian direction when required by the law; and that I take this obligation freely, without any mental reservation or purpose of evasion; so help me God."`;
 
-    const prompt = `You are a professional USCIS immigration officer. You must administer the Oath of Allegiance.
-    Explain that this is an important step in the naturalization process.
-    Read the complete oath in English and ask the applicant to repeat it after you, or confirm that they are willing to take it.
-    Be clear, professional and friendly. Respond in English.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You must administer the Oath of Allegiance. Explain that this is an important step in the naturalization process. Read the complete oath in English and ask the applicant to repeat it after you, or confirm that they are willing to take it. Be clear, professional and friendly.`;
 
-    const response = await this.generateOfficerMessage(sessionId, prompt);
-    return `${response}\n\n${oathText}`;
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return `${response.respuesta_oficial}\n\n${oathText}`;
   }
 
   /**
    * Genera confirmación del juramento
    */
   private async generateOathConfirmation(sessionId: string, response: string): Promise<string> {
-    const prompt = `The applicant has taken or confirmed the oath of allegiance. 
-    Thank them for their commitment and proceed to the civics questions section.
-    Respond in English in a professional and encouraging manner.`;
+    const prompt = `You are a professional USCIS immigration officer. The applicant has taken or confirmed the oath of allegiance. Thank them for their commitment and proceed to the civics questions section.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, response);
+    return jsonResponse.respuesta_oficial;
   }
 
   /**
@@ -498,13 +586,20 @@ class AIInterviewN400Service {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `You are a USCIS immigration officer. Applicant ${session.context.applicantName} 
-    has completed the oath of allegiance. Now begins the civics questions section.
-    Ask the first civics question clearly and professionally.
-    Ask about the Constitution, government, or American rights.
-    Maintain a friendly but professional tone. Respond in English.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Applicant ${session.context.applicantName} has completed the oath of allegiance. Now begins the civics questions section. Ask the first civics question clearly and professionally. Ask about the Constitution, government, or American rights. Maintain a friendly but professional tone.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return response.respuesta_oficial;
+  }
+
+  /**
+   * Normaliza una respuesta que puede ser string o array de strings a string
+   */
+  private normalizeAnswer(answer: string | string[]): string {
+    if (Array.isArray(answer)) {
+      return answer.join('\n');
+    }
+    return answer;
   }
 
   /**
@@ -513,7 +608,7 @@ class AIInterviewN400Service {
   private async generateNextCivicsQuestion(
     sessionId: string,
     applicantResponse: string
-  ): Promise<{ question: string; isCorrect?: boolean; feedback?: string }> {
+  ): Promise<{ question: string; isCorrect?: boolean; feedback?: string; fluencyEvaluation?: FluencyEvaluation }> {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
@@ -531,10 +626,14 @@ class AIInterviewN400Service {
       Math.floor(Math.random() * availableQuestions.length)
     ] || questions[0];
 
+    // Normalizar respuestas a strings
+    const answerEs = this.normalizeAnswer(randomQuestion.answerEs);
+    const answerEn = this.normalizeAnswer(randomQuestion.answerEn);
+
     session.currentCivicsQuestion = {
       id: randomQuestion.id,
       question: randomQuestion.questionEs,
-      answer: randomQuestion.answerEs,
+      answer: answerEs,
     };
 
     const conversationHistory = session.messages
@@ -547,26 +646,25 @@ class AIInterviewN400Service {
       .filter(Boolean)
       .join('\n');
 
-    const prompt = `You are a professional USCIS immigration officer. The applicant responded: "${applicantResponse}"
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Evaluate if the answer is correct by comparing it with: "${answerEn}". If correct, briefly confirm and ask the next question: "${randomQuestion.questionEn}". If incorrect or incomplete, provide friendly feedback and ask the next question. Question ${session.civicsQuestionsAsked + 1} of ${session.totalCivicsQuestions}. Recent conversation history: ${conversationHistory}`;
 
-    Recent history:
-    ${conversationHistory}
-
-    Evaluate if the answer is correct by comparing it with: "${randomQuestion.answerEn}"
-    If correct, briefly confirm and ask the next question: "${randomQuestion.questionEn}"
-    If incorrect or incomplete, provide friendly feedback and ask the next question.
-    Question ${session.civicsQuestionsAsked + 1} of ${session.totalCivicsQuestions}.
-    Respond in English clearly and concisely.`;
-
-    const response = await this.generateOfficerMessage(sessionId, prompt);
+    const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, applicantResponse);
     
     // Evaluación simple de la respuesta
-    const isCorrect = this.evaluateAnswer(applicantResponse, randomQuestion.answerEn);
-    const feedback = isCorrect 
+    // answerEn ya está normalizado con normalizeAnswer(), así que es string
+    const answerEnString = answerEn; // Ya es string por normalizeAnswer()
+    const isCorrect = this.evaluateAnswer(applicantResponse, answerEnString);
+    const firstLineOfAnswer = answerEnString.split('\n')[0];
+    const feedback = jsonResponse.evaluacion_fluidez.mejora_sugerida || (isCorrect 
       ? 'Correct.' 
-      : 'The answer is not completely correct. The correct answer is: ' + randomQuestion.answerEn.split('\n')[0];
+      : 'The answer is not completely correct. The correct answer is: ' + firstLineOfAnswer);
 
-    return { question: response, isCorrect, feedback };
+    return { 
+      question: jsonResponse.respuesta_oficial, 
+      isCorrect, 
+      feedback: jsonResponse.evaluacion_fluidez.mejora_sugerida,
+      fluencyEvaluation: jsonResponse.evaluacion_fluidez
+    };
   }
 
   /**
@@ -602,26 +700,22 @@ class AIInterviewN400Service {
 
     const randomSentence = readingSentences[Math.floor(Math.random() * readingSentences.length)];
 
-    const prompt = `You are a USCIS immigration officer. You have completed the civics questions.
-    Now you will conduct the English reading test. Show this sentence to the applicant and ask them to read it aloud:
-    "${randomSentence}"
-    Respond in English explaining the test.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You have completed the civics questions. Now you will conduct the English reading test. Show this sentence to the applicant and ask them to read it aloud: "${randomSentence}". Explain the test clearly.`;
 
-    return this.generateOfficerMessage(sessionId, prompt) + `\n\nPlease read this sentence in English: "${randomSentence}"`;
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return `${response.respuesta_oficial}\n\nPlease read this sentence in English: "${randomSentence}"`;
   }
 
   /**
    * Genera resultado de prueba de lectura
    */
   private async generateReadingResult(sessionId: string, response: string): Promise<{ response: string; isCorrect: boolean }> {
-    const prompt = `The applicant read: "${response}". 
-    Evaluate if the reading was correct. If correct, confirm and proceed to the writing test.
-    If there are minor errors, you can continue. Respond in English in a professional manner.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant read: "${response}". Evaluate if the reading was correct. If correct, confirm and proceed to the writing test. If there are minor errors, you can continue.`;
 
-    const officerResponse = await this.generateOfficerMessage(sessionId, prompt);
+    const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, response);
     const isCorrect = response.length > 10; // Evaluación simple
 
-    return { response: officerResponse, isCorrect };
+    return { response: jsonResponse.respuesta_oficial, isCorrect };
   }
 
   /**
@@ -638,26 +732,22 @@ class AIInterviewN400Service {
 
     const randomSentence = writingSentences[Math.floor(Math.random() * writingSentences.length)];
 
-    const prompt = `You are a USCIS immigration officer. Now you will conduct the English writing test.
-    Dictate this sentence to the applicant and ask them to write it:
-    "${randomSentence}"
-    Respond in English explaining the test.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Now you will conduct the English writing test. Dictate this sentence to the applicant and ask them to write it: "${randomSentence}". Explain the test clearly.`;
 
-    return this.generateOfficerMessage(sessionId, prompt) + `\n\nPlease write this sentence in English: "${randomSentence}"`;
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return `${response.respuesta_oficial}\n\nPlease write this sentence in English: "${randomSentence}"`;
   }
 
   /**
    * Genera resultado de prueba de escritura
    */
   private async generateWritingResult(sessionId: string, response: string): Promise<{ response: string; isCorrect: boolean }> {
-    const prompt = `The applicant wrote: "${response}". 
-    Evaluate if the writing was correct. If correct, confirm and proceed to close the interview.
-    If there are minor spelling errors, you can continue. Respond in English in a professional manner.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant wrote: "${response}". Evaluate if the writing was correct. If correct, confirm and proceed to close the interview. If there are minor spelling errors, you can continue.`;
 
-    const officerResponse = await this.generateOfficerMessage(sessionId, prompt);
+    const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, response);
     const isCorrect = response.length > 10; // Evaluación simple
 
-    return { response: officerResponse, isCorrect };
+    return { response: jsonResponse.respuesta_oficial, isCorrect };
   }
 
   /**
@@ -667,31 +757,103 @@ class AIInterviewN400Service {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `You are a USCIS immigration officer. You have completed the citizenship interview with ${session.context.applicantName}.
-    Now you must make a professional closing statement, thanking the applicant for their time and explaining that they will be notified about the result of their application by mail in the coming weeks.
-    Maintain a professional, friendly and encouraging tone. Respond in English.`;
+    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You have completed the citizenship interview with ${session.context.applicantName}. Now you must make a professional closing statement, thanking the applicant for their time and explaining that they will be notified about the result of their application by mail in the coming weeks. Maintain a professional, friendly and encouraging tone.`;
 
-    return this.generateOfficerMessage(sessionId, prompt);
+    const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
+    return response.respuesta_oficial;
+  }
+
+  /**
+   * Genera el prompt del sistema unificado con formato JSON
+   */
+  private getUnifiedJSONPrompt(
+    contextPrompt: string,
+    currentStage: InterviewSession['stage'],
+    applicantResponse?: string
+  ): string {
+    // Mapear stage interno a estado de entrevista
+    const stageMap: Record<InterviewSession['stage'], InterviewStage> = {
+      'greeting': 'VERIFICACION_IDENTIDAD',
+      'identity': 'VERIFICACION_IDENTIDAD',
+      'n400_review': 'REVISION_N400',
+      'oath': 'VERIFICACION_IDENTIDAD',
+      'civics': 'PREGUNTA_CIVICA',
+      'reading': 'PRUEBA_LECTURA',
+      'writing': 'PRUEBA_ESCRITURA',
+      'closing': 'CIERRE',
+    };
+
+    const estadoEntrevista = stageMap[currentStage] || 'VERIFICACION_IDENTIDAD';
+
+    const unifiedPrompt = `**ROL:** Eres un Oficial de Inmigración de USCIS, formal, objetivo y profesional, conduciendo la entrevista de naturalización (Formulario N-400, prueba Cívica y prueba de Inglés).
+
+**TAREA PRINCIPAL:**
+
+1. **Simular la entrevista:** Guía al usuario a través de las secciones N-400 (saludo, datos, carácter moral) y realiza la prueba Cívica (hasta 10 preguntas) y las pruebas de Lectura/Escritura.
+
+2. **Evaluar Fluidez:** En CADA respuesta del usuario, evalúa su fluidez, gramática y pronunciación en inglés (escala 1-10) y sugiere 1-2 mejoras concretas. Esta evaluación DEBE ser en español.
+
+3. **Mantener la Coherencia:** Las preguntas deben ser conversacionales y ligeramente variadas.
+
+**RESTRICCIONES CRÍTICAS:**
+
+1. **IDIOMA DE LA ENTREVISTA:** TODAS tus preguntas y respuestas conversacionales (campo \`respuesta_oficial\`) deben ser **EXCLUSIVAMENTE EN INGLÉS**. Habla en inglés nativo, profesional y con gramática perfecta.
+
+2. **FORMATO DE SALIDA:** Tu respuesta DEBE ser **SIEMPRE** un único objeto JSON válido. NUNCA respondas con texto plano.
+
+3. **FLUJO:** Utiliza el campo \`estado_entrevista\` para señalar la etapa actual.
+
+**FORMATO JSON REQUERIDO:**
+
+\`\`\`json
+{
+  "respuesta_oficial": "The question/statement the USCIS Officer says next, in English.",
+  "evaluacion_fluidez": {
+    "puntaje_pronunciacion_y_gramatica": "X/10",
+    "mejora_sugerida": "Breve sugerencia para mejorar la respuesta anterior del usuario (en español)."
+  },
+  "estado_entrevista": "VERIFICACION_IDENTIDAD | REVISION_N400 | PREGUNTA_CIVICA | PRUEBA_LECTURA | PRUEBA_ESCRITURA | CIERRE"
+}
+\`\`\`
+
+**CONTEXTO ESPECÍFICO:**
+${contextPrompt}
+
+**ESTADO ACTUAL:** ${estadoEntrevista}
+
+${applicantResponse ? `**RESPUESTA DEL SOLICITANTE:** "${applicantResponse}"` : ''}
+
+**IMPORTANTE:** 
+- Tu respuesta DEBE ser ÚNICAMENTE un objeto JSON válido, sin texto adicional antes o después
+- El campo \`respuesta_oficial\` debe estar en inglés profesional y perfecto
+- El campo \`evaluacion_fluidez.mejora_sugerida\` debe estar en español
+- El campo \`estado_entrevista\` debe ser uno de: VERIFICACION_IDENTIDAD, REVISION_N400, PREGUNTA_CIVICA, PRUEBA_LECTURA, PRUEBA_ESCRITURA, CIERRE`;
+
+    return unifiedPrompt;
   }
 
   /**
    * Genera un mensaje del oficial usando OpenAI GPT-4o-mini o respuestas predefinidas
+   * Devuelve una respuesta estructurada en formato JSON
    */
   private async generateOfficerMessage(
     sessionId: string,
-    systemPrompt: string
-  ): Promise<string> {
+    systemPrompt: string,
+    applicantResponse?: string
+  ): Promise<OfficerResponseJSON> {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
     // Si OpenAI está disponible, usarlo
     if (this.isOpenAIAvailable()) {
       try {
-        // Construir el historial de mensajes para OpenAI
+        // Construir el prompt unificado con formato JSON
+        const unifiedPrompt = this.getUnifiedJSONPrompt(systemPrompt, session.stage, applicantResponse);
+
         const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
           {
             role: 'system',
-            content: systemPrompt
+            content: unifiedPrompt
           }
         ];
 
@@ -705,43 +867,144 @@ class AIInterviewN400Service {
           }
         }
 
+        // Si hay respuesta del solicitante, agregarla como último mensaje user
+        if (applicantResponse) {
+          messages.push({ role: 'user', content: applicantResponse });
+        }
+
         const response = await this.callOpenAIAPI(messages);
         if (response) {
-          console.log('✅ Respuesta de OpenAI recibida');
-          return response;
+          // Parsear la respuesta JSON de forma segura
+          try {
+            // Limpiar la respuesta por si tiene markdown o texto adicional
+            let cleanedResponse = response.trim();
+            
+            // Eliminar markdown code blocks si existen
+            if (cleanedResponse.startsWith('```json')) {
+              cleanedResponse = cleanedResponse.replace(/^```json\s*/i, '').replace(/\s*```\s*$/i, '');
+            } else if (cleanedResponse.startsWith('```')) {
+              cleanedResponse = cleanedResponse.replace(/^```\s*/i, '').replace(/\s*```\s*$/i, '');
+            }
+            
+            // Intentar parsear el JSON
+            const jsonResponse: OfficerResponseJSON = JSON.parse(cleanedResponse);
+            
+            // Validar que tenga los campos requeridos
+            if (jsonResponse.respuesta_oficial && jsonResponse.evaluacion_fluidez && jsonResponse.estado_entrevista) {
+              if (__DEV__) {
+                console.log('✅ JSON parseado correctamente');
+                console.log('Respuesta oficial:', jsonResponse.respuesta_oficial.substring(0, 100));
+                console.log('Estado entrevista:', jsonResponse.estado_entrevista);
+              }
+              return jsonResponse;
+            } else {
+              console.warn('⚠️ Respuesta JSON incompleta:', {
+                tieneRespuestaOficial: !!jsonResponse.respuesta_oficial,
+                tieneEvaluacionFluidez: !!jsonResponse.evaluacion_fluidez,
+                tieneEstadoEntrevista: !!jsonResponse.estado_entrevista,
+                jsonResponse: jsonResponse
+              });
+              // Intentar construir una respuesta válida con los campos disponibles
+              return {
+                respuesta_oficial: jsonResponse.respuesta_oficial || 'Thank you for your response. Let\'s continue.',
+                evaluacion_fluidez: jsonResponse.evaluacion_fluidez || {
+                  puntaje_pronunciacion_y_gramatica: 'N/A',
+                  mejora_sugerida: 'Continúa practicando tu pronunciación.'
+                },
+                estado_entrevista: jsonResponse.estado_entrevista || 'PREGUNTA_CIVICA'
+              };
+            }
+          } catch (parseError: any) {
+            console.error('❌ Error al parsear respuesta JSON:', parseError?.message);
+            if (__DEV__) {
+              console.log('Respuesta recibida (primeros 500 chars):', response.substring(0, 500));
+            }
+            // Continuar con fallback predefinido
+          }
+        } else {
+          // No mostrar warning si ya sabemos que es un error de cuota (ya se mostró arriba)
+          // Solo mostrar si es un caso diferente
+          if (__DEV__) {
+            console.warn('⚠️ No se recibió respuesta de OpenAI. Se usará respuesta predefinida.');
+          }
         }
-      } catch (error) {
-        console.error('Error en OpenAI:', error);
+      } catch (error: any) {
+        console.error('❌ Error en generateOfficerMessage:', error?.message || error);
+        if (__DEV__) {
+          console.error('Error completo:', error);
+        }
         // Continuar con respuestas predefinidas si falla
       }
     } else {
-      console.log('⚠️ OpenAI no configurado, usando respuestas predefinidas');
+      if (__DEV__) {
+        console.log('⚠️ OpenAI no configurado, usando respuestas predefinidas');
+      }
     }
 
-    // Respuestas predefinidas como fallback
-    return this.getPredefinedResponse(systemPrompt, session);
+    // Respuestas predefinidas como fallback (convertidas al formato JSON)
+    return this.getPredefinedResponseJSON(systemPrompt, session);
   }
 
   /**
-   * Obtiene una respuesta predefinida basada en el contexto
+   * Obtiene una respuesta predefinida en formato JSON basada en el contexto
    */
-  private getPredefinedResponse(prompt: string, session: InterviewSession): string {
+  private getPredefinedResponseJSON(prompt: string, session: InterviewSession): OfficerResponseJSON {
+    // Mapear stage interno a estado de entrevista
+    const stageMap: Record<InterviewSession['stage'], InterviewStage> = {
+      'greeting': 'VERIFICACION_IDENTIDAD',
+      'identity': 'VERIFICACION_IDENTIDAD',
+      'n400_review': 'REVISION_N400',
+      'oath': 'VERIFICACION_IDENTIDAD',
+      'civics': 'PREGUNTA_CIVICA',
+      'reading': 'PRUEBA_LECTURA',
+      'writing': 'PRUEBA_ESCRITURA',
+      'closing': 'CIERRE',
+    };
+
+    const estadoEntrevista = stageMap[session.stage] || 'VERIFICACION_IDENTIDAD';
+
     if (prompt.includes('greet') || prompt.includes('begin')) {
-      return `Good morning, ${session.context.applicantName}. I am the immigration officer who will conduct your citizenship interview today. 
-      The interview will consist of several parts: identity verification, N-400 form review, oath of allegiance, civics questions, and English reading and writing tests.
-      Are you ready to begin?`;
+      return {
+        respuesta_oficial: `Good morning, ${session.context.applicantName}. I am the immigration officer who will conduct your citizenship interview today. The interview will consist of several parts: identity verification, N-400 form review, oath of allegiance, civics questions, and English reading and writing tests. Are you ready to begin?`,
+        evaluacion_fluidez: {
+          puntaje_pronunciacion_y_gramatica: 'N/A',
+          mejora_sugerida: 'Esta es la bienvenida inicial. No hay respuesta del usuario para evaluar aún.',
+        },
+        estado_entrevista: 'VERIFICACION_IDENTIDAD',
+      };
     }
     
     if (prompt.includes('identity') || prompt.includes('verify')) {
-      return `To verify your identity, please confirm your full name and date of birth.`;
+      return {
+        respuesta_oficial: 'To verify your identity, please confirm your full name and date of birth.',
+        evaluacion_fluidez: {
+          puntaje_pronunciacion_y_gramatica: 'N/A',
+          mejora_sugerida: 'Por favor, responde con claridad cuando el oficial solicite tu información.',
+        },
+        estado_entrevista: 'VERIFICACION_IDENTIDAD',
+      };
     }
     
     if (prompt.includes('oath') || prompt.includes('Oath')) {
-      return `Before we continue, I need you to take the Oath of Allegiance. This is an important step in the naturalization process.`;
+      return {
+        respuesta_oficial: 'Before we continue, I need you to take the Oath of Allegiance. This is an important step in the naturalization process.',
+        evaluacion_fluidez: {
+          puntaje_pronunciacion_y_gramatica: 'N/A',
+          mejora_sugerida: 'Escucha cuidadosamente el juramento y repítelo con claridad.',
+        },
+        estado_entrevista: 'VERIFICACION_IDENTIDAD',
+      };
     }
     
     if (prompt.includes('first question') || prompt.includes('civics')) {
-      return `Perfect. Let's begin with the civics questions section. First question: What is the supreme law of the land?`;
+      return {
+        respuesta_oficial: 'Perfect. Let\'s begin with the civics questions section. First question: What is the supreme law of the land?',
+        evaluacion_fluidez: {
+          puntaje_pronunciacion_y_gramatica: 'N/A',
+          mejora_sugerida: 'Responde con confianza y claridad. La respuesta correcta es: "The Constitution".',
+        },
+        estado_entrevista: 'PREGUNTA_CIVICA',
+      };
     }
     
     if (prompt.includes('next question')) {
@@ -758,14 +1021,35 @@ class AIInterviewN400Service {
         'What is the judicial branch?',
       ];
       const questionIndex = session.civicsQuestionsAsked % questions.length;
-      return questions[questionIndex];
+      return {
+        respuesta_oficial: questions[questionIndex],
+        evaluacion_fluidez: {
+          puntaje_pronunciacion_y_gramatica: '7/10',
+          mejora_sugerida: 'Intenta responder con más claridad y confianza.',
+        },
+        estado_entrevista: 'PREGUNTA_CIVICA',
+      };
     }
     
     if (prompt.includes('closing') || prompt.includes('completed')) {
-      return `Thank you, ${session.context.applicantName}. We have completed the interview. You will receive a notification by mail about the result of your application in the coming weeks. Have a good day.`;
+      return {
+        respuesta_oficial: `Thank you, ${session.context.applicantName}. We have completed the interview. You will receive a notification by mail about the result of your application in the coming weeks. Have a good day.`,
+        evaluacion_fluidez: {
+          puntaje_pronunciacion_y_gramatica: 'N/A',
+          mejora_sugerida: '¡Felicitaciones por completar la entrevista!',
+        },
+        estado_entrevista: 'CIERRE',
+      };
     }
 
-    return 'Thank you for your response. Let\'s continue with the next question.';
+    return {
+      respuesta_oficial: 'Thank you for your response. Let\'s continue with the next question.',
+      evaluacion_fluidez: {
+        puntaje_pronunciacion_y_gramatica: '7/10',
+        mejora_sugerida: 'Continúa esforzándote por mejorar tu pronunciación y gramática.',
+      },
+      estado_entrevista: estadoEntrevista,
+    };
   }
 
   /**

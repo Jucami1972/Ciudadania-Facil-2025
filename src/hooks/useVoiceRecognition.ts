@@ -1,5 +1,140 @@
 import { useState, useEffect, useCallback } from 'react';
-import Voice from '@react-native-voice/voice';
+import { Platform } from 'react-native';
+
+// Variable global para almacenar el módulo Voice (cargado lazy)
+let Voice: any = null;
+let voiceModuleChecked = false;
+
+// Variable global para cachear el resultado de la detección de Expo Go
+let isExpoGoCached: boolean | null = null;
+
+// Función helper para detectar si estamos en Expo Go (sin módulos nativos)
+const isExpoGo = (): boolean => {
+  // Si ya se detectó, usar el resultado cacheado
+  if (isExpoGoCached !== null) {
+    return isExpoGoCached;
+  }
+
+  try {
+    // Expo Go tiene Constants.executionEnvironment === 'storeClient'
+    // o Constants.appOwnership === 'expo'
+    const Constants = require('expo-constants');
+    const constants = Constants?.default || Constants;
+    const executionEnvironment = constants?.executionEnvironment;
+    const appOwnership = constants?.appOwnership;
+    
+    // Verificar si estamos en Expo Go
+    const isExpoGoEnv = executionEnvironment === 'storeClient' || appOwnership === 'expo';
+    
+    // Cachear el resultado
+    isExpoGoCached = isExpoGoEnv;
+    
+    if (__DEV__) {
+      if (isExpoGoEnv) {
+        console.log('🔍 Detectado Expo Go - Voice recognition no estará disponible');
+      }
+    }
+    
+    return isExpoGoEnv;
+  } catch (error: any) {
+    // Si no podemos detectar, asumir que no es Expo Go para permitir intentar cargar
+    // (mejor intentar y fallar suavemente que bloquear innecesariamente)
+    isExpoGoCached = false;
+    if (__DEV__) {
+      console.warn('⚠️ No se pudo detectar Expo Go:', error?.message || error);
+    }
+    return false;
+  }
+};
+
+// Función helper para obtener el módulo Voice de forma segura
+const getVoiceModule = (): any => {
+  // Si ya se verificó, retornar el resultado cacheado
+  if (voiceModuleChecked) {
+    return Voice;
+  }
+
+  // Marcar que ya se verificó ANTES de intentar cargar el módulo
+  voiceModuleChecked = true;
+
+  // En web, nunca está disponible
+  if (Platform.OS === 'web') {
+    Voice = null;
+    return null;
+  }
+
+  // Si estamos en Expo Go, NO intentar cargar el módulo nativo (causaría Invariant Violation)
+  // Esta verificación debe ser ANTES de cualquier require() del módulo Voice
+  const expoGoDetected = isExpoGo();
+  if (expoGoDetected) {
+    Voice = null;
+    if (__DEV__) {
+      console.warn('⚠️ @react-native-voice/voice no disponible en Expo Go. Requiere development build.');
+      console.warn('ℹ️ La funcionalidad de reconocimiento de voz estará deshabilitada.');
+    }
+    // RETORNAR INMEDIATAMENTE sin intentar cargar el módulo
+    return null;
+  }
+
+  // SOLO intentar cargar el módulo si NO estamos en Expo Go
+  // Esto evita el "Invariant Violation" en Expo Go
+  try {
+    // Intentar cargar el módulo solo cuando se necesite
+    // Usar require dentro de una función para que no falle en tiempo de carga del módulo
+    let voiceModule: any;
+    
+    try {
+      // IMPORTANTE: Este require() SOLO se ejecuta si NO estamos en Expo Go
+      // En Expo Go, ya retornamos null arriba, así que nunca llegamos aquí
+      voiceModule = require('@react-native-voice/voice');
+    } catch (requireError: any) {
+      // El require falló completamente
+      Voice = null;
+      if (__DEV__) {
+        console.warn('⚠️ @react-native-voice/voice no disponible. Requiere development build.');
+        console.warn('Error en require:', requireError?.message || requireError);
+      }
+      return null;
+    }
+    
+    // Verificar si voiceModule es undefined, null o no existe
+    if (voiceModule === undefined || voiceModule === null || typeof voiceModule !== 'object') {
+      Voice = null;
+      if (__DEV__) {
+        console.warn('⚠️ @react-native-voice/voice no disponible. El módulo está undefined/null.');
+      }
+      return null;
+    }
+    
+    // Intentar obtener el módulo (puede ser default o el módulo mismo)
+    // Verificar primero si tiene la propiedad 'default' antes de acceder
+    if (typeof voiceModule === 'object' && 'default' in voiceModule && voiceModule.default) {
+      Voice = voiceModule.default;
+    } else if (typeof voiceModule === 'object' && voiceModule) {
+      Voice = voiceModule;
+    } else {
+      Voice = null;
+    }
+    
+    // Verificar si Voice sigue siendo null o undefined
+    if (!Voice || (typeof Voice !== 'object' && typeof Voice !== 'function')) {
+      Voice = null;
+      if (__DEV__) {
+        console.warn('⚠️ @react-native-voice/voice no disponible. El módulo no es válido.');
+      }
+    }
+    
+    return Voice;
+  } catch (error: any) {
+    // El módulo no está disponible (normal en Expo Go)
+    Voice = null;
+    if (__DEV__) {
+      console.warn('⚠️ @react-native-voice/voice no disponible. Requiere development build.');
+      console.warn('Error general:', error?.message || error);
+    }
+    return null;
+  }
+};
 
 interface UseVoiceRecognitionProps {
   onSpeechResult?: (text: string) => void;
@@ -19,18 +154,23 @@ export const useVoiceRecognition = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (Voice) {
-      checkVoiceSupport();
-      setupVoiceListeners();
-      return () => {
-        cleanupVoiceListeners();
-      };
-    } else {
-      // Si el módulo no está disponible, marcar como no soportado
-      // No llamar a onError aquí, solo marcar como no disponible silenciosamente
-      setIsSupported(false);
-      setError(null); // No establecer error, solo marcar como no soportado
+    // Cargar el módulo Voice de forma lazy solo cuando se monte el hook
+    if (!Voice) {
+      Voice = getVoiceModule();
     }
+
+    // Verificar si Voice está disponible
+    if (!Voice) {
+      setIsSupported(false);
+      return;
+    }
+
+    // Si Voice está disponible, configurar
+    checkVoiceSupport();
+    setupVoiceListeners();
+    return () => {
+      cleanupVoiceListeners();
+    };
   }, []);
 
   const checkVoiceSupport = async () => {

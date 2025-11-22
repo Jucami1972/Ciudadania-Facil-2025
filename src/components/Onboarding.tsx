@@ -33,13 +33,13 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'welcome',
     image: 'onboarding1.webp',
     title: '¡Tu Ciudadanía Te Espera!',
-    description: 'Domina el examen con la app #1: 128 preguntas y 10+ formas de estudio interactivas.',
+    description: 'La app #1 para dominar el examen con 128 preguntas y más de 10 métodos de estudio interactivos.',
   },
   {
     id: 'smart-study',
     image: 'onboarding2.webp',
     title: 'Estudia Eficiente.\nAhorra Tiempo',
-    description: 'Nuestro sistema de aprendizaje adaptativo prioriza lo que debes repasar. Concéntrate solo en lo esencial y retén más.',
+    description: 'Aprendizaje adaptativo que prioriza lo esencial. Estudia menos tiempo y retén más conocimiento.',
     features: [
       { icon: 'brain', text: 'Repetición espaciada inteligente', color: '#0F62FE' },
       { icon: 'volume-high', text: 'Audio profesional en inglés', color: '#0F62FE' },
@@ -50,7 +50,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'practice-modes',
     image: 'onboarding3.webp',
     title: 'Domina con Flexibilidad.',
-    description: 'Nunca te aburras de estudiar. Elige entre más de 10 métodos para practicar a tu ritmo, incluyendo simulacros y enfoque en tus fallos.',
+    description: 'Más de 10 métodos de práctica para estudiar a tu ritmo. Incluye simulacros y práctica enfocada en errores.',
     features: [
       { icon: 'dice-5', text: 'Exámenes aleatorios de 20', color: '#1E40AF' },
       { icon: 'lightbulb-on', text: 'Memoria fotográfica visual', color: '#1E40AF' },
@@ -61,7 +61,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'achieve-goals',
     image: 'onboarding4.webp',
     title: 'Guía Tu Progreso hacia el Éxito.',
-    description: 'Convierte el estudio en un hábito. Nuestro sistema te mantiene motivado con rachas, logros y estadísticas claras de tu avance diario.',
+    description: 'Convierte el estudio en un hábito. Sistema de motivación con rachas diarias, logros y estadísticas de avance.',
     features: [
       { icon: 'fire', text: 'Sistema de rachas diarias', color: '#1E40AF' },
       { icon: 'trophy', text: 'Badges y logros', color: '#1E40AF' },
@@ -73,7 +73,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'ai-interview',
     image: 'onboarding1.webp',
     title: 'Simula la Entrevista Real',
-    description: 'Practica la conversación N-400 con nuestra IA avanzada. Recibe feedback de pronunciación y fluidez al instante.',
+    description: 'Practica la entrevista N-400 con IA avanzada. Recibe feedback instantáneo de pronunciación y fluidez.',
   },
 ];
 
@@ -303,7 +303,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         </View>
 
         {/* Right: Skip button */}
-        <TouchableOpacity onPress={handleSkip} style={styles.skipButton}>
+        <TouchableOpacity 
+          onPress={handleSkip} 
+          style={styles.skipButton}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <Text style={styles.skipButtonText}>Omitir</Text>
         </TouchableOpacity>
       </View>
@@ -314,7 +319,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           {/* Título - diferente estilo para pantallas 2, 3 y 4 */}
           {(currentStep === 1 || currentStep === 2 || currentStep === 3) ? (
             <Text style={styles.titleTwoLines}>
-              {currentStepData.title}
+              {currentStep === 3 
+                ? 'Guía Tu Progreso\nhacia el Éxito.' 
+                : currentStepData.title}
             </Text>
           ) : (
             <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit={true} minimumFontScale={0.8}>
@@ -355,7 +362,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                 onPress={handlePrevious}
                 activeOpacity={0.8}
               >
-                <MaterialCommunityIcons name="chevron-left" size={40} color="#FFFFFF" />
+                <MaterialCommunityIcons name="chevron-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         )}
 
@@ -504,12 +511,21 @@ const styles = StyleSheet.create({
     right: 20,
     top: Platform.OS === 'ios' ? 50 : 20,
     alignItems: 'flex-end',
+    justifyContent: 'center',
     flexShrink: 0,
-    minWidth: 50,
+    minWidth: 60,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    zIndex: 20, // Asegurar que esté por encima de otros elementos
   },
   skipButtonText: {
     fontSize: 16,
-    color: '#D0D0D0',
+    color: '#FFFFFF',
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   bottomPanel: {
     position: 'absolute',
@@ -599,8 +615,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   buttonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
   },
@@ -653,11 +669,14 @@ const styles = StyleSheet.create({
     display: 'none',
   },
   backButton: {
-    width: 60,
+    width: 48,
     height: 48,
+    borderRadius: 24, // Círculo perfecto (48/2)
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   primaryButtonWithMargin: {
     flex: 1,
