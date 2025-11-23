@@ -3,7 +3,7 @@
  * Evita recargar las preguntas en cada sesión de práctica
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { questions } from '../data/questions';
 import { Question } from '../types/question';
 
@@ -33,7 +33,7 @@ export const QuestionsProvider: React.FC<QuestionsProviderProps> = ({ children }
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadQuestions = async () => {
+  const loadQuestions = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -70,25 +70,28 @@ export const QuestionsProvider: React.FC<QuestionsProviderProps> = ({ children }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadQuestions();
-  }, []);
+  }, [loadQuestions]);
 
-  const refreshQuestions = () => {
+  const refreshQuestions = useCallback(() => {
     loadQuestions();
-  };
+  }, [loadQuestions]);
+
+  const contextValue = useMemo(
+    () => ({
+      questions: questionsData,
+      isLoading,
+      error,
+      refreshQuestions,
+    }),
+    [questionsData, isLoading, error, refreshQuestions]
+  );
 
   return (
-    <QuestionsContext.Provider
-      value={{
-        questions: questionsData,
-        isLoading,
-        error,
-        refreshQuestions,
-      }}
-    >
+    <QuestionsContext.Provider value={contextValue}>
       {children}
     </QuestionsContext.Provider>
   );

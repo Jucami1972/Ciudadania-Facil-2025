@@ -1,33 +1,47 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
+import { Platform, View, Text } from 'react-native';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../types/navigation';
 import { trackScreenView, trackSessionStart } from '../utils/analytics';
 import SplashScreen from '../components/SplashScreen';
+// HomeScreenRedesign se importa directamente porque es la pantalla principal del tab
+import HomeScreenRedesign from '../screens/HomeScreenRedesign';
+
+// Tipos para el módulo de Onboarding
+interface OnboardingModule {
+  default?: React.ComponentType<{ onComplete: () => void }>;
+  Onboarding?: React.ComponentType<{ onComplete: () => void }>;
+  useOnboardingStatus?: () => { isCompleted: boolean; isLoading: boolean };
+}
+
+interface OnboardingModuleResult {
+  Onboarding: React.ComponentType<{ onComplete: () => void }> | null;
+  useOnboardingStatus: (() => { isCompleted: boolean; isLoading: boolean }) | null;
+}
 
 // Lazy load Onboarding para evitar que bloquee el registro del componente principal
-let OnboardingComponent: React.ComponentType<any> | null = null;
+let OnboardingComponent: React.ComponentType<{ onComplete: () => void }> | null = null;
 let useOnboardingStatusHook: (() => { isCompleted: boolean; isLoading: boolean }) | null = null;
 
-const loadOnboarding = () => {
+const loadOnboarding = (): OnboardingModuleResult => {
   if (OnboardingComponent !== null && useOnboardingStatusHook !== null) {
     return { Onboarding: OnboardingComponent, useOnboardingStatus: useOnboardingStatusHook };
   }
   
   try {
     // Intentar cargar el módulo
-    let onboardingModule: any;
+    let onboardingModule: OnboardingModule | undefined;
     try {
-      onboardingModule = require('../components/Onboarding');
-    } catch (requireError: any) {
-      console.warn('⚠️ Error requiring Onboarding module:', requireError?.message || requireError);
+      onboardingModule = require('../components/Onboarding') as OnboardingModule;
+    } catch (requireError: unknown) {
+      const error = requireError instanceof Error ? requireError : new Error(String(requireError));
+      console.warn('⚠️ Error requiring Onboarding module:', error.message);
       return { Onboarding: null, useOnboardingStatus: null };
     }
     
@@ -38,7 +52,7 @@ const loadOnboarding = () => {
     }
     
     // Intentar obtener el componente default
-    OnboardingComponent = onboardingModule.default;
+    OnboardingComponent = onboardingModule.default || null;
     
     // Si no hay default, intentar obtener Onboarding directamente
     if (!OnboardingComponent && onboardingModule.Onboarding) {
@@ -46,7 +60,7 @@ const loadOnboarding = () => {
     }
     
     // Obtener el hook
-    useOnboardingStatusHook = onboardingModule.useOnboardingStatus;
+    useOnboardingStatusHook = onboardingModule.useOnboardingStatus || null;
     
     if (!OnboardingComponent) {
       const availableKeys = onboardingModule ? Object.keys(onboardingModule) : [];
@@ -61,8 +75,9 @@ const loadOnboarding = () => {
     
     console.log('✅ Onboarding module loaded successfully');
     return { Onboarding: OnboardingComponent, useOnboardingStatus: useOnboardingStatusHook };
-  } catch (error: any) {
-    console.warn('⚠️ Unexpected error loading Onboarding component:', error?.message || error);
+  } catch (error: unknown) {
+    const err = error instanceof Error ? error : new Error(String(error));
+    console.warn('⚠️ Unexpected error loading Onboarding component:', err.message);
     return { Onboarding: null, useOnboardingStatus: null };
   }
 };
@@ -128,42 +143,34 @@ const useOnboardingStatusSafe = () => {
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 
-// Pantallas legacy (fallback)
-import HomeScreen from '../screens/HomeScreen';
-import DashboardScreen from '../screens/DashboardScreen';
-import StudyScreen from '../screens/StudyScreen';
-import SubcategoriasScreen from '../screens/SubcategoriasScreen';
-import StudyCardsScreen from '../screens/StudyCardsScreen';
-import ExplanationScreen from '../screens/ExplanationScreen';
-import PruebaPracticaScreen from '../screens/PruebaPracticaScreen';
-import VocabularioScreen from '../screens/VocabularioScreen';
-import EntrevistaAIScreen from '../screens/EntrevistaAIScreen';
-import ExamenScreen from '../screens/ExamenScreen';
-import CategoryPracticeScreen from '../screens/practice/CategoryPracticeScreen';
-import RandomPracticeScreen from '../screens/practice/RandomPracticeScreen';
-import IncorrectPracticeScreen from '../screens/IncorrectPracticeScreen';
-import MarkedPracticeScreen from '../screens/MarkedPracticeScreen';
-import QuestionTypePracticeScreen from '../screens/practice/QuestionTypePracticeScreen';
-import Random20PracticeScreen from '../screens/practice/Random20PracticeScreen';
-import PhotoMemoryScreen from '../screens/practice/PhotoMemoryScreen';
-import SpacedRepetitionPracticeScreen from '../screens/practice/SpacedRepetitionPracticeScreen';
+// Lazy loading de pantallas principales para mejorar tiempo de inicio
+const DashboardScreen = React.lazy(() => import('../screens/DashboardScreen'));
+const ExamenScreen = React.lazy(() => import('../screens/ExamenScreen'));
+const SubscriptionScreen = React.lazy(() => import('../screens/SubscriptionScreen'));
 
-// Pantallas modernas
-import HomeScreenModerno from '../screens/HomeScreenModerno';
-import HomeScreenRedesign from '../screens/HomeScreenRedesign';
-import StudyScreenModerno from '../screens/StudyScreenModerno';
-import SubcategoriasScreenModerno from '../screens/SubcategoriasScreenModerno';
-import StudyCardsScreenModerno from '../screens/StudyCardsScreenModerno';
-import StudyCardsByTypeScreen from '../screens/StudyCardsByTypeScreen';
-import ExplanationScreenModerno from '../screens/ExplanationScreenModerno';
-import PruebaPracticaScreenModerno from '../screens/PruebaPracticaScreenModerno';
-import CategoryPracticeScreenModerno from '../screens/practice/CategoryPracticeScreenModerno';
-import QuestionTypePracticeScreenModerno from '../screens/practice/QuestionTypePracticeScreenModerno';
-import Random20PracticeScreenModerno from '../screens/practice/Random20PracticeScreenModerno';
-import AIInterviewN400ScreenModerno from '../screens/practice/AIInterviewN400ScreenModerno';
-import PhotoMemoryScreenModerno from '../screens/practice/PhotoMemoryScreenModerno';
-import VocabularioScreenModernoV2 from '../screens/VocabularioScreenModernoV2';
-import SubscriptionScreen from '../screens/SubscriptionScreen';
+// Pantallas de estudio (lazy loading)
+const StudyScreenModerno = React.lazy(() => import('../screens/StudyScreenModerno'));
+const SubcategoriasScreenModerno = React.lazy(() => import('../screens/SubcategoriasScreenModerno'));
+const StudyCardsScreenModerno = React.lazy(() => import('../screens/StudyCardsScreenModerno'));
+const StudyCardsByTypeScreen = React.lazy(() => import('../screens/StudyCardsByTypeScreen'));
+const ExplanationScreenModerno = React.lazy(() => import('../screens/ExplanationScreenModerno'));
+
+// Pantallas de práctica (lazy loading)
+const PruebaPracticaScreenModerno = React.lazy(() => import('../screens/PruebaPracticaScreenModerno'));
+const CategoryPracticeScreen = React.lazy(() => import('../screens/practice/CategoryPracticeScreen'));
+const CategoryPracticeScreenModerno = React.lazy(() => import('../screens/practice/CategoryPracticeScreenModerno'));
+const RandomPracticeScreen = React.lazy(() => import('../screens/practice/RandomPracticeScreen'));
+const IncorrectPracticeScreen = React.lazy(() => import('../screens/IncorrectPracticeScreen'));
+const MarkedPracticeScreen = React.lazy(() => import('../screens/MarkedPracticeScreen'));
+const QuestionTypePracticeScreen = React.lazy(() => import('../screens/practice/QuestionTypePracticeScreen'));
+const QuestionTypePracticeScreenModerno = React.lazy(() => import('../screens/practice/QuestionTypePracticeScreenModerno'));
+const Random20PracticeScreen = React.lazy(() => import('../screens/practice/Random20PracticeScreen'));
+const Random20PracticeScreenModerno = React.lazy(() => import('../screens/practice/Random20PracticeScreenModerno'));
+const AIInterviewN400ScreenModerno = React.lazy(() => import('../screens/practice/AIInterviewN400ScreenModerno'));
+const PhotoMemoryScreen = React.lazy(() => import('../screens/practice/PhotoMemoryScreen'));
+const PhotoMemoryScreenModerno = React.lazy(() => import('../screens/practice/PhotoMemoryScreenModerno'));
+const VocabularioScreenModernoV2 = React.lazy(() => import('../screens/VocabularioScreenModernoV2'));
+const SpacedRepetitionPracticeScreen = React.lazy(() => import('../screens/practice/SpacedRepetitionPracticeScreen'));
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
@@ -183,44 +190,54 @@ const AuthStack = () => (
   </AuthStackNavigator.Navigator>
 );
 
+// Componente de carga para lazy loading
+const LoadingScreen = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+    <Text>Cargando...</Text>
+  </View>
+);
+
 const StudyStack = () => (
-  <StudyStackNavigator.Navigator
-    screenOptions={{
-      headerShown: false,
-      animation: 'slide_from_right',
-    }}
-  >
-    <StudyStackNavigator.Screen name="StudyHome" component={StudyScreenModerno || StudyScreen} />
-    <StudyStackNavigator.Screen name="Subcategorias" component={SubcategoriasScreenModerno || SubcategoriasScreen} />
-    <StudyStackNavigator.Screen name="StudyCards" component={StudyCardsScreenModerno || StudyCardsScreen} />
-    <StudyStackNavigator.Screen name="StudyCardsByType" component={StudyCardsByTypeScreen} />
-    <StudyStackNavigator.Screen
-      name="QuestionTypePracticeHome"
-      component={QuestionTypePracticeScreenModerno || QuestionTypePracticeScreen}
-    />
-    <StudyStackNavigator.Screen
-      name="Explanation"
-      component={ExplanationScreenModerno || ExplanationScreen}
-      options={{ presentation: 'modal' }}
-    />
-  </StudyStackNavigator.Navigator>
+  <Suspense fallback={<LoadingScreen />}>
+    <StudyStackNavigator.Navigator
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }}
+    >
+      <StudyStackNavigator.Screen name="StudyHome" component={StudyScreenModerno} />
+      <StudyStackNavigator.Screen name="Subcategorias" component={SubcategoriasScreenModerno} />
+      <StudyStackNavigator.Screen name="StudyCards" component={StudyCardsScreenModerno} />
+      <StudyStackNavigator.Screen name="StudyCardsByType" component={StudyCardsByTypeScreen} />
+      <StudyStackNavigator.Screen
+        name="QuestionTypePracticeHome"
+        component={QuestionTypePracticeScreenModerno}
+      />
+      <StudyStackNavigator.Screen
+        name="Explanation"
+        component={ExplanationScreenModerno}
+        options={{ presentation: 'modal' }}
+      />
+    </StudyStackNavigator.Navigator>
+  </Suspense>
 );
 
 const PracticeStack = () => (
-  <PracticeStackNavigator.Navigator
-    initialRouteName="PruebaPracticaHome"
-    screenOptions={{
-      headerShown: false,
-      animation: 'slide_from_right',
-    }}
-  >
+  <Suspense fallback={<LoadingScreen />}>
+    <PracticeStackNavigator.Navigator
+      initialRouteName="PruebaPracticaHome"
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+      }}
+    >
     <PracticeStackNavigator.Screen
       name="PruebaPracticaHome"
-      component={PruebaPracticaScreenModerno || PruebaPracticaScreen}
+      component={PruebaPracticaScreenModerno}
     />
     <PracticeStackNavigator.Screen
       name="CategoryPracticeHome"
-      component={CategoryPracticeScreenModerno || CategoryPracticeScreen}
+      component={CategoryPracticeScreenModerno}
     />
     <PracticeStackNavigator.Screen name="CategoryPractice" component={CategoryPracticeScreen} />
     <PracticeStackNavigator.Screen name="RandomPractice" component={RandomPracticeScreen} />
@@ -228,23 +245,23 @@ const PracticeStack = () => (
     <PracticeStackNavigator.Screen name="MarkedPractice" component={MarkedPracticeScreen} />
     <PracticeStackNavigator.Screen
       name="QuestionTypePracticeHome"
-      component={QuestionTypePracticeScreenModerno || QuestionTypePracticeScreen}
+      component={QuestionTypePracticeScreenModerno}
     />
     <PracticeStackNavigator.Screen
       name="Random20PracticeHome"
-      component={Random20PracticeScreenModerno || Random20PracticeScreen}
+      component={Random20PracticeScreenModerno}
     />
     <PracticeStackNavigator.Screen
       name="EntrevistaAIHome"
-      component={AIInterviewN400ScreenModerno || EntrevistaAIScreen}
+      component={AIInterviewN400ScreenModerno}
     />
     <PracticeStackNavigator.Screen
       name="PhotoMemoryHome"
-      component={PhotoMemoryScreenModerno || PhotoMemoryScreen}
+      component={PhotoMemoryScreenModerno}
     />
     <PracticeStackNavigator.Screen
       name="VocabularioHome"
-      component={VocabularioScreenModernoV2 || VocabularioScreen}
+      component={VocabularioScreenModernoV2}
     />
     <PracticeStackNavigator.Screen name="ExamenHome" component={ExamenScreen} />
     <PracticeStackNavigator.Screen
@@ -252,6 +269,7 @@ const PracticeStack = () => (
       component={SpacedRepetitionPracticeScreen}
     />
   </PracticeStackNavigator.Navigator>
+  </Suspense>
 );
 
 const AppTabNavigator = () => {
@@ -264,7 +282,7 @@ const AppTabNavigator = () => {
         tabBarIcon: ({ focused, color }) => {
           // Iconos más pequeños: 20px
           const iconSize = 20;
-          let iconName: string = 'home';
+          let iconName: keyof typeof MaterialCommunityIcons.glyphMap = 'home';
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Study') {
@@ -272,7 +290,7 @@ const AppTabNavigator = () => {
           } else if (route.name === 'Practice') {
             iconName = focused ? 'pencil-box' : 'pencil-box-outline';
           }
-          return <MaterialCommunityIcons name={iconName as any} size={iconSize} color={color} />;
+          return <MaterialCommunityIcons name={iconName} size={iconSize} color={color} />;
         },
         tabBarActiveTintColor: '#1E40AF', // Azul profesional
         tabBarInactiveTintColor: '#999',
@@ -306,7 +324,7 @@ const AppTabNavigator = () => {
     >
     <Tab.Screen
       name="Home"
-      component={HomeScreenModerno || HomeScreenRedesign || HomeScreen}
+      component={HomeScreenRedesign as React.ComponentType<any>}
       options={{ tabBarLabel: 'Inicio' }}
     />
     <Tab.Screen name="Study" component={StudyStack} options={{ tabBarLabel: 'Estudio' }} />
@@ -315,19 +333,14 @@ const AppTabNavigator = () => {
   );
 };
 
-// Determinar qué componente usar para Home
-const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
-  const [onboardingModule, setOnboardingModule] = useState<{
-    Onboarding: React.ComponentType<any> | null;
-    useOnboardingStatus: (() => { isCompleted: boolean; isLoading: boolean }) | null;
-  } | null>(null);
+  const [onboardingModule, setOnboardingModule] = useState<OnboardingModuleResult | null>(null);
   const [hasShownSplash, setHasShownSplash] = useState(false);
   const [showSplash, setShowSplash] = useState(true); // Mostrar splash al inicio
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
-  const routeNameRef = useRef<string | undefined>();
+  const routeNameRef = useRef<string | undefined>(undefined);
 
   // IMPORTANTE: Llamar useOnboardingStatusSafe ANTES de cualquier return condicional
   // para cumplir con las reglas de los hooks de React
@@ -486,8 +499,20 @@ export default function AppNavigator() {
             <RootStack.Screen name="AppTabs" component={AppTabNavigator} />
             <RootStack.Screen 
               name="Subscription" 
-              component={SubscriptionScreen}
+              component={() => (
+                <Suspense fallback={<LoadingScreen />}>
+                  <SubscriptionScreen />
+                </Suspense>
+              )}
               options={{ presentation: 'modal' }}
+            />
+            <RootStack.Screen 
+              name="ExamenHome" 
+              component={() => (
+                <Suspense fallback={<LoadingScreen />}>
+                  <ExamenScreen />
+                </Suspense>
+              )}
             />
           </>
         )}

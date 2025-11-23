@@ -156,6 +156,11 @@ const SubcategoriasScreenModerno = () => {
           renderItem={renderSubcategoryCard}
           keyExtractor={(item, index) => `${item.subtitle}-${index}`}
           scrollEnabled={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={10}
+          updateCellsBatchingPeriod={50}
         />
       </ScrollView>
     </SafeAreaView>

@@ -64,7 +64,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.neutral.divider,
     ...Platform.select({
       web: {
-        position: 'fixed',
+        position: 'fixed' as any,
         top: 0,
         left: 280,
         right: 0,

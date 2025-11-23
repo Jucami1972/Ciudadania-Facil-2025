@@ -26,7 +26,7 @@ if (SENTRY_DSN && !__DEV__ && Sentry && Platform.OS !== 'web') {
     enableNative: true,
     enableNativeCrashHandling: true,
     attachStacktrace: true,
-    beforeSend(event, hint) {
+    beforeSend(event: any, hint: any) {
       // Filtrar información sensible
       if (event.user) {
         // No enviar email completo, solo dominio
@@ -45,7 +45,7 @@ if (SENTRY_DSN && !__DEV__ && Sentry && Platform.OS !== 'web') {
       
       return event;
     },
-    integrations: Platform.OS !== 'web' ? [
+    integrations: (Platform.OS !== 'web' as any) ? [
       new Sentry.ReactNativeTracing({
         // Opciones de tracing
         routingInstrumentation: new Sentry.ReactNavigationInstrumentation(),

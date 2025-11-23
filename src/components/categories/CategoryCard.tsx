@@ -45,7 +45,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: Platform.select({ web: '100%', default: '100%' }) as string,
+    width: '100%' as const,
     marginBottom: Platform.select({ web: spacing.sm, default: spacing.md }) as number,
   },
   card: {

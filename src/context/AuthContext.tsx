@@ -1,5 +1,5 @@
 // src/context/AuthContext.tsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import { getFirebaseAuth, auth as firebaseAuth } from '../config/firebaseConfig';
@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const register = async (email: string, password: string): Promise<void> => {
+  const register = useCallback(async (email: string, password: string): Promise<void> => {
     const authInstance = getAuthInstance();
     
     try {
@@ -143,9 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       throw new Error(errorMessage);
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string): Promise<void> => {
+  const login = useCallback(async (email: string, password: string): Promise<void> => {
     const authInstance = getAuthInstance();
     
     try {
@@ -181,9 +181,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       throw new Error(errorMessage);
     }
-  };
+  }, []);
 
-  const loginWithGoogle = async (): Promise<void> => {
+  const loginWithGoogle = useCallback(async (): Promise<void> => {
     const authInstance = getAuthInstance();
     
     try {
@@ -237,9 +237,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       throw new Error(errorMessage);
     }
-  };
+  }, []);
 
-  const logout = async (): Promise<void> => {
+  const logout = useCallback(async (): Promise<void> => {
     const authInstance = getAuthInstance();
     
     try {
@@ -251,16 +251,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       throw new Error(error.message || 'Error al cerrar sesión');
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    register,
-    login,
-    loginWithGoogle,
-    logout,
-  };
+  const value: AuthContextType = useMemo(
+    () => ({
+      user,
+      loading,
+      register,
+      login,
+      loginWithGoogle,
+      logout,
+    }),
+    [user, loading, register, login, loginWithGoogle, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

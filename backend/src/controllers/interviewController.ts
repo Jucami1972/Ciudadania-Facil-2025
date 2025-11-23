@@ -97,28 +97,26 @@ export async function processResponse(req: Request, res: Response) {
     // Manejar diferentes etapas
     switch (session.stage) {
       case 'greeting':
-        // Después del saludo, avanzar a identity
+        // Después del saludo, avanzar a swearing_in
         uscisInterviewEngine.advanceStageIfNeeded(sessionId);
         const updatedSession = sessionManager.getSession(sessionId)!;
         
-        // Generar respuesta de transición y primera pregunta de identity
-        const identityPrompt = openAIEngine.getStagePrompt('identity', updatedSession);
+        // Generar respuesta de transición al juramento
+        const swearingPrompt = openAIEngine.getStagePrompt('swearing_in', updatedSession);
         let officerResponse: string;
         let fluencyEvaluation;
         
         if (openAIEngine.isAvailable()) {
-          // Generar respuesta que reconozca que está listo y haga la primera pregunta
-          const transitionPrompt = `The applicant has confirmed they are ready to begin. Acknowledge this briefly (1 sentence) and immediately ask the first identity verification question (full name and date of birth).`;
-          const aiResponse = await openAIEngine.generateOfficerResponse(sessionId, identityPrompt, applicantResponse);
+          const aiResponse = await openAIEngine.generateOfficerResponse(sessionId, swearingPrompt, applicantResponse);
           if (aiResponse) {
             officerResponse = aiResponse.respuesta_oficial;
             fluencyEvaluation = aiResponse.evaluacion_fluidez;
           } else {
-            officerResponse = fallbackEngine.generateOfficerResponse('identity', updatedSession.context);
+            officerResponse = 'Please remain standing. Please raise your right hand. Do you swear to tell the truth, the whole truth, and nothing but the truth?';
             fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
           }
         } else {
-          officerResponse = fallbackEngine.generateOfficerResponse('identity', updatedSession.context);
+          officerResponse = 'Please remain standing. Please raise your right hand. Do you swear to tell the truth, the whole truth, and nothing but the truth?';
           fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
         }
         
@@ -134,15 +132,20 @@ export async function processResponse(req: Request, res: Response) {
           officerResponse,
           shouldSpeak: true,
           fluencyEvaluation,
-          estado_entrevista: 'identity',
+          estado_entrevista: 'swearing_in',
         };
         break;
 
+      case 'swearing_in':
       case 'identity':
-      case 'n400_review':
+      case 'n400_biographical':
+      case 'n400_residence':
       case 'oath':
       case 'reading':
       case 'writing':
+      case 'n400_moral_character':
+      case 'loyalty_oath':
+      case 'review_signature':
         result = await handleGeneralStage(sessionId, applicantResponse);
         break;
 
@@ -293,29 +296,54 @@ async function handleGeneralStage(sessionId: string, applicantResponse: string):
     shouldAdvance = validation.shouldAdvance;
 
     // Generar respuesta positiva y avanzar
-    if (session.stage === 'n400_review') {
+    if (session.stage === 'n400_biographical' || session.stage === 'n400_residence') {
+      const newCount = session.n400QuestionsAsked + 1;
       sessionManager.updateSession(sessionId, {
-        n400QuestionsAsked: session.n400QuestionsAsked + 1,
+        n400QuestionsAsked: newCount,
       });
       
-      // Avanzar etapa si es necesario
-      uscisInterviewEngine.advanceStageIfNeeded(sessionId);
-      const updatedSession = sessionManager.getSession(sessionId)!;
-      
-      // Generar siguiente pregunta
-      const systemPrompt = openAIEngine.getStagePrompt(updatedSession.stage, updatedSession);
-      if (openAIEngine.isAvailable()) {
-        const aiResponse = await openAIEngine.generateOfficerResponse(sessionId, systemPrompt);
-        if (aiResponse) {
-          officerResponse = `Thank you, that's correct. ${aiResponse.respuesta_oficial}`;
-          fluencyEvaluation = aiResponse.evaluacion_fluidez;
+      // Verificar si se alcanzó el límite de preguntas
+      const updatedSessionAfterCount = sessionManager.getSession(sessionId)!;
+      if (newCount >= updatedSessionAfterCount.totalN400Questions) {
+        // Límite alcanzado - transicionar a oath
+        uscisInterviewEngine.advanceStageIfNeeded(sessionId);
+        const updatedSession = sessionManager.getSession(sessionId)!;
+        
+        // Generar siguiente pregunta o transición
+        const systemPrompt = openAIEngine.getStagePrompt(updatedSession.stage, updatedSession);
+        if (openAIEngine.isAvailable()) {
+          const aiResponse = await openAIEngine.generateOfficerResponse(sessionId, systemPrompt);
+          if (aiResponse) {
+            officerResponse = `Thank you, that's correct. ${aiResponse.respuesta_oficial}`;
+            fluencyEvaluation = aiResponse.evaluacion_fluidez;
+          } else {
+            officerResponse = 'Thank you. We have completed the N-400 review. Now I will administer the oath of allegiance.';
+            fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
+          }
+        } else {
+          officerResponse = 'Thank you. We have completed the N-400 review. Now I will administer the oath of allegiance.';
+          fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
+        }
+      } else {
+        // Todavía hay preguntas - avanzar normalmente
+        uscisInterviewEngine.advanceStageIfNeeded(sessionId);
+        const updatedSession = sessionManager.getSession(sessionId)!;
+        
+        // Generar siguiente pregunta
+        const systemPrompt = openAIEngine.getStagePrompt(updatedSession.stage, updatedSession);
+        if (openAIEngine.isAvailable()) {
+          const aiResponse = await openAIEngine.generateOfficerResponse(sessionId, systemPrompt);
+          if (aiResponse) {
+            officerResponse = `Thank you, that's correct. ${aiResponse.respuesta_oficial}`;
+            fluencyEvaluation = aiResponse.evaluacion_fluidez;
+          } else {
+            officerResponse = 'Thank you, that\'s correct. Let me ask you the next question.';
+            fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
+          }
         } else {
           officerResponse = 'Thank you, that\'s correct. Let me ask you the next question.';
           fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
         }
-      } else {
-        officerResponse = 'Thank you, that\'s correct. Let me ask you the next question.';
-        fluencyEvaluation = fallbackEngine.generateFluencyEvaluation();
       }
     } else {
       // Para otras etapas, simplemente confirmar y avanzar
@@ -358,10 +386,37 @@ async function handleGeneralStage(sessionId: string, applicantResponse: string):
   }
 
   // Actualizar contadores según la etapa
-  if (session.stage === 'n400_review' && shouldAdvance) {
+  if ((session.stage === 'n400_residence' || session.stage === 'n400_biographical') && shouldAdvance) {
+    const newCount = session.n400QuestionsAsked + 1;
     sessionManager.updateSession(sessionId, {
-      n400QuestionsAsked: session.n400QuestionsAsked + 1,
+      n400QuestionsAsked: newCount,
     });
+    
+    // Verificar si se alcanzó el límite de preguntas
+    const updatedSessionAfterCount = sessionManager.getSession(sessionId)!;
+    if (newCount >= updatedSessionAfterCount.totalN400Questions) {
+      // Límite alcanzado - forzar transición a oath
+      uscisInterviewEngine.advanceStageIfNeeded(sessionId);
+      const updatedSession = sessionManager.getSession(sessionId)!;
+      
+      // Si avanzó a oath, actualizar la respuesta
+      if (updatedSession.stage === 'oath') {
+        officerResponse = 'Thank you. We have completed the N-400 review. Now I will administer the oath of allegiance.';
+        const oathPrompt = openAIEngine.getStagePrompt('oath', updatedSession);
+        if (openAIEngine.isAvailable()) {
+          const aiResponse = await openAIEngine.generateOfficerResponse(sessionId, oathPrompt);
+          if (aiResponse) {
+            officerResponse = `Thank you. We have completed the N-400 review. ${aiResponse.respuesta_oficial}`;
+          }
+        }
+        return {
+          officerResponse,
+          shouldSpeak: true,
+          fluencyEvaluation,
+          estado_entrevista: 'oath',
+        };
+      }
+    }
   }
 
   // Avanzar etapa si es necesario

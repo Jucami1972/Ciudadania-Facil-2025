@@ -1,6 +1,6 @@
 // src/context/PremiumContext.tsx
 // Contexto para manejar el estado premium de los usuarios
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebaseConfig';
@@ -32,7 +32,7 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [purchaseDate, setPurchaseDate] = useState<Date | null>(null);
 
   // Cargar estado premium desde AsyncStorage
-  const loadPremiumStatus = async () => {
+  const loadPremiumStatus = useCallback(async () => {
     try {
       const [status, expiryStr, type, purchaseStr] = await Promise.all([
         AsyncStorage.getItem(STORAGE_KEY),
@@ -71,10 +71,10 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Sincronizar con Firestore si el usuario está autenticado
-  const syncWithFirestore = async () => {
+  const syncWithFirestore = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -119,22 +119,22 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
     } catch (error) {
       console.error('Error syncing premium status with Firestore:', error);
     }
-  };
+  }, [user]);
 
   // Refrescar estado premium
-  const refreshPremiumStatus = async () => {
+  const refreshPremiumStatus = useCallback(async () => {
     setIsLoading(true);
     await loadPremiumStatus();
     if (user) {
       await syncWithFirestore();
     }
     setIsLoading(false);
-  };
+  }, [loadPremiumStatus, syncWithFirestore, user]);
 
   // Cargar estado inicial
   useEffect(() => {
     loadPremiumStatus();
-  }, []);
+  }, [loadPremiumStatus]);
 
   // Sincronizar cuando el usuario cambia
   useEffect(() => {
@@ -147,7 +147,7 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
       setSubscriptionExpiry(null);
       setPurchaseDate(null);
     }
-  }, [user]);
+  }, [user, syncWithFirestore]);
 
   // Actualizar Analytics cuando cambia el estado premium
   useEffect(() => {
@@ -157,14 +157,17 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
     });
   }, [isPremium, subscriptionType]);
 
-  const value: PremiumContextType = {
-    isPremium,
-    isLoading,
-    subscriptionType,
-    subscriptionExpiry,
-    purchaseDate,
-    refreshPremiumStatus,
-  };
+  const value: PremiumContextType = useMemo(
+    () => ({
+      isPremium,
+      isLoading,
+      subscriptionType,
+      subscriptionExpiry,
+      purchaseDate,
+      refreshPremiumStatus,
+    }),
+    [isPremium, isLoading, subscriptionType, subscriptionExpiry, purchaseDate, refreshPremiumStatus]
+  );
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;
 };

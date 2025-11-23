@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
         flex: 1,
         maxWidth: 350,
         marginBottom: 0,
-        cursor: 'default',
+        cursor: 'default' as any,
       },
     }),
   },

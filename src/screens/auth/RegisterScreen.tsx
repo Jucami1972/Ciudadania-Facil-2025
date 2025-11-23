@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { NavigationProps } from '../../types/navigation';
+import { isValidEmail, validatePassword, passwordsMatch } from '../../utils/validation';
 
 export const RegisterScreen: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -30,18 +31,28 @@ export const RegisterScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProps>();
 
   const handleRegister = async () => {
+    // Validar campos requeridos
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+    // Validar formato de email
+    if (!isValidEmail(email)) {
+      Alert.alert('Error', 'Por favor ingresa un correo electrónico válido');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+    // Validar contraseña
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      Alert.alert('Error', passwordValidation.errors.join('\n'));
+      return;
+    }
+
+    // Validar que las contraseñas coincidan
+    if (!passwordsMatch(password, confirmPassword)) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
       return;
     }
 

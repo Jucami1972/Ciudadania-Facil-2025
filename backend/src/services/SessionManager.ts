@@ -23,7 +23,7 @@ export class SessionManager {
       questionsAsked: 0,
       totalQuestions: 20,
       n400QuestionsAsked: 0,
-      totalN400Questions: context.n400FormData ? 6 : 3,
+      totalN400Questions: context.n400FormData ? 4 : 3, // Máximo 4 preguntas si hay N-400, 3 si no
       civicsQuestionsAsked: 0,
       totalCivicsQuestions: 10,
       civicsQuestionsUsed: [],

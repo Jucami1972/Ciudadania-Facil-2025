@@ -8,7 +8,7 @@ import AppNavigator from './navigation/AppNavigator';
 import { QuestionsProvider } from './context/QuestionsContext';
 import { UserStatsProvider } from './context/UserStatsContext';
 
-export default function App(): JSX.Element {
+export default function App(): React.JSX.Element {
   useEffect(() => {
     const configureAudio = async () => {
       try {

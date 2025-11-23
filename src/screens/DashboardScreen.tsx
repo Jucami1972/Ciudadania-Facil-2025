@@ -217,7 +217,7 @@ const DashboardScreen = () => {
               onPress={action.onPress}
             >
               <LinearGradient
-                colors={action.gradient}
+                colors={action.gradient as readonly [string, string, ...string[]]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.actionGradient}

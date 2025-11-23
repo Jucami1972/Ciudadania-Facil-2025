@@ -69,15 +69,21 @@ export interface InterviewMessage {
 }
 
 // Tipos de estado de la entrevista (compatibles con frontend)
+// Estructura basada en el protocolo oficial USCIS de 8 fases
 export type InterviewStage = 
-  | 'greeting'
-  | 'identity'
-  | 'n400_review'
-  | 'oath'
-  | 'civics'
-  | 'reading'
-  | 'writing'
-  | 'closing';
+  | 'greeting'              // Fase 1: Bienvenida y Juramento Inicial (llamado, saludo, documentos, juramento)
+  | 'swearing_in'           // Juramento de decir la verdad
+  | 'identity'              // Verificación de identidad (nombre, fecha de nacimiento, documentos)
+  | 'n400_biographical'     // Fase 2: N-400 Datos Biográficos (elegibilidad, nombre, fechas, estado civil)
+  | 'n400_residence'        // Fase 3: N-400 Domicilios, Empleo y Viajes
+  | 'oath'                  // Juramento de Lealtad inicial (antes de las pruebas)
+  | 'civics'                // Fase 4: Prueba Cívica (10 preguntas, necesita 6 correctas)
+  | 'reading'               // Fase 4: Prueba de Lectura en Inglés
+  | 'writing'               // Fase 4: Prueba de Escritura en Inglés
+  | 'n400_moral_character'  // Fase 5: N-400 Carácter Moral (preguntas Sí/No y definiciones)
+  | 'loyalty_oath'          // Fase 6: Lealtad y Juramento Final (apoyo a Constitución, servicios militares)
+  | 'review_signature'      // Fase 7: Revisión Final y Firma
+  | 'closing';              // Fase 8: Resultados y Despedida
 
 // Evaluación de fluidez del usuario
 export interface FluencyEvaluation {

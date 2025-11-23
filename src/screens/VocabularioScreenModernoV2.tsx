@@ -1070,6 +1070,11 @@ const VocabularioScreenModernoV2 = () => {
               <Text style={styles.emptySubtext}>Intenta con otra búsqueda</Text>
             </View>
           }
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          initialNumToRender={10}
+          updateCellsBatchingPeriod={50}
         />
       </ScrollView>
 

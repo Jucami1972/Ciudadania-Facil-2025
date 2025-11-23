@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { NavigationProps } from '../../types/navigation';
+import { isValidEmail } from '../../utils/validation';
 
 export const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -30,6 +31,12 @@ export const LoginScreen: React.FC = () => {
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    // Validar formato de email
+    if (!isValidEmail(email)) {
+      Alert.alert('Error', 'Por favor ingresa un correo electrónico válido');
       return;
     }
 

@@ -1,8 +1,10 @@
 /**
  * USCISInterviewEngine - Motor de control de etapas de la entrevista
  * 
- * Controla el flujo completo de la entrevista N-400:
- * greeting -> identity -> n400_review -> oath -> civics -> reading -> writing -> closing
+ * Controla el flujo completo de la entrevista N-400 según protocolo oficial USCIS:
+ * greeting -> swearing_in -> identity -> n400_biographical -> n400_residence -> 
+ * oath -> civics -> reading -> writing -> n400_moral_character -> 
+ * loyalty_oath -> review_signature -> closing
  */
 
 import { InterviewSession, InterviewStage, FluencyEvaluation } from '../types';
@@ -15,33 +17,62 @@ export class USCISInterviewEngine {
    */
   getNextStage(currentStage: InterviewStage, session: InterviewSession): InterviewStage | null {
     switch (currentStage) {
+      // Fase 1: Bienvenida y Juramento Inicial
       case 'greeting':
+        return 'swearing_in';
+      
+      case 'swearing_in':
         return 'identity';
       
+      // Verificación de identidad
       case 'identity':
-        return session.context.n400FormData ? 'n400_review' : 'oath';
+        return 'n400_biographical';
       
-      case 'n400_review':
+      // Fase 2: N-400 Datos Biográficos
+      case 'n400_biographical':
+        // Contar preguntas biográficas si existe tracking específico
+        // Por ahora, avanzar después de verificar identidad
+        return 'n400_residence';
+      
+      // Fase 3: N-400 Domicilios, Empleo y Viajes
+      case 'n400_residence':
         if (session.n400QuestionsAsked >= session.totalN400Questions) {
           return 'oath';
         }
-        return null; // Continuar en la misma etapa
+        return null; // Continuar en la misma etapa si no se alcanzó el límite
       
+      // Juramento antes de las pruebas
       case 'oath':
         return 'civics';
       
+      // Fase 4: Pruebas de Inglés y Cívicas
       case 'civics':
         if (session.civicsQuestionsAsked >= session.totalCivicsQuestions) {
           return 'reading';
         }
-        return null; // Continuar en la misma etapa
+        return null; // Continuar en la misma etapa si no se completaron las 10 preguntas
       
       case 'reading':
         return 'writing';
       
       case 'writing':
+        return 'n400_moral_character';
+      
+      // Fase 5: N-400 Carácter Moral
+      case 'n400_moral_character':
+        // Continuar hasta completar preguntas de carácter moral
+        // Por ahora, avanzar después de un número determinado de preguntas
+        return 'loyalty_oath';
+      
+      // Fase 6: Lealtad y Juramento Final
+      case 'loyalty_oath':
+        return 'review_signature';
+      
+      // Fase 7: Revisión Final y Firma
+      case 'review_signature':
         return 'closing';
       
+      // Fase 8: Resultados y Despedida
       case 'closing':
         return null; // Fin de la entrevista
       
@@ -69,6 +100,7 @@ export class USCISInterviewEngine {
 
   /**
    * Selecciona una pregunta de civismo aleatoria que no se haya usado
+   * Prioriza preguntas importantes (asterisk: true) pero mantiene aleatoriedad
    */
   selectNextCivicsQuestion(sessionId: string): { id: number; questionEn: string; answerEn: string | string[] } | null {
     const session = sessionManager.getSession(sessionId);
@@ -76,7 +108,12 @@ export class USCISInterviewEngine {
       return null;
     }
 
-    const question = questionBank.getRandomQuestion(session.civicsQuestionsUsed);
+    // Priorizar preguntas importantes (asterisk: true) pero mantener aleatoriedad
+    // Las primeras preguntas tienen mayor probabilidad de ser importantes
+    const questionsAsked = session.civicsQuestionsAsked || 0;
+    const prioritizeImportant = questionsAsked < 3; // Priorizar en las primeras 3 preguntas
+    
+    const question = questionBank.getRandomQuestion(session.civicsQuestionsUsed, prioritizeImportant);
     if (!question) {
       return null;
     }

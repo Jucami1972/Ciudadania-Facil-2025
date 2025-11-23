@@ -84,3 +84,12 @@ logs
 android/app/build/
 android/build/
 ios/build/
+
+# Credenciales y API keys (protección preventiva)
+*credenciales*.txt
+*API*.txt
+*key*.txt
+*.txt
+!README*.txt
+!CHANGELOG*.txt
+!LICENSE*.txt

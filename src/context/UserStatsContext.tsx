@@ -3,7 +3,7 @@
  * Evita recargar estadísticas en cada sesión de práctica
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QuestionStorageService } from '../services/QuestionStorageService';
 
@@ -36,7 +36,7 @@ export const UserStatsProvider: React.FC<UserStatsProviderProps> = ({ children }
   const [markedQuestions, setMarkedQuestions] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -52,50 +52,55 @@ export const UserStatsProvider: React.FC<UserStatsProviderProps> = ({ children }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadStats();
+  }, [loadStats]);
+
+  const refreshStats = useCallback(async () => {
+    await loadStats();
+  }, [loadStats]);
+
+  const addIncorrectQuestion = useCallback(async (questionId: number) => {
+    setIncorrectQuestions(prev => {
+      const newSet = new Set([...prev, questionId]);
+      QuestionStorageService.saveIncorrectQuestion(questionId, newSet);
+      return newSet;
+    });
   }, []);
 
-  const refreshStats = async () => {
-    await loadStats();
-  };
-
-  const addIncorrectQuestion = async (questionId: number) => {
-    await QuestionStorageService.addIncorrectQuestion(questionId);
-    setIncorrectQuestions(prev => new Set([...prev, questionId]));
-  };
-
-  const removeIncorrectQuestion = async (questionId: number) => {
-    await QuestionStorageService.removeIncorrectQuestion(questionId);
+  const removeIncorrectQuestion = useCallback(async (questionId: number) => {
     setIncorrectQuestions(prev => {
       const newSet = new Set(prev);
       newSet.delete(questionId);
       return newSet;
     });
-  };
+  }, []);
 
-  const toggleMarkedQuestion = async (questionId: number) => {
+  const toggleMarkedQuestion = useCallback(async (questionId: number) => {
     const newMarked = await QuestionStorageService.toggleMarkedQuestion(
       questionId,
       markedQuestions
     );
     setMarkedQuestions(newMarked);
-  };
+  }, [markedQuestions]);
+
+  const contextValue = useMemo(
+    () => ({
+      incorrectQuestions,
+      markedQuestions,
+      isLoading,
+      refreshStats,
+      addIncorrectQuestion,
+      removeIncorrectQuestion,
+      toggleMarkedQuestion,
+    }),
+    [incorrectQuestions, markedQuestions, isLoading, refreshStats, addIncorrectQuestion, removeIncorrectQuestion, toggleMarkedQuestion]
+  );
 
   return (
-    <UserStatsContext.Provider
-      value={{
-        incorrectQuestions,
-        markedQuestions,
-        isLoading,
-        refreshStats,
-        addIncorrectQuestion,
-        removeIncorrectQuestion,
-        toggleMarkedQuestion,
-      }}
-    >
+    <UserStatsContext.Provider value={contextValue}>
       {children}
     </UserStatsContext.Provider>
   );

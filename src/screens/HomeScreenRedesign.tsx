@@ -12,10 +12,10 @@ import {
   SafeAreaView,
   Dimensions,
   Modal,
-  Animated,
   Alert,
   Platform,
 } from 'react-native';
+import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import { useAuth } from '../context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
 import WebLayout from '../components/layout/WebLayout';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
+import { designSystem } from '../config/designSystem';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -50,23 +51,6 @@ interface StudyModule {
   route: string;
 }
 
-interface PracticeModule {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  color: string;
-  status: 'completed' | 'in-progress' | 'available';
-  route: string;
-}
-
-interface Badge {
-  id: string;
-  title: string;
-  icon: string;
-  unlocked: boolean;
-  description: string;
-}
 
 // ==================== COMPONENTES ====================
 
@@ -106,7 +90,14 @@ const HeaderSection = ({ userName, onProfilePress }: { userName: string; onProfi
           </Text>
           <Text style={styles.headerSubtext}>{message}</Text>
         </View>
-        <TouchableOpacity style={styles.profileButton} onPress={onProfilePress}>
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={onProfilePress}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Perfil de usuario"
+          accessibilityHint="Presiona para ver opciones de perfil y cerrar sesión"
+        >
           <MaterialCommunityIcons name="account-circle" size={32} color="#1E40AF" />
         </TouchableOpacity>
       </View>
@@ -131,7 +122,7 @@ const ProgressCard = ({
   onReset?: () => void;
 }) => {
   return (
-    <View style={styles.progressCard}>
+    <Animated.View entering={FadeInUp.duration(600).delay(100)} style={styles.progressCard}>
       <LinearGradient
         colors={['#3B82F6', '#1E40AF']} // Azul profesional
         start={{ x: 0, y: 0 }}
@@ -149,7 +140,14 @@ const ProgressCard = ({
               <Text style={styles.streakText}>{streak} días</Text>
             </View>
             {onReset && (
-              <TouchableOpacity onPress={onReset} style={styles.resetButton}>
+              <TouchableOpacity
+                onPress={onReset}
+                style={styles.resetButton}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityLabel="Reiniciar progreso"
+                accessibilityHint="Presiona para reiniciar tu progreso de estudio a cero"
+              >
                 <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
               </TouchableOpacity>
             )}
@@ -172,14 +170,23 @@ const ProgressCard = ({
           </View>
         </View>
       </LinearGradient>
-    </View>
+    </Animated.View>
   );
 };
 
 // Botón principal CTA
 const MainCTAButton = ({ onPress }: { onPress: () => void }) => {
   return (
-    <TouchableOpacity style={styles.mainCTA} onPress={onPress} activeOpacity={0.9}>
+    <Animated.View entering={FadeInUp.duration(600).delay(200)}>
+      <TouchableOpacity
+      style={styles.mainCTA}
+      onPress={onPress}
+      activeOpacity={0.9}
+      accessible={true}
+      accessibilityRole="button"
+      accessibilityLabel="Continuar estudiando"
+      accessibilityHint="Presiona para continuar donde quedaste en tu estudio"
+    >
       <LinearGradient
         colors={['#3B82F6', '#1E40AF']} // Azul profesional
         start={{ x: 0, y: 0 }}
@@ -189,7 +196,8 @@ const MainCTAButton = ({ onPress }: { onPress: () => void }) => {
         <MaterialCommunityIcons name="play-circle" size={28} color="#FFFFFF" />
         <Text style={styles.mainCTAText}>CONTINÚA DONDE QUEDASTE</Text>
       </LinearGradient>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -214,8 +222,10 @@ const StudyModuleCard = ({
       ]}
       onPress={onPress}
       activeOpacity={0.8}
-      onMouseEnter={() => isWeb && setIsHovered(true)}
-      onMouseLeave={() => isWeb && setIsHovered(false)}
+      {...(isWeb && {
+        onMouseEnter: () => setIsHovered(true),
+        onMouseLeave: () => setIsHovered(false),
+      } as any)}
     >
       <View style={[styles.moduleIconContainer, { backgroundColor: `${module.color}15` }]}>
         <MaterialCommunityIcons name={module.icon as any} size={24} color={module.color} />
@@ -239,92 +249,10 @@ const StudyModuleCard = ({
   );
 };
 
-// Tarjeta de práctica
-const PracticeModuleCard = ({
-  module,
-  onPress,
-  isWebDesktop,
-}: {
-  module: PracticeModule;
-  onPress: () => void;
-  isWebDesktop: boolean;
-}) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const statusConfig = {
-    completed: { icon: 'check-circle', color: '#10B981', label: 'Completado' },
-    'in-progress': { icon: 'clock-outline', color: '#F59E0B', label: 'En progreso' },
-    available: { icon: 'play-circle', color: '#1E40AF', label: 'Disponible' },
-  };
-
-  const config = statusConfig[module.status];
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.practiceCard,
-        { width: getCardWidth(isWebDesktop) },
-        isWeb && isHovered && styles.practiceCardHovered,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      onMouseEnter={() => isWeb && setIsHovered(true)}
-      onMouseLeave={() => isWeb && setIsHovered(false)}
-    >
-      <View style={[styles.practiceIconContainer, { backgroundColor: `${module.color}15` }]}>
-        <MaterialCommunityIcons name={module.icon as any} size={24} color={module.color} />
-      </View>
-      <Text style={styles.practiceTitle}>{module.title}</Text>
-      <Text style={styles.practiceDescription} numberOfLines={2}>
-        {module.description}
-      </Text>
-      <View style={[styles.practiceStatus, { backgroundColor: `${config.color}15` }]}>
-        <MaterialCommunityIcons name={config.icon as any} size={14} color={config.color} />
-        <Text style={[styles.practiceStatusText, { color: config.color }]}>
-          {config.label}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-// Badge de gamificación
-const BadgeCard = ({ badge, isWebDesktop }: { badge: Badge; isWebDesktop: boolean }) => {
-  return (
-    <View
-      style={[
-        styles.badgeCard,
-        { opacity: badge.unlocked ? 1 : 0.4 },
-        { width: getCardWidth(isWebDesktop) },
-      ]}
-    >
-      <View
-        style={[
-          styles.badgeIconContainer,
-          {
-            backgroundColor: badge.unlocked ? '#1E40AF' : '#E5E7EB',
-          },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={badge.icon as any}
-          size={20}
-          color={badge.unlocked ? '#FFFFFF' : '#9CA3AF'}
-        />
-      </View>
-      <Text style={styles.badgeTitle} numberOfLines={1}>
-        {badge.title}
-      </Text>
-      {!badge.unlocked && (
-        <MaterialCommunityIcons name="lock" size={12} color="#9CA3AF" style={styles.badgeLock} />
-      )}
-    </View>
-  );
-};
 
 // Botón flotante (FAB) con asistente IA
 const AIAssistantFAB = ({ onPress }: { onPress: () => void }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const scaleAnim = new Animated.Value(0);
 
   const quickActions = [
     { icon: 'help-circle', label: 'Explicar pregunta', action: () => {} },
@@ -338,6 +266,10 @@ const AIAssistantFAB = ({ onPress }: { onPress: () => void }) => {
         style={styles.fab}
         onPress={() => setShowMenu(!showMenu)}
         activeOpacity={0.9}
+        accessible={true}
+        accessibilityRole="button"
+        accessibilityLabel={showMenu ? "Cerrar menú de asistente IA" : "Abrir menú de asistente IA"}
+        accessibilityHint="Presiona para ver acciones rápidas del asistente de inteligencia artificial"
       >
         <LinearGradient
           colors={['#3B82F6', '#1E40AF']} // Azul profesional
@@ -418,70 +350,6 @@ const HomeScreenRedesign = () => {
     },
   ]);
 
-  // Módulos de práctica
-  const [practiceModules] = useState<PracticeModule[]>([
-    {
-      id: 'photo',
-      title: 'Memoria Fotográfica',
-      description: 'Asocia imágenes con preguntas',
-      icon: 'image-multiple',
-      color: '#10B981',
-      status: 'available',
-      route: 'PhotoMemoryHome',
-    },
-    {
-      id: 'vocabulary',
-      title: 'Vocabulario',
-      description: 'Palabras clave con pronunciación',
-      icon: 'alphabetical-variant',
-      color: '#F59E0B',
-      status: 'available',
-      route: 'VocabularioHome',
-    },
-    {
-      id: 'interview',
-      title: 'Entrevista AI',
-      description: 'Simula una entrevista real',
-      icon: 'microphone-variant',
-      color: '#EF4444',
-      status: 'available',
-      route: 'EntrevistaAIHome',
-    },
-    {
-      id: 'exam20',
-      title: 'Examen 20 Preguntas',
-      description: 'Simulación real del examen',
-      icon: 'clipboard-check',
-      color: '#06B6D4',
-      status: 'available',
-      route: 'Random20PracticeHome',
-    },
-  ]);
-
-  // Badges
-  const [badges] = useState<Badge[]>([
-    {
-      id: 'first-day',
-      title: 'Primer día',
-      icon: 'star',
-      unlocked: true,
-      description: 'Completaste tu primer día de estudio',
-    },
-    {
-      id: 'week-streak',
-      title: 'Racha semanal',
-      icon: 'fire',
-      unlocked: false,
-      description: 'Estudia 7 días seguidos',
-    },
-    {
-      id: 'halfway',
-      title: 'A mitad de camino',
-      icon: 'trophy',
-      unlocked: false,
-      description: 'Completa el 50% de las preguntas',
-    },
-  ]);
 
   // Cargar progreso
   useEffect(() => {
@@ -552,14 +420,8 @@ const HomeScreenRedesign = () => {
     navigateToStudyStack('StudyHome');
   };
 
-  const handleModulePress = (module: StudyModule | PracticeModule) => {
-    if ('status' in module) {
-      // Es un módulo de práctica
-      navigateToPracticeStack(module.route);
-    } else {
-      // Es un módulo de estudio
-      navigateToStudyStack(module.route);
-    }
+  const handleModulePress = (module: StudyModule) => {
+    navigateToStudyStack(module.route);
   };
 
   const content = (
@@ -610,11 +472,11 @@ const HomeScreenRedesign = () => {
         {/* Botón Principal CTA */}
         <MainCTAButton onPress={handleContinuePress} />
 
-        {/* Sección de Estudio */}
+        {/* Sección de Estudio - Acceso Rápido */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="book-open-variant" size={20} color="#1E40AF" />
-            <Text style={styles.sectionTitle}>Estudio</Text>
+            <MaterialCommunityIcons name="book-open-variant" size={20} color={designSystem.colors.brand.primary} />
+            <Text style={styles.sectionTitle}>Acceso Rápido</Text>
           </View>
           <View style={styles.grid}>
             {studyModules.map((module) => (
@@ -624,37 +486,6 @@ const HomeScreenRedesign = () => {
                 onPress={() => handleModulePress(module)}
                 isWebDesktop={isWebDesktop}
               />
-            ))}
-          </View>
-        </View>
-
-        {/* Sección de Práctica */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="pencil-box" size={20} color="#10B981" />
-            <Text style={styles.sectionTitle}>Práctica</Text>
-          </View>
-          <View style={styles.grid}>
-            {practiceModules.map((module) => (
-              <PracticeModuleCard
-                key={module.id}
-                module={module}
-                onPress={() => handleModulePress(module)}
-                isWebDesktop={isWebDesktop}
-              />
-            ))}
-          </View>
-        </View>
-
-        {/* Gamificación - Badges */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="trophy" size={20} color="#F59E0B" />
-            <Text style={styles.sectionTitle}>Logros</Text>
-          </View>
-          <View style={styles.grid}>
-            {badges.map((badge) => (
-              <BadgeCard key={badge.id} badge={badge} isWebDesktop={isWebDesktop} />
             ))}
           </View>
         </View>

@@ -63,7 +63,7 @@ const WebSidebar: React.FC = () => {
       navigation.navigate('Home');
     } else if (routeName === 'Study') {
       // Navegar a Study tab y luego a StudyHome
-      navigation.navigate('Study', { screen: 'StudyHome' });
+      (navigation as any).navigate('Study', { screen: 'StudyHome' });
     } else if (routeName === 'Practice') {
       // Navegar a Practice tab y luego a la pantalla correspondiente
       const practiceRoutes: Record<number, string> = {
@@ -73,7 +73,7 @@ const WebSidebar: React.FC = () => {
         5: 'ExamenHome',          // Examen
       };
       const targetScreen = practiceRoutes[index] || 'PruebaPracticaHome';
-      navigation.navigate('Practice', { screen: targetScreen });
+      (navigation as any).navigate('Practice', { screen: targetScreen });
     } else {
       // Fallback para otras rutas
       (navigation as any).navigate(routeName);

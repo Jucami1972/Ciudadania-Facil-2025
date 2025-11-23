@@ -22,4 +22,20 @@ module.exports = {
     // Asegura que .cjs esté incluido para módulos como idb
     sourceExts: [...defaultConfig.resolver.sourceExts, 'svg', 'cjs'],
   },
+  // Optimizaciones para el watcher y evitar errores de "Body is unusable"
+  watchFolders: [path.resolve(__dirname)],
+  // Deshabilitar validación de dependencias en desarrollo para evitar errores de red
+  server: {
+    ...defaultConfig.server,
+    enhanceMiddleware: (middleware) => {
+      return middleware;
+    },
+  },
+  // Configuración del watcher para evitar errores en Windows
+  watcher: {
+    ...defaultConfig.watcher,
+    healthCheck: {
+      enabled: true,
+    },
+  },
 }; 

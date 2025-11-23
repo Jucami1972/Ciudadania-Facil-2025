@@ -12,15 +12,13 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
-import * as DocumentPicker from 'expo-document-picker';
 import { NavigationProps } from '../../types/navigation';
-import aiInterviewN400Service, { N400FormData, InterviewContext } from '../../services/aiInterviewN400Service';
+import aiInterviewN400Service, { InterviewContext } from '../../services/aiInterviewN400Service';
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 import WebLayout from '../../components/layout/WebLayout';
 import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
@@ -45,20 +43,6 @@ const AIInterviewN400ScreenModerno = () => {
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [applicantName, setApplicantName] = useState('');
-  const [n400Loaded, setN400Loaded] = useState(false);
-  const [n400FileName, setN400FileName] = useState<string | null>(null);
-  const [n400FormData, setN400FormData] = useState<N400FormData | null>(null);
-  const [showN400Form, setShowN400Form] = useState(false);
-  const [n400FormInputs, setN400FormInputs] = useState({
-    currentAddress: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    currentOccupation: '',
-    maritalStatus: '',
-    yearsInUS: '',
-    countryOfBirth: '',
-  });
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [waitingForAutoMessage, setWaitingForAutoMessage] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -103,42 +87,21 @@ const AIInterviewN400ScreenModerno = () => {
     console.log('🚀 Iniciando entrevista...');
 
     try {
-      // Extraer children del n400FormData si existe, o usar 0
-      const childrenCount = n400FormData?.children ? n400FormData.children.length : 0;
-      
-      // Calcular edad desde fecha de nacimiento si está disponible
-      let applicantAge = 30;
-      if (n400FormData?.dateOfBirth) {
-        try {
-          const birthYear = new Date(n400FormData.dateOfBirth).getFullYear();
-          applicantAge = new Date().getFullYear() - birthYear;
-        } catch {
-          applicantAge = 30;
-        }
-      }
-      
       const context: InterviewContext = {
         applicantName,
-        applicantAge,
-        countryOfOrigin: n400FormData?.countryOfBirth || 'Desconocido',
-        yearsInUS: n400FormData?.yearsInUS || 5,
-        currentOccupation: n400FormData?.currentOccupation || 'Desconocido',
-        maritalStatus: n400FormData?.maritalStatus || 'Desconocido',
-        children: childrenCount,
-        n400FormData: n400FormData || undefined,
+        applicantAge: 30, // Edad por defecto
+        countryOfOrigin: 'Desconocido',
+        yearsInUS: 5,
+        currentOccupation: 'Desconocido',
+        maritalStatus: 'Desconocido',
+        children: 0,
       };
 
-      console.log('📝 Contexto creado:', { applicantName, applicantAge });
+      console.log('📝 Contexto creado:', { applicantName });
       console.log('🔄 Inicializando sesión...');
       
       const session = await aiInterviewN400Service.initializeSession(context);
       console.log('✅ Sesión inicializada:', session.sessionId);
-      
-      // Si hay datos del N-400, cargarlos en la sesión
-      if (n400FormData && session) {
-        console.log('📄 Cargando datos N-400...');
-        await aiInterviewN400Service.loadN400FormData(session.sessionId, n400FormData);
-      }
       setSessionId(session.sessionId);
 
       console.log('📨 Obteniendo mensajes iniciales...');
@@ -172,30 +135,6 @@ const AIInterviewN400ScreenModerno = () => {
     }
   };
 
-  const handlePickN400 = async () => {
-    // Mostrar formulario para ingresar datos del N-400
-    setShowN400Form(true);
-  };
-
-  const handleSaveN400Form = () => {
-    const extractedData: N400FormData = {
-      fullName: applicantName || 'Nombre del solicitante',
-      currentAddress: n400FormInputs.currentAddress || '',
-      city: n400FormInputs.city || '',
-      state: n400FormInputs.state || '',
-      zipCode: n400FormInputs.zipCode || '',
-      currentOccupation: n400FormInputs.currentOccupation || '',
-      maritalStatus: n400FormInputs.maritalStatus || '',
-      yearsInUS: parseInt(n400FormInputs.yearsInUS) || 5,
-      countryOfBirth: n400FormInputs.countryOfBirth || '',
-    };
-
-    setN400FormData(extractedData);
-    setN400Loaded(true);
-    setN400FileName('N-400 Form Data');
-    setShowN400Form(false);
-    Alert.alert('Éxito', 'Datos del N-400 guardados correctamente');
-  };
 
   // Función para hablar un mensaje
   const speakMessage = async (text: string): Promise<void> => {
@@ -361,10 +300,6 @@ const AIInterviewN400ScreenModerno = () => {
                 <Text style={styles.featureText}>Responde escribiendo (voz opcional)</Text>
               </View>
               <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="file-pdf-box" size={20} color="#1E40AF" />
-                <Text style={styles.featureText}>Carga tu formulario N-400</Text>
-              </View>
-              <View style={styles.featureItem}>
                 <MaterialCommunityIcons name="chat" size={20} color="#1E40AF" />
                 <Text style={styles.featureText}>Conversación realista</Text>
               </View>
@@ -385,18 +320,6 @@ const AIInterviewN400ScreenModerno = () => {
             </View>
 
             <TouchableOpacity
-              style={styles.n400Button}
-              onPress={handlePickN400}
-            >
-              <MaterialCommunityIcons name="file-pdf-box" size={20} color="#1E40AF" />
-              <Text style={styles.n400ButtonText}>
-                {n400Loaded 
-                  ? (n400FileName ? `N-400: ${n400FileName}` : 'N-400 Cargado ✓')
-                  : 'Cargar Formulario N-400 (Opcional)'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.primaryButton}
               onPress={startInterview}
               disabled={isLoading}
@@ -413,123 +336,6 @@ const AIInterviewN400ScreenModerno = () => {
           </View>
         </ScrollView>
 
-        {/* Modal para ingresar datos del N-400 */}
-        <Modal
-          visible={showN400Form}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setShowN400Form(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Datos del Formulario N-400</Text>
-                <TouchableOpacity onPress={() => setShowN400Form(false)}>
-                  <MaterialCommunityIcons name="close" size={24} color="#1E40AF" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalBody}>
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Dirección Actual *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: 123 Main Street"
-                    value={n400FormInputs.currentAddress}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, currentAddress: text})}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Ciudad *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: Los Angeles"
-                    value={n400FormInputs.city}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, city: text})}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Estado *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: California"
-                    value={n400FormInputs.state}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, state: text})}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Código Postal *</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: 90001"
-                    value={n400FormInputs.zipCode}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, zipCode: text})}
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Ocupación Actual</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: Engineer"
-                    value={n400FormInputs.currentOccupation}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, currentOccupation: text})}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Estado Civil</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: Single, Married, Divorced"
-                    value={n400FormInputs.maritalStatus}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, maritalStatus: text})}
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>Años en EE.UU.</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: 5"
-                    value={n400FormInputs.yearsInUS}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, yearsInUS: text})}
-                    keyboardType="numeric"
-                  />
-                </View>
-
-                <View style={styles.formRow}>
-                  <Text style={styles.formLabel}>País de Nacimiento</Text>
-                  <TextInput
-                    style={styles.formInput}
-                    placeholder="Ej: Mexico"
-                    value={n400FormInputs.countryOfBirth}
-                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, countryOfBirth: text})}
-                  />
-                </View>
-              </ScrollView>
-
-              <View style={styles.modalFooter}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => setShowN400Form(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.saveButton}
-                  onPress={handleSaveN400Form}
-                >
-                  <Text style={styles.saveButtonText}>Guardar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
       </SafeAreaView>
     );
   }
@@ -751,23 +557,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     backgroundColor: '#fff',
   },
-  n400Button: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#1E40AF', // Azul profesional
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  n400ButtonText: {
-    color: '#1E40AF', // Azul profesional
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
   primaryButton: {
     width: '100%',
     backgroundColor: '#1E40AF', // Azul profesional
@@ -924,7 +713,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     width: '90%',
     maxWidth: 500,
-    maxHeight: '80%',
+    maxHeight: '80%' as any,
     ...Platform.select({
       web: {
         maxHeight: '90vh',

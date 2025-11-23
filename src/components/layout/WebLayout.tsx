@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
         maxWidth: 1600,
         alignSelf: 'center',
         width: '100%',
-        minHeight: 'calc(100vh - 64px)',
+        minHeight: 'calc(100vh - 64px)' as any,
       },
     }),
   },

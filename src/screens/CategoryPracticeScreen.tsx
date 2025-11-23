@@ -75,7 +75,9 @@ const CategoryPracticeScreen: React.FC<CategoryPracticeScreenProps> = ({ route, 
     const shuffled = [...filteredQuestions].sort(() => Math.random() - 0.5);
     const selectedQuestions = shuffled.slice(0, 10).map(q => ({
       ...q,
-      mode: getRandomMode()
+      mode: getRandomMode(),
+      answerEn: Array.isArray(q.answerEn) ? q.answerEn.join(', ') : q.answerEn,
+      answerEs: Array.isArray(q.answerEs) ? q.answerEs.join(', ') : q.answerEs,
     }));
     setQuestionsForPractice(selectedQuestions);
     setCurrentQuestionIndex(0);

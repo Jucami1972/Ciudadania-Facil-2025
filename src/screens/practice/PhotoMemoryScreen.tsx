@@ -137,7 +137,9 @@ const PhotoMemoryScreen: React.FC = () => {
           <View style={styles.imageContainer}>
             {currentQuestion.imagePath && (
               <Image
-                source={currentQuestion.imagePath}
+                source={typeof currentQuestion.imagePath === 'string' 
+                  ? { uri: currentQuestion.imagePath } 
+                  : currentQuestion.imagePath}
                 style={styles.image}
                 resizeMode="contain"
               />

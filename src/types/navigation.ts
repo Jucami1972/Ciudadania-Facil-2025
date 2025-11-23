@@ -30,7 +30,7 @@ export type GovernmentSubcategory =
   | 'C: Derechos y Responsabilidades';
 
 export type PracticeType = 'multiple' | 'written' | 'audio' | 'image';
-export type PracticeMode = 'category' | 'random' | 'incorrect' | 'marked';
+export type PracticeMode = 'category' | 'random' | 'incorrect' | 'marked' | 'spaced_repetition';
 
 // Stack Navigator Param List
 export type RootStackParamList = {
