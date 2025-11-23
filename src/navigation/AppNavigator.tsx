@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../types/navigation';
@@ -253,37 +254,56 @@ const PracticeStack = () => (
   </PracticeStackNavigator.Navigator>
 );
 
-const AppTabNavigator = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarIcon: ({ focused, color, size }) => {
-        let iconName: string = 'home';
-        if (route.name === 'Home') {
-          iconName = focused ? 'home' : 'home-outline';
-        } else if (route.name === 'Study') {
-          iconName = focused ? 'book' : 'book-outline';
-        } else if (route.name === 'Practice') {
-          iconName = focused ? 'pencil-box' : 'pencil-box-outline';
-        }
-        return <MaterialCommunityIcons name={iconName as any} size={size} color={color} />;
-      },
-      tabBarActiveTintColor: '#1E40AF', // Azul profesional
-      tabBarInactiveTintColor: '#999',
-      tabBarStyle: {
-        backgroundColor: '#fff',
-        borderTopColor: '#eee',
-        borderTopWidth: 1,
-        height: 60,
-        paddingBottom: 6,
-        paddingTop: 6,
-      },
-      tabBarLabelStyle: {
-        fontSize: 12,
-        fontWeight: '600',
-      },
-    })}
-  >
+const AppTabNavigator = () => {
+  const insets = useSafeAreaInsets();
+  
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused, color }) => {
+          // Iconos más pequeños: 20px
+          const iconSize = 20;
+          let iconName: string = 'home';
+          if (route.name === 'Home') {
+            iconName = focused ? 'home' : 'home-outline';
+          } else if (route.name === 'Study') {
+            iconName = focused ? 'book' : 'book-outline';
+          } else if (route.name === 'Practice') {
+            iconName = focused ? 'pencil-box' : 'pencil-box-outline';
+          }
+          return <MaterialCommunityIcons name={iconName as any} size={iconSize} color={color} />;
+        },
+        tabBarActiveTintColor: '#1E40AF', // Azul profesional
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopColor: '#eee',
+          borderTopWidth: 1,
+          height: 42 + (Platform.OS === 'ios' ? Math.max(insets.bottom - 8, 0) : 0), // Reducido 14%: de 49 a 42px + safe area
+          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom - 8, 4) : 4, // Ajustar para safe area
+          paddingTop: 10, // Padding superior para subir contenido
+        },
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: -2, // Acercar texto a iconos
+          paddingTop: 0,
+          marginBottom: 0,
+          lineHeight: 10,
+        },
+        tabBarIconStyle: {
+          marginTop: -3, // Subir iconos
+          marginBottom: 2, // Pequeño espacio antes del texto
+        },
+        tabBarItemStyle: {
+          paddingVertical: 0,
+          paddingHorizontal: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+      })}
+    >
     <Tab.Screen
       name="Home"
       component={HomeScreenModerno || HomeScreenRedesign || HomeScreen}
@@ -291,8 +311,9 @@ const AppTabNavigator = () => (
     />
     <Tab.Screen name="Study" component={StudyStack} options={{ tabBarLabel: 'Estudio' }} />
     <Tab.Screen name="Practice" component={PracticeStack} options={{ tabBarLabel: 'Práctica' }} />
-  </Tab.Navigator>
-);
+    </Tab.Navigator>
+  );
+};
 
 // Determinar qué componente usar para Home
 const HomeComponent = Platform.OS === 'web' ? DashboardScreen : HomeScreen;

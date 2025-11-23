@@ -7,7 +7,11 @@
  * NOTA: Este servicio funciona con o sin OpenAI API.
  * Si tienes EXPO_PUBLIC_OPENAI_API_KEY configurada, usará GPT-4o-mini.
  * Si no, usará respuestas predefinidas inteligentes.
+ * 
+ * También puede usar el backend si USE_BACKEND está habilitado.
  */
+
+import { USE_BACKEND, BACKEND_URL, BACKEND_TIMEOUT } from '../constants/backend';
 
 // Estructura completa del formulario N-400
 export interface N400FormData {
@@ -116,6 +120,227 @@ class AIInterviewN400Service {
 
   constructor() {
     // El cliente de OpenAI se inicializará dinámicamente cuando se necesite
+    if (__DEV__) {
+      if (USE_BACKEND) {
+        console.log('✅ Backend mode enabled:', BACKEND_URL);
+      } else {
+        console.log('ℹ️ Using local service (backend disabled)');
+      }
+    }
+  }
+
+  /**
+   * Verifica si el backend está disponible
+   */
+  private async isBackendAvailable(): Promise<boolean> {
+    if (!USE_BACKEND) {
+      return false;
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 segundos timeout
+
+      const response = await fetch(`${BACKEND_URL}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      return response.ok;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('⚠️ Backend no disponible, usando servicio local:', error);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * Llama al backend para inicializar la sesión
+   */
+  private async initBackendSession(context: InterviewContext): Promise<InterviewSession | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
+
+      const response = await fetch(`${BACKEND_URL}/interview/init`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ context }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Crear sesión local compatible
+      const session: InterviewSession = {
+        sessionId: data.sessionId,
+        context,
+        messages: [
+          {
+            role: 'officer',
+            content: data.officerResponse,
+            timestamp: new Date(),
+            shouldSpeak: data.shouldSpeak,
+            fluencyEvaluation: data.fluencyEvaluation,
+          },
+        ],
+        stage: data.estado_entrevista,
+        questionsAsked: 0,
+        totalQuestions: 20,
+        n400QuestionsAsked: 0,
+        totalN400Questions: context.n400FormData ? 6 : 3,
+        civicsQuestionsAsked: 0,
+        totalCivicsQuestions: 10,
+      };
+
+      this.sessions.set(session.sessionId, session);
+      return session;
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error calling backend init:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Llama al backend para procesar una respuesta
+   */
+  private async processBackendResponse(
+    sessionId: string,
+    response: string
+  ): Promise<InterviewMessage | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
+
+      const backendResponse = await fetch(`${BACKEND_URL}/interview/respond`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId, response }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!backendResponse.ok) {
+        throw new Error(`Backend error: ${backendResponse.status}`);
+      }
+
+      const data = await backendResponse.json();
+
+      // Actualizar sesión local
+      const session = this.sessions.get(sessionId);
+      if (session) {
+        session.messages.push({
+          role: 'applicant',
+          content: response,
+          timestamp: new Date(),
+        });
+
+        const officerMessage: InterviewMessage = {
+          role: 'officer',
+          content: data.officerResponse,
+          timestamp: new Date(),
+          shouldSpeak: data.shouldSpeak,
+          fluencyEvaluation: data.fluencyEvaluation,
+        };
+
+        session.messages.push(officerMessage);
+        session.stage = data.estado_entrevista;
+
+        if (data.pregunta_id && session.currentCivicsQuestion) {
+          session.currentCivicsQuestion.id = data.pregunta_id;
+        }
+
+        if (data.isCorrect !== undefined) {
+          // Actualizar contadores si es necesario
+          if (session.stage === 'civics') {
+            session.civicsQuestionsAsked += 1;
+          }
+        }
+      }
+
+      return {
+        role: 'officer',
+        content: data.officerResponse,
+        timestamp: new Date(),
+        shouldSpeak: data.shouldSpeak,
+        fluencyEvaluation: data.fluencyEvaluation,
+      };
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error calling backend respond:', error);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Llama al backend para generar mensaje automático
+   */
+  private async generateBackendAutoMessage(sessionId: string): Promise<InterviewMessage | null> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), BACKEND_TIMEOUT);
+
+      const response = await fetch(`${BACKEND_URL}/interview/auto`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ sessionId }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Backend error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Actualizar sesión local
+      const session = this.sessions.get(sessionId);
+      if (session) {
+        const message: InterviewMessage = {
+          role: 'officer',
+          content: data.officerResponse,
+          timestamp: new Date(),
+          shouldSpeak: data.shouldSpeak,
+          fluencyEvaluation: data.fluencyEvaluation,
+        };
+
+        session.messages.push(message);
+        session.stage = data.estado_entrevista;
+      }
+
+      return {
+        role: 'officer',
+        content: data.officerResponse,
+        timestamp: new Date(),
+        shouldSpeak: data.shouldSpeak,
+        fluencyEvaluation: data.fluencyEvaluation,
+      };
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error calling backend auto:', error);
+      }
+      return null;
+    }
   }
 
   /**
@@ -207,6 +432,22 @@ class AIInterviewN400Service {
    * Inicia una nueva sesión de entrevista
    */
   async initializeSession(context: InterviewContext): Promise<InterviewSession> {
+    // Intentar usar backend si está habilitado
+    if (USE_BACKEND) {
+      const backendAvailable = await this.isBackendAvailable();
+      if (backendAvailable) {
+        const backendSession = await this.initBackendSession(context);
+        if (backendSession) {
+          return backendSession;
+        }
+        // Si falla, continuar con servicio local
+        if (__DEV__) {
+          console.warn('⚠️ Backend falló, usando servicio local');
+        }
+      }
+    }
+
+    // Servicio local (código original)
     const sessionId = `session_${Date.now()}`;
     
     const session: InterviewSession = {
@@ -249,6 +490,22 @@ class AIInterviewN400Service {
    * Útil para transiciones entre etapas
    */
   async generateNextAutomaticMessage(sessionId: string): Promise<InterviewMessage | null> {
+    // Intentar usar backend si está habilitado
+    if (USE_BACKEND) {
+      const backendAvailable = await this.isBackendAvailable();
+      if (backendAvailable) {
+        const backendMessage = await this.generateBackendAutoMessage(sessionId);
+        if (backendMessage) {
+          return backendMessage;
+        }
+        // Si falla, continuar con servicio local
+        if (__DEV__) {
+          console.warn('⚠️ Backend falló, usando servicio local');
+        }
+      }
+    }
+
+    // Servicio local (código original)
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error('Sesión no encontrada');
@@ -351,6 +608,26 @@ class AIInterviewN400Service {
     sessionId: string,
     applicantResponse: string
   ): Promise<{ officerResponse: string; isCorrect?: boolean; feedback?: string; shouldSpeak?: boolean; fluencyEvaluation?: FluencyEvaluation }> {
+    // Intentar usar backend si está habilitado
+    if (USE_BACKEND) {
+      const backendAvailable = await this.isBackendAvailable();
+      if (backendAvailable) {
+        const backendMessage = await this.processBackendResponse(sessionId, applicantResponse);
+        if (backendMessage) {
+          return {
+            officerResponse: backendMessage.content,
+            shouldSpeak: backendMessage.shouldSpeak ?? true,
+            fluencyEvaluation: backendMessage.fluencyEvaluation,
+          };
+        }
+        // Si falla, continuar con servicio local
+        if (__DEV__) {
+          console.warn('⚠️ Backend falló, usando servicio local');
+        }
+      }
+    }
+
+    // Servicio local (código original)
     const session = this.sessions.get(sessionId);
     if (!session) {
       throw new Error('Sesión no encontrada');
@@ -1051,6 +1328,7 @@ ${applicantResponse ? `**RESPUESTA DEL SOLICITANTE:** "${applicantResponse}"` : 
       estado_entrevista: estadoEntrevista,
     };
   }
+
 
   /**
    * Obtiene el historial de mensajes de la sesión

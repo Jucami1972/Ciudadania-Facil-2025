@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ import aiInterviewN400Service, { N400FormData, InterviewContext } from '../../se
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 import WebLayout from '../../components/layout/WebLayout';
 import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
+import { USE_BACKEND, BACKEND_URL } from '../../constants/backend';
 
 const isWeb = Platform.OS === 'web';
 
@@ -46,6 +48,17 @@ const AIInterviewN400ScreenModerno = () => {
   const [n400Loaded, setN400Loaded] = useState(false);
   const [n400FileName, setN400FileName] = useState<string | null>(null);
   const [n400FormData, setN400FormData] = useState<N400FormData | null>(null);
+  const [showN400Form, setShowN400Form] = useState(false);
+  const [n400FormInputs, setN400FormInputs] = useState({
+    currentAddress: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    currentOccupation: '',
+    maritalStatus: '',
+    yearsInUS: '',
+    countryOfBirth: '',
+  });
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [waitingForAutoMessage, setWaitingForAutoMessage] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -69,6 +82,17 @@ const AIInterviewN400ScreenModerno = () => {
     },
   });
 
+  // Mostrar estado del backend cuando se carga la pantalla
+  useEffect(() => {
+    if (__DEV__) {
+      if (USE_BACKEND) {
+        console.log('✅ Backend mode enabled:', BACKEND_URL);
+      } else {
+        console.log('ℹ️ Using local service (backend disabled)');
+      }
+    }
+  }, []);
+
   const startInterview = async () => {
     if (!applicantName.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu nombre');
@@ -76,6 +100,7 @@ const AIInterviewN400ScreenModerno = () => {
     }
 
     setIsLoading(true);
+    console.log('🚀 Iniciando entrevista...');
 
     try {
       // Extraer children del n400FormData si existe, o usar 0
@@ -103,15 +128,23 @@ const AIInterviewN400ScreenModerno = () => {
         n400FormData: n400FormData || undefined,
       };
 
+      console.log('📝 Contexto creado:', { applicantName, applicantAge });
+      console.log('🔄 Inicializando sesión...');
+      
       const session = await aiInterviewN400Service.initializeSession(context);
+      console.log('✅ Sesión inicializada:', session.sessionId);
       
       // Si hay datos del N-400, cargarlos en la sesión
       if (n400FormData && session) {
+        console.log('📄 Cargando datos N-400...');
         await aiInterviewN400Service.loadN400FormData(session.sessionId, n400FormData);
       }
       setSessionId(session.sessionId);
 
+      console.log('📨 Obteniendo mensajes iniciales...');
       const initialMessages = aiInterviewN400Service.getSessionMessages(session.sessionId);
+      console.log('📨 Mensajes obtenidos:', initialMessages.length);
+      
       const formattedMessages = initialMessages.map((m) => ({
         role: m.role as 'officer' | 'applicant',
         content: m.content,
@@ -120,286 +153,71 @@ const AIInterviewN400ScreenModerno = () => {
       }));
       setMessages(formattedMessages);
 
+      console.log('✅ Cambiando a pantalla de entrevista...');
       setSessionStarted(true);
 
       // SIEMPRE reproducir automáticamente el saludo del oficial
       // El agente debe hablar automáticamente desde el inicio
       if (initialMessages.length > 0) {
+        console.log('🔊 Reproduciendo saludo...');
         await speakMessage(initialMessages[0].content);
+      } else {
+        console.warn('⚠️ No hay mensajes iniciales para reproducir');
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo iniciar la entrevista');
-      console.error(error);
+      console.error('❌ Error al iniciar entrevista:', error);
+      Alert.alert('Error', `No se pudo iniciar la entrevista: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handlePickN400 = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled) {
-        return;
-      }
-
-      const file = result.assets[0];
-      setN400FileName(file.name);
-      setN400Loaded(true);
-
-      // Nota: En una aplicación real, aquí se procesaría el PDF para extraer los datos
-      // Por ahora, simulamos la extracción de datos básicos
-      // En producción, usarías una librería como react-native-pdf o un servicio backend
-      // Simulación de datos extraídos del N-400
-      // En producción, esto se haría con un servicio de OCR o procesamiento de PDF
-      const extractedData: N400FormData = {
-        fullName: applicantName || 'Nombre del solicitante',
-        currentAddress: '123 Main Street',
-        city: 'Los Angeles',
-        state: 'California',
-        zipCode: '90001',
-        currentOccupation: 'Ingeniero',
-        maritalStatus: 'Soltero',
-        yearsInUS: 5,
-        // Más campos se pueden agregar aquí
-      };
-
-      setN400FormData(extractedData);
-      // Mensaje silencioso - solo actualizar el estado visual
-      // El usuario verá que el PDF está cargado por el cambio en el botón
-    } catch (error) {
-      console.error('Error loading N-400:', error);
-      Alert.alert('Error', 'Could not load the document');
-    }
+    // Mostrar formulario para ingresar datos del N-400
+    setShowN400Form(true);
   };
 
-  // Función para convertir números a palabras en inglés (para mejor pronunciación TTS)
-  const numberToWords = (num: number): string => {
-    if (num === 0) return 'zero';
-    if (num === 1) return 'one';
-    if (num === 2) return 'two';
-    if (num === 3) return 'three';
-    if (num === 4) return 'four';
-    if (num === 5) return 'five';
-    if (num === 6) return 'six';
-    if (num === 7) return 'seven';
-    if (num === 8) return 'eight';
-    if (num === 9) return 'nine';
-    if (num === 10) return 'ten';
-    if (num === 11) return 'eleven';
-    if (num === 12) return 'twelve';
-    if (num === 13) return 'thirteen';
-    if (num === 14) return 'fourteen';
-    if (num === 15) return 'fifteen';
-    if (num === 16) return 'sixteen';
-    if (num === 17) return 'seventeen';
-    if (num === 18) return 'eighteen';
-    if (num === 19) return 'nineteen';
-    if (num === 20) return 'twenty';
-    if (num < 30) return `twenty-${numberToWords(num - 20)}`;
-    if (num < 40) return `thirty-${numberToWords(num - 30)}`;
-    if (num < 100) return `${numberToWords(Math.floor(num / 10) * 10)}-${numberToWords(num % 10)}`;
-    if (num === 100) return 'one hundred';
-    if (num === 200) return 'two hundred';
-    if (num === 300) return 'three hundred';
-    if (num === 400) return 'four hundred';
-    if (num < 1000) {
-      const hundreds = Math.floor(num / 100);
-      const remainder = num % 100;
-      return remainder === 0 
-        ? `${numberToWords(hundreds)} hundred`
-        : `${numberToWords(hundreds)} hundred ${numberToWords(remainder)}`;
-    }
-    // Para números más grandes, devolver el número original
-    return num.toString();
-  };
+  const handleSaveN400Form = () => {
+    const extractedData: N400FormData = {
+      fullName: applicantName || 'Nombre del solicitante',
+      currentAddress: n400FormInputs.currentAddress || '',
+      city: n400FormInputs.city || '',
+      state: n400FormInputs.state || '',
+      zipCode: n400FormInputs.zipCode || '',
+      currentOccupation: n400FormInputs.currentOccupation || '',
+      maritalStatus: n400FormInputs.maritalStatus || '',
+      yearsInUS: parseInt(n400FormInputs.yearsInUS) || 5,
+      countryOfBirth: n400FormInputs.countryOfBirth || '',
+    };
 
-  // Función para preparar el texto para TTS en inglés correcto
-  // Convierte números y términos técnicos a su pronunciación en inglés
-  const prepareTextForTTS = (text: string): string => {
-    let processedText = text;
-    
-    // CRÍTICO: Reemplazar "N-400" por "N four hundred" para pronunciación correcta
-    processedText = processedText.replace(/\bN-400\b/gi, 'N four hundred');
-    processedText = processedText.replace(/\bN 400\b/gi, 'N four hundred');
-    
-    // Convertir números de 3 dígitos (400, 128, etc.) a palabras
-    processedText = processedText.replace(/\b400\b/g, 'four hundred');
-    processedText = processedText.replace(/\b128\b/g, 'one hundred twenty-eight');
-    processedText = processedText.replace(/\b200\b/g, 'two hundred');
-    processedText = processedText.replace(/\b300\b/g, 'three hundred');
-    
-    // Convertir números de 2 dígitos comunes
-    processedText = processedText.replace(/\b10\b/g, 'ten');
-    processedText = processedText.replace(/\b20\b/g, 'twenty');
-    processedText = processedText.replace(/\b30\b/g, 'thirty');
-    processedText = processedText.replace(/\b40\b/g, 'forty');
-    processedText = processedText.replace(/\b50\b/g, 'fifty');
-    processedText = processedText.replace(/\b60\b/g, 'sixty');
-    processedText = processedText.replace(/\b70\b/g, 'seventy');
-    processedText = processedText.replace(/\b80\b/g, 'eighty');
-    processedText = processedText.replace(/\b90\b/g, 'ninety');
-    
-    // Convertir números de 1 dígito (solo si están aislados, no en medio de palabras)
-    processedText = processedText.replace(/\b0\b/g, 'zero');
-    processedText = processedText.replace(/\b1\b/g, 'one');
-    processedText = processedText.replace(/\b2\b/g, 'two');
-    processedText = processedText.replace(/\b3\b/g, 'three');
-    processedText = processedText.replace(/\b4\b/g, 'four');
-    processedText = processedText.replace(/\b5\b/g, 'five');
-    processedText = processedText.replace(/\b6\b/g, 'six');
-    processedText = processedText.replace(/\b7\b/g, 'seven');
-    processedText = processedText.replace(/\b8\b/g, 'eight');
-    processedText = processedText.replace(/\b9\b/g, 'nine');
-    
-    // Remover comillas que pueden causar problemas en TTS
-    processedText = processedText.replace(/['"]/g, '');
-    
-    // Normalizar espacios múltiples y limpiar
-    processedText = processedText.replace(/\s+/g, ' ').trim();
-    
-    return processedText;
-  };
-
-  // Función para verificar si TTS está disponible
-  const checkTTSAvailability = async (): Promise<boolean> => {
-    try {
-      // Intentar verificar si Speech está disponible
-      if (!Speech || typeof Speech.speak !== 'function') {
-        if (__DEV__) {
-          console.warn('⚠️ expo-speech no está disponible');
-        }
-        return false;
-      }
-      
-      // En Expo Go, verificar si funciona haciendo una prueba silenciosa
-      if (Platform.OS !== 'web') {
-        try {
-          const Constants = require('expo-constants');
-          const constants = Constants?.default || Constants;
-          const isExpoGo = constants?.executionEnvironment === 'storeClient' || constants?.appOwnership === 'expo';
-          
-          if (isExpoGo) {
-            // En Expo Go, expo-speech puede no funcionar
-            if (__DEV__) {
-              console.warn('⚠️ expo-speech puede tener limitaciones en Expo Go');
-            }
-            // Aún así intentamos usarlo, puede funcionar en algunos casos
-            return true;
-          }
-        } catch (e) {
-          // Si no podemos detectar, asumir que funciona
-        }
-      }
-      
-      return true;
-    } catch (error) {
-      if (__DEV__) {
-        console.warn('⚠️ Error verificando TTS:', error);
-      }
-      return false;
-    }
+    setN400FormData(extractedData);
+    setN400Loaded(true);
+    setN400FileName('N-400 Form Data');
+    setShowN400Form(false);
+    Alert.alert('Éxito', 'Datos del N-400 guardados correctamente');
   };
 
   // Función para hablar un mensaje
   const speakMessage = async (text: string): Promise<void> => {
-    // Verificar si TTS está disponible
-    const ttsAvailable = await checkTTSAvailability();
-    if (!ttsAvailable) {
-      if (__DEV__) {
-        console.warn('⚠️ TTS no disponible, el mensaje no se hablará');
-      }
-      return;
-    }
-
-    // Detener cualquier speech previo
-    try {
-      Speech.stop();
-      // Dar un pequeño delay para asegurar que se detuvo
-      await new Promise(resolve => setTimeout(resolve, 100));
-    } catch (error) {
-      // Ignorar errores al detener
-    }
-
-    // Preparar el texto para TTS correcto
-    const processedText = prepareTextForTTS(text);
-    
-    if (!processedText || processedText.trim().length === 0) {
-      if (__DEV__) {
-        console.warn('⚠️ Texto vacío para TTS');
-      }
-      return;
-    }
-
     return new Promise((resolve) => {
       setIsSpeaking(true);
-      
-      // Timeout de seguridad: si después de 10 segundos no se ha completado, resolver
-      const timeoutId = setTimeout(() => {
-        if (__DEV__) {
-          console.warn('⚠️ TTS timeout, forzando resolución');
-        }
-        setIsSpeaking(false);
-        resolve();
-      }, 10000);
-      
-      try {
-        // Configuración de TTS optimizada para inglés correcto
-        const speechOptions: any = {
-          language: 'en-US', // Idioma inglés americano - CRÍTICO para pronunciación correcta
-          rate: 0.85, // Velocidad normal (0.0 a 1.0)
-          pitch: 1.0, // Tono normal (0.5 a 2.0)
-          volume: 1.0, // Volumen máximo
-          onStart: () => {
-            clearTimeout(timeoutId);
-            if (__DEV__) {
-              console.log('🔊 TTS iniciado en inglés:', processedText.substring(0, 50));
-            }
-          },
-          onDone: () => {
-            clearTimeout(timeoutId);
-            setIsSpeaking(false);
-            resolve();
-          },
-          onStopped: () => {
-            clearTimeout(timeoutId);
-            setIsSpeaking(false);
-            resolve();
-          },
-          onError: (error: any) => {
-            clearTimeout(timeoutId);
-            console.error('❌ Error en TTS:', error);
-            if (__DEV__) {
-              console.warn('💡 El TTS puede no estar disponible en Expo Go. Considera usar un development build.');
-            }
-            setIsSpeaking(false);
-            resolve();
-          },
-        };
-
-        // Solo agregar quality si está disponible (puede no estar en todas las plataformas)
-        try {
-          if (Speech.VoiceQuality && Speech.VoiceQuality.Enhanced) {
-            speechOptions.quality = Speech.VoiceQuality.Enhanced;
-          }
-        } catch (e) {
-          // Quality puede no estar disponible en todas las plataformas
-        }
-
-        // Intentar hablar
-        Speech.speak(processedText, speechOptions);
-      } catch (error: any) {
-        clearTimeout(timeoutId);
-        console.error('❌ Error iniciando TTS:', error?.message || error);
-        if (__DEV__) {
-          console.warn('💡 expo-speech puede no estar disponible en Expo Go. Requiere un development build para funcionar correctamente.');
-        }
-        setIsSpeaking(false);
-        resolve();
-      }
+      Speech.speak(text, {
+        language: 'en-US',
+        rate: 0.85,
+        pitch: 1.0,
+        onDone: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onStopped: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onError: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+      });
     });
   };
 
@@ -496,7 +314,7 @@ const AIInterviewN400ScreenModerno = () => {
         return;
       }
       try {
-        await startRecording('es-ES'); // Español de España, o 'en-US' para inglés
+        await startRecording('en-US'); // Inglés para la entrevista
       } catch (error) {
         Alert.alert('Error', 'No se pudo iniciar el reconocimiento de voz');
       }
@@ -594,6 +412,124 @@ const AIInterviewN400ScreenModerno = () => {
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        {/* Modal para ingresar datos del N-400 */}
+        <Modal
+          visible={showN400Form}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowN400Form(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Datos del Formulario N-400</Text>
+                <TouchableOpacity onPress={() => setShowN400Form(false)}>
+                  <MaterialCommunityIcons name="close" size={24} color="#1E40AF" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Dirección Actual *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: 123 Main Street"
+                    value={n400FormInputs.currentAddress}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, currentAddress: text})}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Ciudad *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: Los Angeles"
+                    value={n400FormInputs.city}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, city: text})}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Estado *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: California"
+                    value={n400FormInputs.state}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, state: text})}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Código Postal *</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: 90001"
+                    value={n400FormInputs.zipCode}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, zipCode: text})}
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Ocupación Actual</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: Engineer"
+                    value={n400FormInputs.currentOccupation}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, currentOccupation: text})}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Estado Civil</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: Single, Married, Divorced"
+                    value={n400FormInputs.maritalStatus}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, maritalStatus: text})}
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>Años en EE.UU.</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: 5"
+                    value={n400FormInputs.yearsInUS}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, yearsInUS: text})}
+                    keyboardType="numeric"
+                  />
+                </View>
+
+                <View style={styles.formRow}>
+                  <Text style={styles.formLabel}>País de Nacimiento</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="Ej: Mexico"
+                    value={n400FormInputs.countryOfBirth}
+                    onChangeText={(text) => setN400FormInputs({...n400FormInputs, countryOfBirth: text})}
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowN400Form(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveN400Form}
+                >
+                  <Text style={styles.saveButtonText}>Guardar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -976,6 +912,86 @@ const styles = StyleSheet.create({
   },
   voiceButtonDisabled: {
     opacity: 0.5,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    width: '90%',
+    maxWidth: 500,
+    maxHeight: '80%',
+    ...Platform.select({
+      web: {
+        maxHeight: '90vh',
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  modalBody: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  formRow: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    gap: 12,
+  },
+  cancelButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  cancelButtonText: {
+    color: '#374151',
+    fontWeight: '600',
+  },
+  saveButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#1E40AF',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
   messageInput: {
     flex: 1,
