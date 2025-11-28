@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { Platform, View, Text } from 'react-native';
-import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef, useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCallback } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { RootStackParamList } from '../types/navigation';
@@ -170,7 +171,9 @@ const AIInterviewN400ScreenModerno = React.lazy(() => import('../screens/practic
 const PhotoMemoryScreen = React.lazy(() => import('../screens/practice/PhotoMemoryScreen'));
 const PhotoMemoryScreenModerno = React.lazy(() => import('../screens/practice/PhotoMemoryScreenModerno'));
 const VocabularioScreenModernoV2 = React.lazy(() => import('../screens/VocabularioScreenModernoV2'));
-const SpacedRepetitionPracticeScreen = React.lazy(() => import('../screens/practice/SpacedRepetitionPracticeScreen'));
+const SpacedRepetitionPracticeScreen = React.lazy(() => 
+  import('../screens/practice/SpacedRepetitionPracticeScreen').then(module => ({ default: module.default }))
+);
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
@@ -221,6 +224,7 @@ const StudyStack = () => (
     </StudyStackNavigator.Navigator>
   </Suspense>
 );
+
 
 const PracticeStack = () => (
   <Suspense fallback={<LoadingScreen />}>
@@ -273,7 +277,9 @@ const PracticeStack = () => (
 );
 
 const AppTabNavigator = () => {
+  // Usar useSafeAreaInsets de forma segura - si no está disponible, React Native proporciona valores por defecto
   const insets = useSafeAreaInsets();
+  const safeBottom = insets?.bottom ?? 0;
   
   return (
     <Tab.Navigator
@@ -298,8 +304,8 @@ const AppTabNavigator = () => {
           backgroundColor: '#fff',
           borderTopColor: '#eee',
           borderTopWidth: 1,
-          height: 42 + (Platform.OS === 'ios' ? Math.max(insets.bottom - 8, 0) : 0), // Reducido 14%: de 49 a 42px + safe area
-          paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom - 8, 4) : 4, // Ajustar para safe area
+          height: 42 + (Platform.OS === 'ios' ? Math.max(safeBottom - 8, 0) : 0), // Reducido 14%: de 49 a 42px + safe area
+          paddingBottom: Platform.OS === 'ios' ? Math.max(safeBottom - 8, 4) : 4, // Ajustar para safe area
           paddingTop: 10, // Padding superior para subir contenido
         },
         tabBarLabelStyle: {
@@ -327,8 +333,57 @@ const AppTabNavigator = () => {
       component={HomeScreenRedesign as React.ComponentType<any>}
       options={{ tabBarLabel: 'Inicio' }}
     />
-    <Tab.Screen name="Study" component={StudyStack} options={{ tabBarLabel: 'Estudio' }} />
-    <Tab.Screen name="Practice" component={PracticeStack} options={{ tabBarLabel: 'Práctica' }} />
+    <Tab.Screen 
+      name="Study" 
+      component={StudyStack} 
+      options={{ tabBarLabel: 'Estudio' }} 
+    />
+    <Tab.Screen 
+      name="Practice" 
+      component={PracticeStack} 
+      options={({ navigation }) => ({ 
+        tabBarLabel: 'Práctica',
+        listeners: {
+          tabPress: (e) => {
+            // Prevenir el comportamiento por defecto
+            e.preventDefault();
+            // Navegar al tab Practice y resetear el stack interno a PruebaPracticaHome
+            const state = navigation.getState();
+            const practiceTab = state.routes.find((r: any) => r.name === 'Practice');
+            
+            if (practiceTab?.state) {
+              // Si el stack de Practice tiene más de una pantalla o no está en PruebaPracticaHome
+              const practiceState = practiceTab.state;
+              const currentRoute = practiceState.routes[practiceState.index || 0];
+              
+              if (currentRoute?.name !== 'PruebaPracticaHome' || practiceState.routes.length > 1) {
+                // Resetear solo el stack de Practice
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [
+                      {
+                        name: 'Practice',
+                        state: {
+                          routes: [{ name: 'PruebaPracticaHome' }],
+                          index: 0,
+                        },
+                      },
+                    ],
+                  })
+                );
+              } else {
+                // Si ya está en PruebaPracticaHome, solo navegar al tab
+                navigation.navigate('Practice');
+              }
+            } else {
+              // Si no hay estado, navegar normalmente
+              navigation.navigate('Practice');
+            }
+          },
+        },
+      })} 
+    />
     </Tab.Navigator>
   );
 };
