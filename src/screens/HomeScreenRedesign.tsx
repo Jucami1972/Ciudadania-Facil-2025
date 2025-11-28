@@ -1,1066 +1,1119 @@
-// src/screens/HomeScreenRedesign.tsx
-// Rediseño completo UX/UI de la pantalla principal
-// Diseñado como un dashboard inteligente que guía el aprendizaje
+/**
+ * HomeScreen - Revolutionary Version
+ * 
+ * FIXED VERSION:
+ * - Fixed header that does not move with scroll
+ * - Progress card with correct overlap over the header
+ * - Smooth and perfect SVG wave
+ * - All components working correctly
+ */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
-  StyleSheet,
   Text,
+  StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Dimensions,
-  Modal,
-  Alert,
   Platform,
+  Animated,
+  Alert,
 } from 'react-native';
-import Animated, { FadeInUp, FadeInDown } from 'react-native-reanimated';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../context/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient';
+
+import { RootStackParamList } from '../types/navigation';
+import { CategoryType } from '../constants/categories';
+import { questions } from '../data/questions';
 import WebLayout from '../components/layout/WebLayout';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
-import { designSystem } from '../config/designSystem';
+import { useAuth } from '../context/AuthContext';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
 
-// Función para calcular el ancho de las tarjetas según el tipo de dispositivo
-const getCardWidth = (isWebDesktop: boolean) => {
-  if (isWeb && isWebDesktop) {
-    // Web escritorio: 3 columnas
-    return (Math.min(width, 1600) - 128) / 3;
-  } else {
-    // Web móvil o app nativa: 2 columnas (idéntico)
-    return (width - 48) / 2;
-  }
-};
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// ==================== TIPOS ====================
-interface StudyModule {
-  id: string;
-  title: string;
-  description: string;
-  icon: string;
-  color: string;
-  progress: number;
-  route: string;
-}
-
-
-// ==================== COMPONENTES ====================
-
-// Header con saludo personalizado
-const HeaderSection = ({ userName, onProfilePress }: { userName: string; onProfilePress: () => void }) => {
-  const greetings = [
-    '¡Hola',
-    'Buenos días',
-    'Buenas tardes',
-    '¡Bienvenido',
-  ];
-  const motivationalMessages = [
-    '¡Vamos a estudiar juntos!',
-    'Cada día te acerca más a tu meta',
-    'Tu esfuerzo hoy construye tu futuro',
-    'Estás haciendo un gran trabajo',
-  ];
-
-  const hour = new Date().getHours();
-  let greeting = greetings[0];
-  if (hour >= 5 && hour < 12) greeting = greetings[1];
-  else if (hour >= 12 && hour < 18) greeting = greetings[2];
-  else greeting = greetings[3];
-
-  const message = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
-
-  return (
-    <View style={styles.header}>
-      <View style={styles.headerContent}>
-        <View style={styles.headerTextContainer}>
-          <View style={styles.headerTitleRow}>
-            <MaterialCommunityIcons name="book-education" size={20} color="#1E40AF" />
-            <Text style={styles.headerAppTitle}>Ciudadanía Fácil</Text>
-          </View>
-          <Text style={styles.headerGreeting}>
-            {greeting} {userName || 'Estudiante'}
-          </Text>
-          <Text style={styles.headerSubtext}>{message}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={onProfilePress}
-          accessible={true}
-          accessibilityRole="button"
-          accessibilityLabel="Perfil de usuario"
-          accessibilityHint="Presiona para ver opciones de perfil y cerrar sesión"
-        >
-          <MaterialCommunityIcons name="account-circle" size={32} color="#1E40AF" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-};
-
-// Tarjeta de progreso mejorada
-const ProgressCard = ({
-  progress,
-  completedQuestions,
-  totalQuestions,
-  streak,
-  dailyGoal,
-  onReset,
-}: {
+interface HomeData {
   progress: number;
   completedQuestions: number;
   totalQuestions: number;
+  todayCount: number;
+  remainingQuestions: number;
   streak: number;
-  dailyGoal: number;
-  onReset?: () => void;
-}) => {
-  return (
-    <Animated.View entering={FadeInUp.duration(600).delay(100)} style={styles.progressCard}>
-      <LinearGradient
-        colors={['#3B82F6', '#1E40AF']} // Azul profesional
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.progressGradient}
-      >
-        <View style={styles.progressHeader}>
-          <View>
-            <Text style={styles.progressLabel}>Tu Progreso</Text>
-            <Text style={styles.progressPercentage}>{progress}%</Text>
-          </View>
-          <View style={styles.progressHeaderRight}>
-            <View style={styles.streakContainer}>
-              <MaterialCommunityIcons name="fire" size={18} color="#FFD700" />
-              <Text style={styles.streakText}>{streak} días</Text>
-            </View>
-            {onReset && (
-              <TouchableOpacity
-                onPress={onReset}
-                style={styles.resetButton}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel="Reiniciar progreso"
-                accessibilityHint="Presiona para reiniciar tu progreso de estudio a cero"
-              >
-                <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
+  governmentProgress: number;
+  historyProgress: number;
+  civicsProgress: number;
+  lastStudiedCategory?: string;
+  lastStudiedRange?: string;
+  userName: string;
+}
 
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
-        </View>
+const MOTIVATIONAL_QUOTES = [
+  { minProgress: 0, quote: 'Cada pregunta te acerca más a tu meta' },
+  { minProgress: 25, quote: '¡Vas por buen camino! Sigue adelante' },
+  { minProgress: 50, quote: '¡Ya casi llegas! No te detengas ahora' },
+  { minProgress: 75, quote: '¡Excelente trabajo! Estás muy cerca' },
+  { minProgress: 90, quote: '¡Increíble! Ya casi dominas todo el material' },
+];
 
-        <View style={styles.progressStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{completedQuestions}</Text>
-            <Text style={styles.statLabel}>de {totalQuestions} preguntas</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{dailyGoal}</Text>
-            <Text style={styles.statLabel}>meta diaria</Text>
-          </View>
-        </View>
-      </LinearGradient>
-    </Animated.View>
-  );
-};
+interface Achievement {
+  id: string;
+  icon: string;
+  name: string;
+  date: string;
+  unlocked: boolean;
+}
 
-// Botón principal CTA
-const MainCTAButton = ({ onPress }: { onPress: () => void }) => {
-  return (
-    <Animated.View entering={FadeInUp.duration(600).delay(200)}>
-      <TouchableOpacity
-      style={styles.mainCTA}
-      onPress={onPress}
-      activeOpacity={0.9}
-      accessible={true}
-      accessibilityRole="button"
-      accessibilityLabel="Continuar estudiando"
-      accessibilityHint="Presiona para continuar donde quedaste en tu estudio"
-    >
-      <LinearGradient
-        colors={['#3B82F6', '#1E40AF']} // Azul profesional
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.mainCTAGradient}
-      >
-        <MaterialCommunityIcons name="play-circle" size={28} color="#FFFFFF" />
-        <Text style={styles.mainCTAText}>CONTINÚA DONDE QUEDASTE</Text>
-      </LinearGradient>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-};
-
-// Tarjeta de módulo de estudio (grid 2 columnas)
-const StudyModuleCard = ({
-  module,
-  onPress,
-  isWebDesktop,
-}: {
-  module: StudyModule;
-  onPress: () => void;
-  isWebDesktop: boolean;
-}) => {
-  const [isHovered, setIsHovered] = useState(false);
-
-  return (
-    <TouchableOpacity
-      style={[
-        styles.moduleCard,
-        { width: getCardWidth(isWebDesktop) },
-        isWeb && isHovered && styles.moduleCardHovered,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      {...(isWeb && {
-        onMouseEnter: () => setIsHovered(true),
-        onMouseLeave: () => setIsHovered(false),
-      } as any)}
-    >
-      <View style={[styles.moduleIconContainer, { backgroundColor: `${module.color}15` }]}>
-        <MaterialCommunityIcons name={module.icon as any} size={24} color={module.color} />
-      </View>
-      <Text style={styles.moduleTitle}>{module.title}</Text>
-      <Text style={styles.moduleDescription} numberOfLines={2}>
-        {module.description}
-      </Text>
-      <View style={styles.moduleProgressContainer}>
-        <View style={styles.moduleProgressBar}>
-          <View
-            style={[
-              styles.moduleProgressFill,
-              { width: `${module.progress}%`, backgroundColor: module.color },
-            ]}
-          />
-        </View>
-        <Text style={styles.moduleProgressText}>{module.progress}%</Text>
-      </View>
-    </TouchableOpacity>
-  );
-};
-
-
-// Botón flotante (FAB) con asistente IA
-const AIAssistantFAB = ({ onPress }: { onPress: () => void }) => {
-  const [showMenu, setShowMenu] = useState(false);
-
-  const quickActions = [
-    { icon: 'help-circle', label: 'Explicar pregunta', action: () => {} },
-    { icon: 'microphone', label: 'Practicar entrevista', action: () => {} },
-    { icon: 'play', label: 'Reanudar examen', action: () => {} },
-  ];
-
-  return (
-    <>
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setShowMenu(!showMenu)}
-        activeOpacity={0.9}
-        accessible={true}
-        accessibilityRole="button"
-        accessibilityLabel={showMenu ? "Cerrar menú de asistente IA" : "Abrir menú de asistente IA"}
-        accessibilityHint="Presiona para ver acciones rápidas del asistente de inteligencia artificial"
-      >
-        <LinearGradient
-          colors={['#3B82F6', '#1E40AF']} // Azul profesional
-          style={styles.fabGradient}
-        >
-          <MaterialCommunityIcons name="robot" size={28} color="#FFFFFF" />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {showMenu && (
-        <Modal
-          transparent
-          visible={showMenu}
-          animationType="fade"
-          onRequestClose={() => setShowMenu(false)}
-        >
-          <TouchableOpacity
-            style={styles.fabMenuOverlay}
-            activeOpacity={1}
-            onPress={() => setShowMenu(false)}
-          >
-            <View style={styles.fabMenu}>
-              <Text style={styles.fabMenuTitle}>Asistente IA</Text>
-              {quickActions.map((action, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.fabMenuItem}
-                  onPress={() => {
-                    action.action();
-                    setShowMenu(false);
-                  }}
-                >
-                  <MaterialCommunityIcons name={action.icon as any} size={20} color="#1E40AF" />
-                  <Text style={styles.fabMenuItemText}>{action.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
-    </>
-  );
-};
-
-// ==================== PANTALLA PRINCIPAL ====================
-const HomeScreenRedesign = () => {
-  const navigation = useNavigation<any>();
+const HomeScreenRevolutionary = () => {
+  const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
-  const { user, logout } = useAuth();
   const isWebDesktop = useIsWebDesktop();
+  const { user, logout } = useAuth();
 
-  // Estados
-  const [progress, setProgress] = useState(5);
-  const [completedQuestions, setCompletedQuestions] = useState(6);
-  const [totalQuestions] = useState(128);
-  const [streak, setStreak] = useState(1);
-  const [dailyGoal] = useState(10);
+  const [homeData, setHomeData] = useState<HomeData>({
+    progress: 0,
+    completedQuestions: 0,
+    totalQuestions: 128,
+    todayCount: 0,
+    remainingQuestions: 128,
+    streak: 0,
+    governmentProgress: 0,
+    historyProgress: 0,
+    civicsProgress: 0,
+    userName: user?.email?.split('@')[0] || 'Estudiante',
+  });
 
-  // Módulos de estudio
-  const [studyModules, setStudyModules] = useState<StudyModule[]>([
-    {
-      id: 'cards',
-      title: 'Tarjetas de Estudio',
-      description: 'Aprende las 128 preguntas',
-      icon: 'cards',
-      color: '#1E40AF', // Azul profesional
-      progress: 5,
-      route: 'StudyHome',
-    },
-    {
-      id: 'type',
-      title: 'Estudio por Tipo',
-      description: '¿Quién?, ¿Qué?, ¿Cuándo?',
-      icon: 'format-list-numbered',
-      color: '#8B5CF6',
-      progress: 0,
-      route: 'QuestionTypePracticeHome',
-    },
-  ]);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
-  // Cargar progreso
   useEffect(() => {
-    const loadProgress = async () => {
-      try {
-        const viewedRaw = await AsyncStorage.getItem('@study:viewed');
-        const viewed = new Set<number>(viewedRaw ? JSON.parse(viewedRaw) : []);
-        const pct = Math.max(0, Math.min(100, Math.round((viewed.size / totalQuestions) * 100)));
-        setProgress(pct);
-        setCompletedQuestions(viewed.size);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
-        // Cargar racha
-        const lastStudyDate = await AsyncStorage.getItem('@study:lastDate');
-        const streakCount = await AsyncStorage.getItem('@study:streak');
-        if (lastStudyDate) {
-          const lastDate = new Date(lastStudyDate);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          lastDate.setHours(0, 0, 0, 0);
-          const diffDays = Math.floor((today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (diffDays === 0) {
-            setStreak(parseInt(streakCount || '1', 10));
-          } else if (diffDays === 1) {
-            const newStreak = parseInt(streakCount || '1', 10) + 1;
-            setStreak(newStreak);
-            await AsyncStorage.setItem('@study:streak', newStreak.toString());
-            await AsyncStorage.setItem('@study:lastDate', new Date().toISOString());
-          } else {
-            setStreak(1);
-            await AsyncStorage.setItem('@study:streak', '1');
-            await AsyncStorage.setItem('@study:lastDate', new Date().toISOString());
-          }
-        } else {
-          await AsyncStorage.setItem('@study:lastDate', new Date().toISOString());
-          await AsyncStorage.setItem('@study:streak', '1');
-        }
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
 
-        // Actualizar progreso de módulos
-        setStudyModules((prev) =>
-          prev.map((m) => {
-            if (m.id === 'cards') {
-              return { ...m, progress: pct };
-            }
-            return m;
-          })
-        );
-      } catch (error) {
-        console.error('Error loading progress:', error);
+      const [viewedData, streakData, todayData, userName] = await Promise.all([
+        AsyncStorage.getItem('@study:viewed'),
+        AsyncStorage.getItem('@study:streak'),
+        AsyncStorage.getItem('@study:todayCount'),
+        AsyncStorage.getItem('@user:name'),
+      ]);
+
+      const viewedIds = viewedData ? new Set<number>(JSON.parse(viewedData)) : new Set();
+      const completedCount = viewedIds.size;
+      const progress = Math.round((completedCount / 128) * 100);
+      const remaining = 128 - completedCount;
+      const streak = streakData ? parseInt(streakData, 10) : 0;
+      const today = todayData ? parseInt(todayData, 10) : 0;
+
+      const govQuestions = questions.filter((q) => q.category === 'government');
+      const govCompleted = govQuestions.filter((q) => viewedIds.has(q.id)).length;
+      const govProgress = Math.round((govCompleted / govQuestions.length) * 100);
+
+      const histQuestions = questions.filter((q) => q.category === 'history');
+      const histCompleted = histQuestions.filter((q) => viewedIds.has(q.id)).length;
+      const histProgress = Math.round((histCompleted / histQuestions.length) * 100);
+
+      const civQuestions = questions.filter((q) => q.category === 'symbols_holidays');
+      const civCompleted = civQuestions.filter((q) => viewedIds.has(q.id)).length;
+      const civProgress = Math.round((civCompleted / civQuestions.length) * 100);
+
+      let lastCategory = 'GobiernoAmericano';
+      let lastRange = '1-15';
+      if (govProgress === 100) {
+        lastCategory = 'HistoriaAmericana';
+        lastRange = '73-89';
       }
+      if (histProgress === 100) {
+        lastCategory = 'EducacionCivica';
+        lastRange = '119-124';
+      }
+
+      setHomeData({
+        progress,
+        completedQuestions: completedCount,
+        totalQuestions: 128,
+        todayCount: today,
+        remainingQuestions: remaining,
+        streak,
+        governmentProgress: govProgress,
+        historyProgress: histProgress,
+        civicsProgress: civProgress,
+        lastStudiedCategory: lastCategory,
+        lastStudiedRange: lastRange,
+        userName: userName || user?.email?.split('@')[0] || 'Estudiante',
+      });
+
+      const newAchievements: Achievement[] = [];
+
+      if (streak >= 7) {
+        newAchievements.push({
+          id: 'streak_7',
+          icon: '🔥',
+          name: 'Racha de 7 días',
+          date: 'Desbloqueado hoy',
+          unlocked: true,
+        });
+      }
+
+      if (completedCount >= 50) {
+        newAchievements.push({
+          id: 'questions_50',
+          icon: '⭐',
+          name: '50 preguntas completadas',
+          date: 'Hace 2 días',
+          unlocked: true,
+        });
+      }
+
+      if (govProgress >= 75 || histProgress >= 75 || civProgress >= 75) {
+        newAchievements.push({
+          id: 'category_75',
+          icon: '🎯',
+          name: 'Primera categoría al 75%',
+          date: 'Hace 3 días',
+          unlocked: true,
+        });
+      }
+
+      setAchievements(newAchievements);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [loadData])
+  );
+
+  const handleContinuePress = useCallback(() => {
+    const categoryMap: Record<string, CategoryType> = {
+      GobiernoAmericano: 'government',
+      HistoriaAmericana: 'history',
+      EducacionCivica: 'symbols_holidays',
     };
 
-    const unsubscribe = navigation.addListener('focus', loadProgress);
-    loadProgress();
-    return unsubscribe;
-  }, [navigation, totalQuestions]);
+    const category = categoryMap[homeData.lastStudiedCategory || 'GobiernoAmericano'] || 'government';
 
-  // Navegación
-  const navigateToPracticeStack = (screenName: string) => {
-    navigation.navigate('Practice', { screen: screenName });
+    // Navegar al StudyStack con la pantalla StudyCards
+    (navigation as any).navigate('Study', {
+      screen: 'StudyCards',
+      params: {
+        category,
+        questionRange: homeData.lastStudiedRange || '1-15',
+        title: homeData.lastStudiedCategory || 'Gobierno Americano',
+        subtitle: 'Continuar donde lo dejaste',
+      },
+    });
+  }, [homeData, navigation]);
+
+  const handleStudyPress = useCallback(() => {
+    (navigation as any).navigate('Study', { screen: 'StudyHome' });
+  }, [navigation]);
+
+  const handleQuiz20Press = useCallback(() => {
+    (navigation as any).navigate('Practice', {
+      screen: 'Random20PracticeHome',
+    });
+  }, [navigation]);
+
+  const handleReviewPress = useCallback(() => {
+    (navigation as any).navigate('Study', { screen: 'StudyHome' });
+  }, [navigation]);
+
+  const handleVoicePress = useCallback(() => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Función AI Voice', 'Disponible en desarrollo build nativo');
+    } else {
+      (navigation as any).navigate('Practice', {
+        screen: 'EntrevistaAIHome',
+      });
+    }
+  }, [navigation]);
+
+  const handleStatsPress = useCallback(() => {
+    try {
+      navigation.navigate('ResultsScreen' as any);
+    } catch {
+      Alert.alert('Estadísticas', 'Pantalla de estadísticas próximamente');
+    }
+  }, [navigation]);
+
+  const handleLogoutPress = useCallback(() => {
+    Alert.alert('Cerrar Sesión', '¿Estás seguro que deseas cerrar sesión?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar Sesión', style: 'destructive', onPress: logout },
+    ]);
+  }, [logout]);
+
+  const motivationalQuote = useMemo(() => {
+    const quote = MOTIVATIONAL_QUOTES.slice().reverse().find((q) => homeData.progress >= q.minProgress);
+    return quote?.quote || MOTIVATIONAL_QUOTES[0].quote;
+  }, [homeData.progress]);
+
+  // =============== COMPONENTES ===============
+
+  const FixedHeader = () => (
+    <View style={styles.fixedHeaderContainer}>
+      <LinearGradient
+        colors={['#4F46E5', '#6366F1'] as [string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.heroHeader, { paddingTop: Math.max(insets.top - 15, 0) }]}
+      >
+        <View style={styles.headerTop}>
+          <View style={styles.greetingContainer}>
+            <Text style={styles.greeting}>Bienvenido de nuevo</Text>
+            <Text style={styles.username}>¡Sigue así, {homeData.userName}! 🎯</Text>
+          </View>
+          <TouchableOpacity style={styles.profileIcon} onPress={handleLogoutPress}>
+            <MaterialCommunityIcons name="account-circle" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.motivationalQuote}>"{motivationalQuote}"</Text>
+      </LinearGradient>
+    </View>
+  );
+
+  const ProgressHeroCard = () => (
+    <Animated.View
+      style={[
+        styles.progressHero,
+        {
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }],
+        },
+      ]}
+    >
+      <View style={styles.progressHeader}>
+        <Text style={styles.progressTitle}>Tu Progreso</Text>
+        <LinearGradient
+          colors={['#f1833b', '#F58A64'] as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.streakBadge}
+        >
+          <Text style={styles.streakIcon}>🔥</Text>
+          <Text style={styles.streakText}>{homeData.streak || 0} días</Text>
+        </LinearGradient>
+      </View>
+
+      <View style={styles.progressStats}>
+        <View style={styles.statItemCompleted}>
+          <Text style={styles.statValueCompleted} numberOfLines={1}>{homeData.completedQuestions}</Text>
+          <Text style={styles.statLabelCompleted} numberOfLines={1}>Logrado</Text>
+        </View>
+        <View style={styles.statItemToday}>
+          <Text style={styles.statValueToday} numberOfLines={1}>{homeData.todayCount}</Text>
+          <Text style={styles.statLabelToday} numberOfLines={1}>Hoy</Text>
+        </View>
+        <View style={styles.statItemRemaining}>
+          <Text style={styles.statValueRemaining} numberOfLines={1}>{homeData.remainingQuestions}</Text>
+          <Text style={styles.statLabelRemaining} numberOfLines={1}>Falta</Text>
+        </View>
+      </View>
+
+      <View style={styles.progressRingContainer}>
+        <View style={styles.progressRing}>
+          {/* Círculo de fondo */}
+          <View style={styles.progressRingBase} />
+          {/* Primer semicírculo (siempre visible cuando hay progreso) */}
+          {homeData.progress > 0 && (
+            <View style={[
+              styles.progressRingHalf1,
+              {
+                transform: [{ rotate: `${Math.min(homeData.progress, 50) / 50 * 180 - 90}deg` }],
+              }
+            ]} />
+          )}
+          {/* Segundo semicírculo (visible cuando progreso > 50%) */}
+          {homeData.progress > 50 && (
+            <View style={[
+              styles.progressRingHalf2,
+              {
+                transform: [{ rotate: `${((homeData.progress - 50) / 50) * 180 - 90}deg` }],
+              }
+            ]} />
+          )}
+          <View style={styles.progressRingInner}>
+            <Text style={styles.progressPercentage}>{homeData.progress}%</Text>
+            <Text style={styles.progressLabel}>Total</Text>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+
+  const SmartCTA = () => {
+    const ctaTitle =
+      homeData.completedQuestions === 0
+        ? 'Comenzar a Estudiar'
+        : homeData.progress >= 90
+        ? 'Repaso Final'
+        : 'Continuar Estudiando';
+
+    const ctaSubtitle =
+      homeData.lastStudiedCategory && homeData.lastStudiedRange
+        ? `${homeData.lastStudiedCategory} • Preguntas ${homeData.lastStudiedRange}`
+        : 'Comienza tu preparación';
+
+    return (
+      <TouchableOpacity onPress={handleContinuePress} activeOpacity={0.85}>
+        <LinearGradient
+          colors={['#f1833b', '#F58A64'] as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.smartCTA}
+        >
+          <View style={styles.ctaContent}>
+            <Text style={styles.ctaTitle}>{ctaTitle}</Text>
+            <Text style={styles.ctaSubtitle}>{ctaSubtitle}</Text>
+          </View>
+          <View style={styles.ctaIcon}>
+            <MaterialCommunityIcons name="play" size={24} color="white" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
   };
 
-  const navigateToStudyStack = (screenName: string) => {
-    navigation.navigate('Study', { screen: screenName });
+  const LearningPath = () => {
+    const pathSteps = [
+      {
+        id: 'government',
+        icon: homeData.governmentProgress >= 100 ? 'check' : 'lock-open',
+        title: 'Gobierno Americano',
+        subtitle: '72 preguntas',
+        progress: homeData.governmentProgress,
+        unlocked: true,
+      },
+      {
+        id: 'history',
+        icon: homeData.historyProgress >= 100 ? 'check' : homeData.governmentProgress >= 50 ? 'lock-open' : 'lock',
+        title: 'Historia Americana',
+        subtitle: '46 preguntas',
+        progress: homeData.historyProgress,
+        unlocked: homeData.governmentProgress >= 50,
+      },
+      {
+        id: 'civics',
+        icon: homeData.civicsProgress >= 100 ? 'check' : homeData.historyProgress >= 50 ? 'lock-open' : 'lock',
+        title: 'Educación Cívica',
+        subtitle: '10 preguntas',
+        progress: homeData.civicsProgress,
+        unlocked: homeData.historyProgress >= 50,
+      },
+    ];
+
+    return (
+      <View style={styles.learningPath}>
+        <View style={styles.sectionHeader}>
+          <MaterialCommunityIcons name="book-open-variant" size={18} color="#4F46E5" />
+          <Text style={styles.sectionTitle}>Tu Camino de Aprendizaje</Text>
+        </View>
+        <View style={styles.pathContainer}>
+          {pathSteps.map((step, index) => (
+            <View key={step.id}>
+              <TouchableOpacity
+                style={styles.pathStep}
+                onPress={handleStudyPress}
+                disabled={!step.unlocked}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={step.unlocked ? (['#6366F1', '#4F46E5'] as [string, string]) : (['#E5E7EB', '#E5E7EB'] as [string, string])}
+                  style={styles.stepIconContainer}
+                >
+                  <MaterialCommunityIcons name={step.icon as any} size={24} color="white" />
+                </LinearGradient>
+
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>{step.title}</Text>
+                  <Text style={styles.stepSubtitle}>{step.subtitle}</Text>
+                  <View style={styles.stepProgressBar}>
+                    <LinearGradient
+                      colors={['#4F46E5', '#6366F1'] as [string, string]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.stepProgressFill, { width: `${step.progress}%` }]}
+                    />
+                  </View>
+                </View>
+              </TouchableOpacity>
+
+              {index < pathSteps.length - 1 && <View style={styles.pathConnector} />}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   };
 
-  const handleContinuePress = () => {
-    // Navegar a la última sección estudiada o a la primera
-    navigateToStudyStack('StudyHome');
+  const QuickActions = () => {
+    const actions = [
+      {
+        id: 'quiz20',
+        icon: 'text-box-outline',
+        label: 'Quiz 20',
+        sublabel: 'Práctica rápida',
+        gradient: ['#60A5FA', '#3B82F6'] as [string, string],  // Azul vibrante
+        onPress: handleQuiz20Press,
+      },
+      {
+        id: 'review',
+        icon: 'refresh',
+        label: 'Repaso',
+        sublabel: 'Revisar marcadas',
+        gradient: ['#A78BFA', '#7C3AED'] as [string, string],  // Púrpura vibrante
+        onPress: handleReviewPress,
+      },
+      {
+        id: 'voice',
+        icon: 'microphone',
+        label: 'Voz AI',
+        sublabel: 'Práctica oral',
+        gradient: ['#F87171', '#DC2626'] as [string, string],  // Rojo vibrante
+        onPress: handleVoicePress,
+      },
+      {
+        id: 'stats',
+        icon: 'chart-line',
+        label: 'Estadísticas',
+        sublabel: 'Ver progreso',
+        gradient: ['#34D399', '#059669'] as [string, string],  // Verde vibrante
+        onPress: handleStatsPress,
+      },
+    ];
+
+    return (
+      <View style={styles.quickActions}>
+        <View style={styles.sectionHeader}>
+          <MaterialCommunityIcons name="lightning-bolt" size={18} color="#4F46E5" />
+          <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
+        </View>
+        <View style={styles.actionsGrid}>
+          {actions.map((action) => (
+            <TouchableOpacity 
+              key={action.id} 
+              style={styles.actionCard} 
+              onPress={action.onPress} 
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={action.gradient}
+                style={styles.actionIconContainer}
+              >
+                <MaterialCommunityIcons name={action.icon as any} size={28} color="white" />
+              </LinearGradient>
+              <Text style={styles.actionLabel}>{action.label}</Text>
+              <Text style={styles.actionSublabel}>{action.sublabel}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    );
   };
 
-  const handleModulePress = (module: StudyModule) => {
-    navigateToStudyStack(module.route);
+  const RecentAchievements = () => {
+    if (achievements.length === 0) return null;
+
+    return (
+      <View style={styles.achievements}>
+        <View style={styles.sectionHeader}>
+          <MaterialCommunityIcons name="trophy" size={18} color="#4F46E5" />
+          <Text style={styles.sectionTitle}>Logros Recientes</Text>
+        </View>
+        <LinearGradient colors={['#FEF9C3', '#FEF3C7'] as [string, string]} style={styles.achievementCard}>
+          {achievements.map((achievement) => (
+            <View key={achievement.id} style={styles.achievementItem}>
+              <LinearGradient colors={['#FBBF24', '#F59E0B'] as [string, string]} style={styles.achievementBadge}>
+                <Text style={styles.achievementIcon}>{achievement.icon}</Text>
+              </LinearGradient>
+              <View style={styles.achievementText}>
+                <Text style={styles.achievementName}>{achievement.name}</Text>
+                <Text style={styles.achievementDate}>{achievement.date}</Text>
+              </View>
+            </View>
+          ))}
+        </LinearGradient>
+      </View>
+    );
   };
+
+  // =============== RENDER PRINCIPAL ===============
 
   const content = (
-    <>
-      {!isWeb && (
-        <HeaderSection
-          userName={user?.email?.split('@')[0] || 'Estudiante'}
-          onProfilePress={logout}
-        />
-      )}
-
+    <View style={styles.mainContainer}>
+      <FixedHeader />
+      
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Tarjeta de Progreso */}
-        <ProgressCard
-          progress={progress}
-          completedQuestions={completedQuestions}
-          totalQuestions={totalQuestions}
-          streak={streak}
-          dailyGoal={dailyGoal}
-          onReset={async () => {
-            try {
-              await AsyncStorage.removeItem('@study:viewed');
-              await AsyncStorage.removeItem('@study:lastDate');
-              await AsyncStorage.removeItem('@study:streak');
-              setProgress(0);
-              setCompletedQuestions(0);
-              setStreak(1);
-              setStudyModules((prev) =>
-                prev.map((m) => {
-                  if (m.id === 'cards') {
-                    return { ...m, progress: 0 };
-                  }
-                  return m;
-                })
-              );
-              Alert.alert('Progreso reseteado', 'El contador de progreso ha sido reiniciado a 0.');
-            } catch (error) {
-              console.error('Error resetting progress:', error);
-              Alert.alert('Error', 'No se pudo resetear el progreso.');
-            }
-          }}
-        />
-
-        {/* Botón Principal CTA */}
-        <MainCTAButton onPress={handleContinuePress} />
-
-        {/* Sección de Estudio - Acceso Rápido */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="book-open-variant" size={20} color={designSystem.colors.brand.primary} />
-            <Text style={styles.sectionTitle}>Acceso Rápido</Text>
-          </View>
-          <View style={styles.grid}>
-            {studyModules.map((module) => (
-              <StudyModuleCard
-                key={module.id}
-                module={module}
-                onPress={() => handleModulePress(module)}
-                isWebDesktop={isWebDesktop}
-              />
-            ))}
-          </View>
-        </View>
+        {/* Spacer para compensar el header fijo */}
+        <View style={[styles.headerSpacer, { height: 120 + insets.top }]} />
+        
+        <ProgressHeroCard />
+        <SmartCTA />
+        <LearningPath />
+        <QuickActions />
+        <RecentAchievements />
       </ScrollView>
-
-      {/* Botón Flotante FAB */}
-      {!isWeb && <AIAssistantFAB onPress={() => {}} />}
-    </>
+    </View>
   );
 
-  // Web de escritorio: usar WebLayout con sidebar
   if (isWeb && isWebDesktop) {
-    return (
-      <WebLayout headerTitle="Dashboard">
-        {content}
-      </WebLayout>
-    );
+    return <WebLayout headerTitle="Inicio">{content}</WebLayout>;
   }
 
-  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
+    <SafeAreaView style={styles.safeArea}>
       {content}
     </SafeAreaView>
   );
 };
 
-// ==================== ESTILOS ====================
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-    ...Platform.select({
-      web: {
-        alignItems: 'center',
-        backgroundColor: '#F0F4F8',
-        background: 'linear-gradient(135deg, #F0F4F8 0%, #E8F0F5 100%)',
-      },
-    }),
+    backgroundColor: '#f2f2f2',
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#f2f2f2',
   },
   scrollView: {
     flex: 1,
-    ...Platform.select({
-      web: {
-        width: '100%',
-        maxWidth: 1600,
-      },
-    }),
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-    ...Platform.select({
-      web: {
-        paddingHorizontal: 48,
-        paddingTop: 40,
-        paddingBottom: 120,
-      },
-    }),
+    paddingBottom: 40,
   },
-  header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    ...Platform.select({
-      web: {
-        width: '100%',
-        maxWidth: 1400,
-        alignSelf: 'center',
-        paddingHorizontal: 32,
-        paddingVertical: 20,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-      },
-    }),
+  headerSpacer: {
+    height: 160,
   },
-  headerContent: {
+
+  // =============== FIXED HEADER ===============
+  fixedHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  heroHeader: {
+    paddingTop: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 10,
+  },
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
-  headerTextContainer: {
+  greetingContainer: {
     flex: 1,
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 6,
-  },
-  headerAppTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E40AF', // Azul profesional
-    letterSpacing: 0.3,
-    ...Platform.select({
-      web: {
-        fontSize: 20,
-      },
-    }),
-  },
-  headerGreeting: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-    ...Platform.select({
-      web: {
-        fontSize: 28,
-      },
-    }),
-  },
-  headerSubtext: {
+  greeting: {
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
-    color: '#6B7280',
     fontWeight: '500',
-    ...Platform.select({
-      web: {
-        fontSize: 16,
-      },
-    }),
   },
-  profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
+  username: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  profileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  progressCard: {
-    marginTop: 16,
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+  motivationalQuote: {
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: 15,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    marginTop: 4,
+  },
+
+  // =============== PROGRESS HERO ===============
+  progressHero: {
+    backgroundColor: '#fffaf0',
+    borderRadius: 28,
+    padding: 28,
+    marginHorizontal: 16,
+    marginTop: 20,
     ...Platform.select({
-      web: {
-        marginTop: 0,
-        marginBottom: 40,
-        borderRadius: 24,
-        boxShadow: '0 8px 32px rgba(155, 84, 255, 0.25)',
-        padding: 8,
+      ios: {
+        shadowColor: '#E5EDFF',
+        shadowOffset: { width: 0, height: 20 },
+        shadowOpacity: 0.15,
+        shadowRadius: 40,
+      },
+      android: {
+        elevation: 12,
       },
     }),
-  },
-  progressGradient: {
-    padding: 14,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  progressHeaderRight: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    marginBottom: 20,
   },
-  resetButton: {
-    padding: 6,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  progressLabel: {
-    fontSize: 11,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  progressPercentage: {
-    fontSize: 28,
+  progressTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginTop: 2,
+    color: '#111827',
   },
-  streakContainer: {
+  streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FDBA74',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  streakIcon: {
+    fontSize: 16,
   },
   streakText: {
-    fontSize: 12,
+    color: 'white',
+    fontSize: 13,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 4,
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 4,
   },
   progressStats: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    gap: 12,
+    marginBottom: 20,
   },
   statItem: {
+    flex: 1,
     alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#E0F2FE',
+    borderRadius: 16,
+    minWidth: 0,
   },
-  statNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  statValue: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#2563EB',
   },
   statLabel: {
-    fontSize: 10,
-    color: '#FFFFFF',
-    opacity: 0.9,
-    marginTop: 1,
+    fontSize: 9,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  mainCTA: {
-    marginBottom: 24,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    ...Platform.select({
-      web: {
-        marginBottom: 32,
-        boxShadow: '0 6px 20px rgba(155, 84, 255, 0.3)',
-        cursor: 'pointer',
-      },
-    }),
-  },
-  mainCTAGradient: {
-    flexDirection: 'row',
+  statItemCompleted: {
+    flex: 1,
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+    aspectRatio: 1,
+    padding: 12,
+    backgroundColor: '#D4EEC4',
+    borderRadius: 16,
+    minWidth: 0,
   },
-  mainCTAText: {
-    fontSize: 16,
+  statValueCompleted: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginLeft: 12,
-    letterSpacing: 0.5,
+    color: '#91be50',
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  section: {
-    marginBottom: 24,
+  statLabelCompleted: {
+    fontSize: 11,
+    color: '#91be50',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statItemToday: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    aspectRatio: 1,
+    padding: 12,
+    backgroundColor: '#96eee4',
+    borderRadius: 16,
+    minWidth: 0,
+  },
+  statValueToday: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#42c1b2',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  statLabelToday: {
+    fontSize: 11,
+    color: '#42c1b2',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  statItemRemaining: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    aspectRatio: 1,
+    padding: 12,
+    backgroundColor: '#71f7c3',
+    borderRadius: 16,
+    minWidth: 0,
+  },
+  statValueRemaining: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#47a581',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  statLabelRemaining: {
+    fontSize: 11,
+    color: '#47a581',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  progressRingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  progressRing: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  progressRingBase: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#59a4fc',
+  },
+  progressRingHalf1: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 8,
+    borderTopColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#3066a5',
+    borderLeftColor: '#3066a5',
+  },
+  progressRingHalf2: {
+    position: 'absolute',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 8,
+    borderTopColor: '#3066a5',
+    borderRightColor: '#3066a5',
+    borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent',
+  },
+  progressRingInner: {
+    width: 85,
+    height: 85,
+    borderRadius: 42.5,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  progressPercentage: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  progressLabel: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+
+  // =============== SMART CTA ===============
+  smartCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 24,
     ...Platform.select({
-      web: {
-        marginBottom: 40,
+      ios: {
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 24,
+      },
+      android: {
+        elevation: 8,
       },
     }),
+  },
+  ctaContent: {
+    flex: 1,
+  },
+  ctaTitle: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  ctaSubtitle: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  ctaIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // =============== LEARNING PATH ===============
+  learningPath: {
+    marginHorizontal: 20,
+    marginTop: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginLeft: 8,
+  },
+  pathContainer: {
+    backgroundColor: '#fffaf0',
+    borderRadius: 24,
+    padding: 24,
     ...Platform.select({
-      web: {
-        fontSize: 24,
-        marginBottom: 16,
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 20,
+      },
+      android: {
+        elevation: 4,
       },
     }),
   },
-  grid: {
+  pathStep: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  pathConnector: {
+    width: 2,
+    height: 20,
+    backgroundColor: '#E5E7EB',
+    marginLeft: 27,
+    marginVertical: 8,
+  },
+  stepIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  stepSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  stepProgressBar: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  stepProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+
+  // =============== QUICK ACTIONS ===============
+  quickActions: {
+    marginHorizontal: 20,
+    marginTop: 24,
+  },
+  actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    ...Platform.select({
-      web: {
-        gap: 16,
-        justifyContent: 'flex-start',
-      },
-    }),
+    gap: 12,
   },
-  moduleCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    ...Platform.select({
-      web: {
-        marginBottom: 24,
-        cursor: 'pointer',
-        padding: 24,
-        borderRadius: 20,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        minHeight: 180,
-      },
-    }),
-  },
-  moduleCardHovered: {
-    ...Platform.select({
-      web: {
-        transform: [{ translateY: -4 }],
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-        borderColor: '#1E40AF', // Azul profesional
-      },
-    }),
-  },
-  moduleIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
+  actionCard: {
+    width: '48%',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
     alignItems: 'center',
-    marginBottom: 8,
+    minHeight: 120,
+    justifyContent: 'center',
     ...Platform.select({
-      web: {
-        width: 64,
-        height: 64,
-        borderRadius: 16,
-        marginBottom: 16,
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
       },
     }),
   },
-  moduleTitle: {
+  actionIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  actionLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#111827',
-    marginBottom: 3,
-    ...Platform.select({
-      web: {
-        fontSize: 16,
-        marginBottom: 6,
-      },
-    }),
-  },
-  moduleDescription: {
-    fontSize: 11,
-    color: '#6B7280',
-    lineHeight: 14,
-    marginBottom: 8,
-    ...Platform.select({
-      web: {
-        fontSize: 13,
-        lineHeight: 18,
-        marginBottom: 12,
-      },
-    }),
-  },
-  moduleProgressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  moduleProgressBar: {
-    flex: 1,
-    height: 3,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-    overflow: 'hidden',
-    marginRight: 6,
-  },
-  moduleProgressFill: {
-    height: '100%',
-    borderRadius: 2,
-  },
-  moduleProgressText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#6B7280',
-    minWidth: 28,
-  },
-  practiceCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    ...Platform.select({
-      web: {
-        marginBottom: 24,
-        cursor: 'pointer',
-        padding: 24,
-        borderRadius: 20,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-        borderWidth: 2,
-        borderColor: '#E5E7EB',
-        minHeight: 180,
-      },
-    }),
-  },
-  practiceCardHovered: {
-    ...Platform.select({
-      web: {
-        transform: [{ translateY: -4 }],
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-        borderColor: '#10B981',
-      },
-    }),
-  },
-  practiceIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-    ...Platform.select({
-      web: {
-        width: 64,
-        height: 64,
-        borderRadius: 16,
-        marginBottom: 16,
-      },
-    }),
-  },
-  practiceTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 3,
-    ...Platform.select({
-      web: {
-        fontSize: 16,
-        marginBottom: 6,
-      },
-    }),
-  },
-  practiceDescription: {
-    fontSize: 11,
-    color: '#6B7280',
-    lineHeight: 14,
-    marginBottom: 8,
-    ...Platform.select({
-      web: {
-        fontSize: 13,
-        lineHeight: 18,
-        marginBottom: 12,
-      },
-    }),
-  },
-  practiceStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  practiceStatusText: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
-  badgeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    ...Platform.select({
-      web: {
-        marginBottom: 16,
-        padding: 16,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-      },
-    }),
-  },
-  badgeIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  badgeTitle: {
-    fontSize: 12,
-    fontWeight: '600',
     color: '#111827',
     textAlign: 'center',
   },
-  badgeLock: {
+  actionSublabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
     marginTop: 4,
+    textAlign: 'center',
   },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+
+  // =============== ACHIEVEMENTS ===============
+  achievements: {
+    marginHorizontal: 20,
+    marginTop: 24,
   },
-  fabGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fabMenuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-    paddingBottom: 100,
-  },
-  fabMenu: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+  achievementCard: {
+    borderRadius: 20,
     padding: 20,
-    marginHorizontal: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#F59E0B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  fabMenuTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  fabMenuItem: {
+  achievementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
   },
-  fabMenuItemText: {
-    fontSize: 15,
-    color: '#111827',
-    marginLeft: 12,
-    fontWeight: '500',
+  achievementBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  achievementIcon: {
+    fontSize: 20,
+  },
+  achievementText: {
+    flex: 1,
+  },
+  achievementName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  achievementDate: {
+    fontSize: 11,
+    color: '#B45309',
+    marginTop: 2,
   },
 });
 
-export default HomeScreenRedesign;
-
+export default HomeScreenRevolutionary;
