@@ -50,6 +50,7 @@ interface HomeData {
   civicsProgress: number;
   lastStudiedCategory?: string;
   lastStudiedRange?: string;
+  lastStudiedSubcategory?: string;
   userName: string;
 }
 
@@ -85,6 +86,7 @@ const HomeScreenRevolutionary = () => {
     governmentProgress: 0,
     historyProgress: 0,
     civicsProgress: 0,
+    lastStudiedSubcategory: 'A: Principles of American Government',
     userName: user?.email?.split('@')[0] || 'Estudiante',
   });
 
@@ -140,6 +142,27 @@ const HomeScreenRevolutionary = () => {
       const civCompleted = civQuestions.filter((q) => viewedIds.has(q.id)).length;
       const civProgress = Math.round((civCompleted / civQuestions.length) * 100);
 
+      // Mapeo de questionRange a subcategoría correcta
+      const getSubcategoryFromRange = (range: string, cat: string): string => {
+        const rangeMap: Record<string, Record<string, string>> = {
+          GobiernoAmericano: {
+            '1-15': 'A: Principles of American Government',
+            '16-62': 'B: System of Government',
+            '63-72': 'C: Rights and Responsibilities',
+          },
+          HistoriaAmericana: {
+            '73-89': 'A: Colonial Period and Independence',
+            '90-99': 'B: 1800s',
+            '100-118': 'C: Recent American History and Other Important Historical Information',
+          },
+          EducacionCivica: {
+            '119-124': 'A: Symbols',
+            '125-128': 'B: Holidays',
+          },
+        };
+        return rangeMap[cat]?.[range] || rangeMap.GobiernoAmericano['1-15'];
+      };
+
       let lastCategory = 'GobiernoAmericano';
       let lastRange = '1-15';
       if (govProgress === 100) {
@@ -150,6 +173,8 @@ const HomeScreenRevolutionary = () => {
         lastCategory = 'EducacionCivica';
         lastRange = '119-124';
       }
+      
+      const lastSubcategory = getSubcategoryFromRange(lastRange, lastCategory);
 
       setHomeData({
         progress,
@@ -163,6 +188,7 @@ const HomeScreenRevolutionary = () => {
         civicsProgress: civProgress,
         lastStudiedCategory: lastCategory,
         lastStudiedRange: lastRange,
+        lastStudiedSubcategory: lastSubcategory,
         userName: userName || user?.email?.split('@')[0] || 'Estudiante',
       });
 
@@ -220,6 +246,14 @@ const HomeScreenRevolutionary = () => {
     };
 
     const category = categoryMap[homeData.lastStudiedCategory || 'GobiernoAmericano'] || 'government';
+    
+    // Usar la subcategoría correcta en lugar de texto genérico
+    const subtitle = homeData.lastStudiedSubcategory || 'A: Principles of American Government';
+    const title = homeData.lastStudiedCategory === 'GobiernoAmericano' 
+      ? 'Gobierno Americano'
+      : homeData.lastStudiedCategory === 'HistoriaAmericana'
+      ? 'Historia Americana'
+      : 'Educación Cívica';
 
     // Navegar al StudyStack con la pantalla StudyCards
     (navigation as any).navigate('Study', {
@@ -227,8 +261,8 @@ const HomeScreenRevolutionary = () => {
       params: {
         category,
         questionRange: homeData.lastStudiedRange || '1-15',
-        title: homeData.lastStudiedCategory || 'Gobierno Americano',
-        subtitle: 'Continuar donde lo dejaste',
+        title,
+        subtitle,
       },
     });
   }, [homeData, navigation]);
