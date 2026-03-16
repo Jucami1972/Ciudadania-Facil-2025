@@ -165,7 +165,7 @@ const MarkedPracticeScreen = React.lazy(() => import('../screens/MarkedPracticeS
 const QuestionTypePracticeScreenModerno = React.lazy(() => import('../screens/practice/QuestionTypePracticeScreenModerno'));
 const Random20PracticeScreenModerno = React.lazy(() => import('../screens/practice/Random20PracticeScreenModerno'));
 const AIInterviewN400ScreenModerno = React.lazy(() => import('../screens/practice/AIInterviewN400ScreenModerno'));
-const ReadingWritingScreenModerno = React.lazy(() => import('../screens/practice/ReadingWritingScreenModerno'));
+import ReadingWritingScreenModerno from '../screens/practice/ReadingWritingScreenModerno';
 const VocabularioScreenModernoV2 = React.lazy(() => import('../screens/VocabularioScreenModernoV2'));
 const SpacedRepetitionPracticeScreen = React.lazy(() => import('../screens/practice/SpacedRepetitionPracticeScreen'));
 
