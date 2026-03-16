@@ -22,7 +22,7 @@ export const shareText = async (options: ShareOptions): Promise<boolean> => {
         title: options.title,
         url: options.url,
         subject: options.subject,
-      },
+      } as any,
       {
         dialogTitle: options.title || 'Compartir',
         ...Platform.select({

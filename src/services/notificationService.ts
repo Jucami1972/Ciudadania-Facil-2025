@@ -7,11 +7,11 @@ import { trackEvent, AnalyticsEvent } from '../utils/analytics';
 
 // Configurar cómo se manejan las notificaciones cuando la app está en primer plano
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
+  handleNotification: (async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
-  }),
+  })) as any,
 });
 
 const STORAGE_KEY = '@notifications:token';
@@ -157,7 +157,7 @@ export const scheduleDailyStudyReminder = async (hour: number = 20, minute: numb
         hour,
         minute,
         repeats: true,
-      },
+      } as any,
     });
 
     // Guardar ID para poder cancelarlo después
@@ -255,7 +255,7 @@ export const setupNotificationListeners = (
     trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
       feature: 'notifications',
       action: 'notification_received',
-      notification_type: notification.request.content.data?.type || 'unknown',
+      notification_type: (notification.request.content.data as any)?.type || 'unknown',
     });
 
     if (onNotificationReceived) {
@@ -268,7 +268,7 @@ export const setupNotificationListeners = (
     trackEvent(AnalyticsEvent.FEATURE_DISCOVERED, {
       feature: 'notifications',
       action: 'notification_tapped',
-      notification_type: response.notification.request.content.data?.type || 'unknown',
+      notification_type: (response.notification.request.content.data as any)?.type || 'unknown',
     });
 
     if (onNotificationTapped) {

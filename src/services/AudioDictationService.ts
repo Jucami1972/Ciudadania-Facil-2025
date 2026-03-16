@@ -125,7 +125,7 @@ export class AudioDictationService {
       return false; // Web Speech API requiere configuración adicional
     }
     try {
-      return await Voice.isAvailable();
+      return await (Voice as any).isAvailable();
     } catch {
       return false;
     }
@@ -137,7 +137,7 @@ export class AudioDictationService {
   static async getAvailableLanguages(): Promise<string[]> {
     try {
       if (Platform.OS !== 'web') {
-        return await Voice.getSupportedLanguages();
+        return await (Voice as any).getSupportedLanguages();
       }
       return [];
     } catch {

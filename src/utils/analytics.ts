@@ -112,7 +112,7 @@ export const trackScreenView = (screenName: string, params?: AnalyticsParams) =>
   }
   
   try {
-    analytics.logEvent(AnalyticsEvent.SCREEN_VIEW, {
+    analytics.logEvent(AnalyticsEvent.SCREEN_VIEW as any, {
       screen_name: screenName,
       screen_class: screenName,
       platform: Platform.OS,
@@ -173,7 +173,7 @@ export const setUserProperties = (properties: { [key: string]: string | number |
   try {
     Object.entries(properties).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
-        analytics?.setUserProperty(key, String(value));
+        (analytics as any)?.setUserProperty(key, String(value));
       }
     });
     
@@ -203,7 +203,7 @@ export const setUserId = (userId: string | null) => {
     if (userId) {
       analytics.setUserId(userId);
     } else {
-      analytics.setUserId(null);
+      analytics.setUserId(null as any);
     }
     
     if (__DEV__) {
