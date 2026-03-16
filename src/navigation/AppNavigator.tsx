@@ -145,29 +145,29 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 
 // Lazy loading de pantallas principales para mejorar tiempo de inicio
-const ExamenScreen = React.lazy(() => import('../screens/ExamenScreen'));
-const SubscriptionScreen = React.lazy(() => import('../screens/SubscriptionScreen'));
+import ExamenScreen from '../screens/ExamenScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
 
 // Pantallas de estudio (lazy loading)
-const StudyScreenModerno = React.lazy(() => import('../screens/StudyScreenModerno'));
-const SubcategoriasScreenModerno = React.lazy(() => import('../screens/SubcategoriasScreenModerno'));
-const StudyCardsScreenModerno = React.lazy(() => import('../screens/StudyCardsScreenModerno'));
-const StudyCardsByTypeScreen = React.lazy(() => import('../screens/StudyCardsByTypeScreen'));
-const ExplanationScreenModerno = React.lazy(() => import('../screens/ExplanationScreenModerno'));
+import StudyScreenModerno from '../screens/StudyScreenModerno';
+import SubcategoriasScreenModerno from '../screens/SubcategoriasScreenModerno';
+import StudyCardsScreenModerno from '../screens/StudyCardsScreenModerno';
+import StudyCardsByTypeScreen from '../screens/StudyCardsByTypeScreen';
+import ExplanationScreenModerno from '../screens/ExplanationScreenModerno';
 
 // Pantallas de práctica (lazy loading)
-const PruebaPracticaScreenModerno = React.lazy(() => import('../screens/PruebaPracticaScreenModerno'));
-const CategoryPracticeScreen = React.lazy(() => import('../screens/practice/CategoryPracticeScreen'));
-const CategoryPracticeScreenModerno = React.lazy(() => import('../screens/practice/CategoryPracticeScreenModerno'));
-const RandomPracticeScreen = React.lazy(() => import('../screens/practice/RandomPracticeScreen'));
-const IncorrectPracticeScreen = React.lazy(() => import('../screens/IncorrectPracticeScreen'));
-const MarkedPracticeScreen = React.lazy(() => import('../screens/MarkedPracticeScreen'));
-const QuestionTypePracticeScreenModerno = React.lazy(() => import('../screens/practice/QuestionTypePracticeScreenModerno'));
-const Random20PracticeScreenModerno = React.lazy(() => import('../screens/practice/Random20PracticeScreenModerno'));
-const AIInterviewN400ScreenModerno = React.lazy(() => import('../screens/practice/AIInterviewN400ScreenModerno'));
+import PruebaPracticaScreenModerno from '../screens/PruebaPracticaScreenModerno';
+import CategoryPracticeScreen from '../screens/practice/CategoryPracticeScreen';
+import CategoryPracticeScreenModerno from '../screens/practice/CategoryPracticeScreenModerno';
+import RandomPracticeScreen from '../screens/practice/RandomPracticeScreen';
+import IncorrectPracticeScreen from '../screens/IncorrectPracticeScreen';
+import MarkedPracticeScreen from '../screens/MarkedPracticeScreen';
+import QuestionTypePracticeScreenModerno from '../screens/practice/QuestionTypePracticeScreenModerno';
+import Random20PracticeScreenModerno from '../screens/practice/Random20PracticeScreenModerno';
+import AIInterviewN400ScreenModerno from '../screens/practice/AIInterviewN400ScreenModerno';
 import ReadingWritingScreenModerno from '../screens/practice/ReadingWritingScreenModerno';
-const VocabularioScreenModernoV2 = React.lazy(() => import('../screens/VocabularioScreenModernoV2'));
-const SpacedRepetitionPracticeScreen = React.lazy(() => import('../screens/practice/SpacedRepetitionPracticeScreen'));
+import VocabularioScreenModernoV2 from '../screens/VocabularioScreenModernoV2';
+import SpacedRepetitionPracticeScreen from '../screens/practice/SpacedRepetitionPracticeScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
