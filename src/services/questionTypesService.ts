@@ -2,7 +2,7 @@
 
 /**
  * Servicio para clasificar preguntas del examen de ciudadanía por tipo
- * Basado en las 128 preguntas del USCIS
+ * Basado en las 100 preguntas del USCIS
  */
 
 import { questions, Question } from '../data/questions';

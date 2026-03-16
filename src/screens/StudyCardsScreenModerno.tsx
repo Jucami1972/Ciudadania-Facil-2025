@@ -1,6 +1,6 @@
 // src/screens/StudyCardsScreenModerno.tsx
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -10,11 +10,11 @@ import {
   Dimensions,
   Alert,
   Platform,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Audio } from 'expo-av';
 import { questions } from '../data/questions';
 import { StudyCardsRouteProp, NavigationProps } from '../types/navigation';
 import FlipCard from '../components/FlipCard';
@@ -24,6 +24,10 @@ import { questionAudioMap } from '../assets/audio/questions/questionsMap';
 import { answerAudioMap } from '../assets/audio/answers/answersMap';
 import WebLayout from '../components/layout/WebLayout';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
+import { usePremium } from '../context/PremiumContext';
+import ProgressModal from '../components/ProgressModal';
+import { audioManager } from '../services/AudioManagerService';
+import { SectionNavigationService, NextSectionInfo } from '../services/SectionNavigationService';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -33,28 +37,38 @@ const StudyCardsScreenModerno = () => {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<StudyCardsRouteProp>();
   const isWebDesktop = useIsWebDesktop();
-  const { category, title, subtitle } = route.params;
+  const { category, title, subtitle, blockRange, blockTitle } = route.params as any; // Cast as any because it's a new parameter
   const flipCardRef = useRef<any>(null);
+  const { isPremium } = usePremium();
 
   const [language, setLanguage] = useState<'en' | 'es'>('en');
   const [markedQuestions, setMarkedQuestions] = useState<Set<number>>(new Set());
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+  
+  const [showNextSectionDialog, setShowNextSectionDialog] = useState(false);
+  const [nextSectionInfo, setNextSectionInfo] = useState<NextSectionInfo | null>(null);
 
-  // Filtrar preguntas por categoría y subcategoría
+  // Filtrar preguntas por categoría y subcategoría, aplicando bloque si existe
   const filteredQuestions = useMemo(() => {
-    return questions.filter(
+    let qlist = questions.filter(
       (q) => q.category === category && q.subcategory === subtitle
     );
-  }, [category, subtitle]);
+    if (blockRange) {
+       qlist = qlist.slice(blockRange[0], blockRange[1]);
+    }
+    return qlist;
+  }, [category, subtitle, blockRange]);
 
-  // Crear ID único para la sección
-  const sectionId = `${category}_${subtitle}`.replace(/\s+/g, '_');
+  // Crear ID único para la sección (diferente si es un bloque)
+  const sectionId = blockRange 
+    ? `${category}_${subtitle}_block_${blockRange[0]}`.replace(/\s+/g, '_')
+    : `${category}_${subtitle}`.replace(/\s+/g, '_');
   
   // Hook para manejar progreso de la sección
   const {
     currentIndex,
+    lastSavedIndex,
     showProgressModal,
     isLoading: progressLoading,
     updateCurrentIndex,
@@ -63,6 +77,16 @@ const StudyCardsScreenModerno = () => {
     viewAllQuestions,
     closeProgressModal,
   } = useSectionProgress(sectionId, filteredQuestions.length);
+
+  const stopAudio = useCallback(async () => {
+    try {
+      await audioManager.stopCurrentAudio();
+    } catch (error) {
+      console.log('Audio stop ignored from StudyCardsScreenModerno:', error);
+    } finally {
+      setIsPlaying(false);
+    }
+  }, []);
 
   // Cargar preguntas marcadas
   useEffect(() => {
@@ -87,27 +111,10 @@ const StudyCardsScreenModerno = () => {
     if (flipCardRef.current) {
       flipCardRef.current.reset();
     }
-  }, [currentIndex]);
+  }, [currentIndex, stopAudio]);
 
-  if (filteredQuestions.length === 0) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Tarjetas de Estudio</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No hay preguntas disponibles</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const current = filteredQuestions[currentIndex];
-  const isMarked = markedQuestions.has(current.id);
+  const current = filteredQuestions.length > 0 ? filteredQuestions[currentIndex] : null;
+  const isMarked = current ? markedQuestions.has(current.id) : false;
 
   // Marcar pregunta vista para progreso global
   useEffect(() => {
@@ -128,57 +135,47 @@ const StudyCardsScreenModerno = () => {
     markViewed();
   }, [current?.id]);
 
-  const stopAudio = async () => {
-    if (!sound) return;
-    try {
-      const status = await sound.getStatusAsync().catch(() => null);
-      if (status && 'isLoaded' in status && status.isLoaded) {
-        if ('isPlaying' in status && status.isPlaying) {
-          await sound.stopAsync();
-        }
-        sound.setOnPlaybackStatusUpdate(null);
-        await sound.unloadAsync();
-      }
-    } catch (error) {
-      // Silenciar error
-    } finally {
-      setSound(null);
-      setIsPlaying(false);
-    }
-  };
+  // Early return después de todos los hooks
+  if (filteredQuestions.length === 0 || !current) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>No hay preguntas disponibles</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const playAudio = async () => {
+  const playAudio = useCallback(async () => {
     try {
+      if (!current?.id) return;
+
       await stopAudio();
-      
-      if (!current.id) return;
-      
+
       const audioMap = isFlipped ? answerAudioMap : questionAudioMap;
       const module = audioMap[current.id];
-      
+
       if (!module) {
         Alert.alert('Audio no disponible', 'No hay audio disponible para esta pregunta.');
         return;
       }
-      
-      const { sound: newSound } = await Audio.Sound.createAsync(module);
-      setSound(newSound);
+
       setIsPlaying(true);
-      
-      await newSound.playAsync();
-      
-      newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && !status.isPlaying && !status.isBuffering) {
-          setIsPlaying(false);
-          setSound(null);
-        }
+      await audioManager.playAudio(module, () => {
+        setIsPlaying(false);
       });
     } catch (error) {
-      console.error('Error playing audio:', error);
+      console.error('Error playing audio in StudyCardsScreenModerno:', error);
       setIsPlaying(false);
-      setSound(null);
     }
-  };
+  }, [current, isFlipped, stopAudio]);
 
   const handleAudioToggle = () => {
     if (isPlaying) {
@@ -189,12 +186,26 @@ const StudyCardsScreenModerno = () => {
   };
 
   const handleNextCard = () => {
+    if (!current) return;
+    
     if (currentIndex < filteredQuestions.length - 1) {
       updateCurrentIndex(currentIndex + 1);
       if (flipCardRef.current) {
         flipCardRef.current.reset();
       }
     } else {
+      const isLastInSection = SectionNavigationService.isLastQuestionInSection(current.id);
+      
+      if (isLastInSection) {
+        const nextSection = SectionNavigationService.getNextSection(current.id);
+        
+        if (nextSection && nextSection.exists) {
+          setNextSectionInfo(nextSection);
+          setShowNextSectionDialog(true);
+          return;
+        }
+      }
+      
       Alert.alert(
         'Fin de la Subcategoría',
         'Has completado todas las tarjetas de esta sección.',
@@ -215,6 +226,20 @@ const StudyCardsScreenModerno = () => {
         ]
       );
     }
+  };
+
+  const handleContinueToNextSection = async () => {
+    if (!nextSectionInfo) return;
+    
+    await stopAudio();
+    setShowNextSectionDialog(false);
+    
+    navigation.replace('StudyCards', {
+      category: nextSectionInfo.category as any,
+      title: nextSectionInfo.title,
+      subtitle: nextSectionInfo.subcategory,
+      questionRange: nextSectionInfo.questionRange,
+    });
   };
 
   const handlePreviousCard = () => {
@@ -312,21 +337,42 @@ const StudyCardsScreenModerno = () => {
       </View>
 
       <View style={styles.cardContainer}>
-        <FlipCard
-          ref={flipCardRef}
-          frontContent={{
-            number: current.id,
-            question: current.questionEs,
-            questionEn: current.questionEn,
-          }}
-          backContent={{
-            answer: current.answerEs,
-            answerEn: current.answerEn,
-          }}
-          language={language}
-          isImportant={current.asterisk}
-          onFlip={handleCardFlip}
-        />
+        {!isPremium && current.id > 20 ? (
+          <View style={styles.lockedCardContainer}>
+            <View style={styles.lockedCardContent}>
+              <MaterialCommunityIcons name="lock" size={64} color="#F59E0B" />
+              <Text style={styles.lockedCardTitle}>Pregunta Premium</Text>
+              <Text style={styles.lockedCardText}>
+                La pregunta {current.id} es parte de las 100 preguntas oficiales completas.
+                Actualízate a Premium para acceder a esta y todas las demás preguntas, además de desbloquear modos de práctica avanzados.
+              </Text>
+              <TouchableOpacity
+                style={styles.unlockButton}
+                onPress={() => navigation.navigate('Subscription' as any)}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="crown" size={20} color="#FFF" />
+                <Text style={styles.unlockButtonText}>Desbloquear Premium</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <FlipCard
+            ref={flipCardRef}
+            frontContent={{
+              number: current.id,
+              question: current.questionEs,
+              questionEn: current.questionEn,
+            }}
+            backContent={{
+              answer: current.answerEs,
+              answerEn: current.answerEn,
+            }}
+            language={language}
+            isImportant={current.asterisk}
+            onFlip={handleCardFlip}
+          />
+        )}
       </View>
 
       <View style={styles.actionButtons}>
@@ -355,14 +401,13 @@ const StudyCardsScreenModerno = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.navButton, currentIndex === filteredQuestions.length - 1 && styles.navButtonDisabled]}
+          style={styles.navButton}
           onPress={handleNextCard}
-          disabled={currentIndex === filteredQuestions.length - 1}
         >
           <MaterialCommunityIcons 
             name="chevron-right" 
             size={20} 
-            color={currentIndex === filteredQuestions.length - 1 ? '#d1d5db' : '#1E40AF'} // Azul profesional 
+            color={'#1E40AF'} // Azul profesional 
           />
         </TouchableOpacity>
       </View>
@@ -375,13 +420,69 @@ const StudyCardsScreenModerno = () => {
       >
         <MaterialCommunityIcons name="lightbulb-on-outline" size={22} color="#10B981" />
       </TouchableOpacity>
+
+      {/* Modal de progreso guardado */}
+      <ProgressModal
+        visible={showProgressModal && !progressLoading}
+        onClose={closeProgressModal}
+        onContinue={() => {
+          continueFromSaved();
+        }}
+        onRestart={() => {
+          restartFromBeginning();
+        }}
+        onViewAll={viewAllQuestions}
+        sectionName={blockTitle || subtitle || title}
+        currentQuestion={lastSavedIndex + 1}
+        totalQuestions={filteredQuestions.length}
+      />
+
+      {/* Diálogo para continuar a la siguiente sección */}
+      <Modal
+        visible={showNextSectionDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setShowNextSectionDialog(false);
+          setNextSectionInfo(null);
+        }}
+      >
+        {nextSectionInfo && (
+          <View style={styles.dialogOverlay}>
+            <View style={styles.dialogContainer}>
+              <Text style={styles.dialogTitle}>¿Continuar a la siguiente sección?</Text>
+              <Text style={styles.dialogMessage}>
+                Has completado esta sección. ¿Deseas continuar a:
+              </Text>
+              <Text style={styles.dialogSectionName}>{nextSectionInfo.subcategory}</Text>
+              <View style={styles.dialogButtons}>
+                <TouchableOpacity
+                  style={[styles.dialogButton, styles.dialogButtonCancel]}
+                  onPress={() => {
+                    setShowNextSectionDialog(false);
+                    setNextSectionInfo(null);
+                  }}
+                >
+                  <Text style={styles.dialogButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.dialogButton, styles.dialogButtonConfirm]}
+                  onPress={handleContinueToNextSection}
+                >
+                  <Text style={[styles.dialogButtonText, styles.dialogButtonTextConfirm]}>Continuar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      </Modal>
     </>
   );
 
   // Web de escritorio: usar WebLayout con sidebar
   if (isWeb && isWebDesktop) {
     return (
-      <WebLayout headerTitle={subtitle || 'Tarjetas de Estudio'}>
+      <WebLayout headerTitle={blockTitle || subtitle || 'Tarjetas de Estudio'}>
         {content}
       </WebLayout>
     );
@@ -406,19 +507,20 @@ const styles = StyleSheet.create({
     }),
   },
   header: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 3,
     ...Platform.select({
       web: {
         width: '100%',
@@ -430,10 +532,10 @@ const styles = StyleSheet.create({
     }),
   },
   headerButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f9fafb',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 0.5,
@@ -507,7 +609,7 @@ const styles = StyleSheet.create({
   languageText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E40AF', // Azul profesional
+    color: '#4F46E5', // Primary Indigo
   },
   progressBarBackground: {
     height: 5,
@@ -517,7 +619,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: '#3B82F6', // Azul profesional
+    backgroundColor: '#4F46E5', // Primary Indigo
     borderRadius: 3,
   },
   cardContainer: {
@@ -538,6 +640,59 @@ const styles = StyleSheet.create({
         alignItems: 'center',
       },
     }),
+  },
+  lockedCardContainer: {
+    width: '100%',
+    flex: 1,
+    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedCardContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  lockedCardTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  lockedCardText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  unlockButton: {
+    flexDirection: 'row',
+    backgroundColor: '#4F46E5',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    gap: 8,
+  },
+  unlockButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   flipCardWrapper: {
     width: '100%',
@@ -577,7 +732,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#3B82F6',
+    borderColor: '#4F46E5',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
@@ -593,7 +748,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#1E40AF', // Azul profesional
+    shadowColor: '#4F46E5', // Primary Indigo
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -616,6 +771,72 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 5,
+  },
+  dialogOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dialogContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  dialogTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  dialogMessage: {
+    fontSize: 16,
+    color: '#4b5563',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  dialogSectionName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4F46E5', // Primary Indigo
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  dialogButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  dialogButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogButtonCancel: {
+    backgroundColor: '#f3f4f6',
+  },
+  dialogButtonConfirm: {
+    backgroundColor: '#4F46E5', // Primary Indigo
+  },
+  dialogButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  dialogButtonTextConfirm: {
+    color: 'white',
   },
 });
 

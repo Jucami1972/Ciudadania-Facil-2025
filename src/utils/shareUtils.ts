@@ -238,7 +238,7 @@ export const shareFile = async (uri: string, mimeType?: string): Promise<boolean
  * Compartir link de la app
  */
 export const shareAppLink = async (): Promise<boolean> => {
-  const message = `📱 Descarga Ciudadanía Fácil - La mejor app para prepararte para el examen de ciudadanía estadounidense.\n\n✅ 128 preguntas oficiales\n✅ Entrevista AI\n✅ Práctica interactiva\n✅ Audio en inglés y español\n\n${Platform.select({
+  const message = `📱 Descarga Ciudadanía Fácil - La mejor app para prepararte para el examen de ciudadanía estadounidense.\n\n✅ 100 preguntas oficiales\n✅ Entrevista AI\n✅ Práctica interactiva\n✅ Audio en inglés y español\n\n${Platform.select({
     ios: 'https://apps.apple.com/app/ciudadania-facil',
     android: 'https://play.google.com/store/apps/details?id=com.ciudadaniafacil.app',
     default: 'https://ciudadania-facil-2025.vercel.app',
