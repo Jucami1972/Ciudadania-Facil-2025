@@ -79,9 +79,9 @@ const HomeScreenRevolutionary = () => {
   const [homeData, setHomeData] = useState<HomeData>({
     progress: 0,
     completedQuestions: 0,
-    totalQuestions: 128,
+    totalQuestions: questions.length || 100,
     todayCount: 0,
-    remainingQuestions: 128,
+    remainingQuestions: questions.length || 100,
     streak: 0,
     governmentProgress: 0,
     historyProgress: 0,
@@ -125,61 +125,50 @@ const HomeScreenRevolutionary = () => {
 
       const viewedIds = viewedData ? new Set<number>(JSON.parse(viewedData)) : new Set();
       const completedCount = viewedIds.size;
-      const progress = Math.round((completedCount / 128) * 100);
-      const remaining = 128 - completedCount;
+      const progress = questions.length > 0 ? Math.round((completedCount / questions.length) * 100) : 0;
+      const remaining = questions.length > 0 ? questions.length - completedCount : 100;
       const streak = streakData ? parseInt(streakData, 10) : 0;
       const today = todayData ? parseInt(todayData, 10) : 0;
 
       const govQuestions = questions.filter((q) => q.category === 'government');
       const govCompleted = govQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const govProgress = Math.round((govCompleted / govQuestions.length) * 100);
+      const govProgress = govQuestions.length > 0 ? Math.round((govCompleted / govQuestions.length) * 100) : 0;
 
       const histQuestions = questions.filter((q) => q.category === 'history');
       const histCompleted = histQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const histProgress = Math.round((histCompleted / histQuestions.length) * 100);
+      const histProgress = histQuestions.length > 0 ? Math.round((histCompleted / histQuestions.length) * 100) : 0;
 
       const civQuestions = questions.filter((q) => q.category === 'symbols_holidays');
       const civCompleted = civQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const civProgress = Math.round((civCompleted / civQuestions.length) * 100);
+      const civProgress = civQuestions.length > 0 ? Math.round((civCompleted / civQuestions.length) * 100) : 0;
 
-      // Mapeo de questionRange a subcategoría correcta
-      const getSubcategoryFromRange = (range: string, cat: string): string => {
-        const rangeMap: Record<string, Record<string, string>> = {
-          GobiernoAmericano: {
-            '1-15': 'A: Principles of American Government',
-            '16-62': 'B: System of Government',
-            '63-72': 'C: Rights and Responsibilities',
-          },
-          HistoriaAmericana: {
-            '73-89': 'A: Colonial Period and Independence',
-            '90-99': 'B: 1800s',
-            '100-118': 'C: Recent American History and Other Important Historical Information',
-          },
-          EducacionCivica: {
-            '119-124': 'A: Symbols',
-            '125-128': 'B: Holidays',
-          },
-        };
-        return rangeMap[cat]?.[range] || rangeMap.GobiernoAmericano['1-15'];
-      };
+      // Encontrar la última pregunta estudiada para deducir subcategoría
+      const maxViewedId = viewedIds.size > 0 ? Math.max(...viewedIds) : 0;
+      let lastQuestion = questions.find((q) => q.id === maxViewedId);
+
+      // Si no hay preguntas vistas, tomar la primera
+      if (!lastQuestion && questions.length > 0) {
+        lastQuestion = questions[0];
+      }
 
       let lastCategory = 'GobiernoAmericano';
-      let lastRange = '1-15';
-      if (govProgress === 100) {
-        lastCategory = 'HistoriaAmericana';
-        lastRange = '73-89';
-      }
-      if (histProgress === 100) {
-        lastCategory = 'EducacionCivica';
-        lastRange = '119-124';
-      }
+      if (lastQuestion?.category === 'history') lastCategory = 'HistoriaAmericana';
+      if (lastQuestion?.category === 'symbols_holidays') lastCategory = 'EducacionCivica';
+
+      const lastSubcategory = lastQuestion?.subcategory || 'A: Principles of American Government';
       
-      const lastSubcategory = getSubcategoryFromRange(lastRange, lastCategory);
+      // Encontrar el rango de IDs para esta subcategoría para usar en navegación
+      const questionsInSubcat = questions.filter(
+        (q) => q.category === lastQuestion?.category && q.subcategory === lastSubcategory
+      );
+      const minId = questionsInSubcat.length > 0 ? Math.min(...questionsInSubcat.map(q => q.id)) : 1;
+      const maxId = questionsInSubcat.length > 0 ? Math.max(...questionsInSubcat.map(q => q.id)) : 15;
+      const lastRange = `${minId}-${maxId}`;
 
       setHomeData({
         progress,
         completedQuestions: completedCount,
-        totalQuestions: 128,
+        totalQuestions: questions.length,
         todayCount: today,
         remainingQuestions: remaining,
         streak,

@@ -40,7 +40,7 @@ const DashboardScreen = () => {
       try {
         const viewedRaw = await AsyncStorage.getItem('@study:viewed');
         const viewed = new Set<number>(viewedRaw ? JSON.parse(viewedRaw) : []);
-        const total = 128;
+        const total = 100;
         const viewedSize = viewed.size;
         setViewedCount(viewedSize);
         const pct = Math.max(0, Math.min(100, Math.round((viewedSize / total) * 100)));
@@ -52,7 +52,7 @@ const DashboardScreen = () => {
         // Símbolos y Feriados: preguntas 88-128
         const govViewed = Array.from(viewed).filter((id) => id >= 1 && id <= 57).length;
         const histViewed = Array.from(viewed).filter((id) => id >= 58 && id <= 87).length;
-        const symbolsViewed = Array.from(viewed).filter((id) => id >= 88 && id <= 128).length;
+        const symbolsViewed = Array.from(viewed).filter((id) => id >= 88 && id <= 100).length;
 
         setCategoryProgress([
           {
@@ -107,7 +107,7 @@ const DashboardScreen = () => {
 
   const renderProgressCard = () => {
     const nextCategory = getNextSuggestion();
-    const totalQuestions = 128;
+    const totalQuestions = 100;
     const remainingQuestions = (() => {
       // Preferimos el conteo real si está disponible
       if (viewedCount > 0) {

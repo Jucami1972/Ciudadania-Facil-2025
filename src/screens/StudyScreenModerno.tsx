@@ -94,7 +94,7 @@ const sections: Record<MainCategoryKey, SubCategory[]> = {
     { 
       title: 'Símbolos y Días Festivos', 
       subtitle: 'B: Holidays', 
-      questionRange: '125-128', 
+      questionRange: '95-100', 
       category: 'symbols_holidays' 
     },
   ],
@@ -226,9 +226,17 @@ const StudyScreenModerno = () => {
 
   const handleSubcategoryPress = (subcategory: SubCategory) => {
     const selectedCat = categories.find(c => c.id === selectedCategory);
+    
+    const subcatQuestions = questions.filter(
+      (q) => q.category === subcategory.category && q.subcategory === subcategory.subtitle
+    );
+    const minId = subcatQuestions.length > 0 ? Math.min(...subcatQuestions.map(q => q.id)) : 0;
+    const maxId = subcatQuestions.length > 0 ? Math.max(...subcatQuestions.map(q => q.id)) : 0;
+    const resolvedRange = subcatQuestions.length > 0 ? `${minId}-${maxId}` : subcategory.questionRange;
+
     navigation.navigate('StudyCards', {
       category: subcategory.category,
-      questionRange: subcategory.questionRange,
+      questionRange: resolvedRange,
       title: selectedCat?.name || '',
       subtitle: subcategory.subtitle,
     });
@@ -238,9 +246,13 @@ const StudyScreenModerno = () => {
   const selectedSubcategories = selectedCategoryData?.sections || [];
 
   const renderSubcategoryCard = (subcategory: SubCategory & { questionCount: number; progress: number }) => {
-    const questionCount = questions.filter(
+    const subcatQuestions = questions.filter(
       (q) => q.category === subcategory.category && q.subcategory === subcategory.subtitle
-    ).length;
+    );
+    const questionCount = subcatQuestions.length;
+    const minId = questionCount > 0 ? Math.min(...subcatQuestions.map(q => q.id)) : 0;
+    const maxId = questionCount > 0 ? Math.max(...subcatQuestions.map(q => q.id)) : 0;
+    const resolvedRange = questionCount > 0 ? `${minId}-${maxId}` : 'N/A';
     const progress = subcategoryProgress[subcategory.subtitle] || 0;
 
     return (
@@ -248,7 +260,7 @@ const StudyScreenModerno = () => {
         style={styles.subcategoryCard}
         onPress={() => handleSubcategoryPress(subcategory)}
         activeOpacity={0.85}
-        accessibilityLabel={`${subcategory.subtitle}. ${subcategory.questionRange} preguntas`}
+        accessibilityLabel={`${subcategory.subtitle}. ${resolvedRange} preguntas`}
         accessibilityRole="button"
       >
         <View style={styles.cardContent}>
@@ -257,7 +269,7 @@ const StudyScreenModerno = () => {
           </View>
           <View style={styles.textContainer}>
             <Text style={styles.subcategoryName} numberOfLines={2}>{subcategory.subtitle}</Text>
-            <Text style={styles.questionRange}>Preguntas {subcategory.questionRange}</Text>
+            <Text style={styles.questionRange}>Preguntas {resolvedRange}</Text>
           </View>
           <View style={styles.statsContainer}>
             <Text style={styles.questionCount}>{questionCount}</Text>

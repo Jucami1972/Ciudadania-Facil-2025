@@ -10,7 +10,6 @@ export interface Question {
   subcategory: string;
   asterisk: boolean;
 }
-
 export const questions: Question[] = [
   // --- AMERICAN GOVERNMENT (GOBIERNO AMERICANO) ---
   // A: Principles of American Government (Principios del Gobierno Americano)
@@ -194,7 +193,6 @@ export const questions: Question[] = [
     subcategory: "A: Principles of American Government",
     asterisk: false,
   },
-
   // B: System of Government (Sistema de Gobierno)
   {
     id: 16,
@@ -760,7 +758,6 @@ export const questions: Question[] = [
     subcategory: "B: System of Government",
     asterisk: false,
   },
-
   // C: Rights and Responsibilities (Derechos y Responsabilidades)
   {
     id: 63,
@@ -882,7 +879,6 @@ export const questions: Question[] = [
     subcategory: "C: Rights and Responsibilities",
     asterisk: false,
   },
-
   // --- AMERICAN HISTORY (HISTORIA AMERICANA) ---
   // A: Colonial Period and Independence (Período Colonial e Independencia)
   {
@@ -1089,7 +1085,6 @@ export const questions: Question[] = [
     subcategory: "A: Colonial Period and Independence",
     asterisk: false,
   },
-
   // B: 1800s
   {
     id: 90,
@@ -1208,10 +1203,10 @@ export const questions: Question[] = [
     explanationEn: "Susan B. Anthony and Elizabeth Cady Stanton were key figures in the women's suffrage movement. [cite: 439, 440]",
     explanationEs: "Susan B. Anthony y Elizabeth Cady Stanton fueron figuras clave en el movimiento por el sufragio femenino. [cite: 439, 440]",
     category: "history",
-    subcategory: "B: 1800s",
+    subcategory: "A: Colonial Period and Independence",
     asterisk: false,
   },
-
+  // B: 1800s
   // C: Recent American History and Other Important Historical Information (Historia Americana Reciente y Otra Información Histórica Importante)
   {
     id: 100,
@@ -1224,7 +1219,5 @@ export const questions: Question[] = [
     category: "history",
     subcategory: "C: Recent American History and Other Important Historical Information",
     asterisk: true,
-  }
-  {
   }
 ];
