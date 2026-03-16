@@ -1,0 +1,244 @@
+export interface ReadingWritingQuestion {
+  id: number;
+  questionEn: string;
+  answerEn: string;
+  category: 'reading' | 'writing';
+  subcategory: string;
+}
+
+export const readingWritingQuestions: ReadingWritingQuestion[] = [
+  {
+    id: 1,
+    questionEn: "What city was the first capital of the United States?",
+    answerEn: "New York City was the first capital.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 2,
+    questionEn: "How many states does the United States have?",
+    answerEn: "The United States has fifty states.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 3,
+    questionEn: "What country is to the south of the United States?",
+    answerEn: "Mexico is to the south of the United States.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 4,
+    questionEn: "What country is to the north of the United States?",
+    answerEn: "Canada is to the north of the United States.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 5,
+    questionEn: "What state has the most people?",
+    answerEn: "California has the most people.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 6,
+    questionEn: "What is the largest state?",
+    answerEn: "Alaska is the largest state.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 7,
+    questionEn: "What is the Capital of the United States?",
+    answerEn: "The Capital of the United States is Washington D.C.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 8,
+    questionEn: "Where is the White House?",
+    answerEn: "The White House is in Washington D.C.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 9,
+    questionEn: "Where does Congress meet?",
+    answerEn: "Congress meets in Washington D.C.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 10,
+    questionEn: "What was the first state?",
+    answerEn: "Delaware was the first state of the United States.",
+    category: "reading",
+    subcategory: "A: Geography",
+  },
+  {
+    id: 11,
+    questionEn: "Name one right in the Bill of Rights.",
+    answerEn: "People in the United States have the right of freedom of speech.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 12,
+    questionEn: "What are the colors of the American flag?",
+    answerEn: "The United States flag is red, white, and blue.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 13,
+    questionEn: "What do we have to pay to the government?",
+    answerEn: "Most people in the United States have to pay taxes.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 14,
+    questionEn: "In what month do people vote for the President?",
+    answerEn: "People vote for the President in November.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 15,
+    questionEn: "How many Senators does Congress have?",
+    answerEn: "Congress has one hundred Senators.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 16,
+    questionEn: "Who can vote?",
+    answerEn: "United States citizens have the right to vote.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 17,
+    questionEn: "Who elects Congress?",
+    answerEn: "The citizens elect Congress.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 18,
+    questionEn: "Who lives in the White House?",
+    answerEn: "The President lives in the White House.",
+    category: "reading",
+    subcategory: "B: Rights and Government",
+  },
+  {
+    id: 19,
+    questionEn: "Who is the Father of our country?",
+    answerEn: "President Washington is the Father of our country.",
+    category: "reading",
+    subcategory: "C: History and Presidents",
+  },
+  {
+    id: 20,
+    questionEn: "Who is on the one dollar bill?",
+    answerEn: "President Washington is on the one dollar bill.",
+    category: "reading",
+    subcategory: "C: History and Presidents",
+  },
+  {
+    id: 21,
+    questionEn: "Who was Abraham Lincoln?",
+    answerEn: "Lincoln was the President during the Civil War.",
+    category: "reading",
+    subcategory: "C: History and Presidents",
+  },
+  {
+    id: 22,
+    questionEn: "Who was George Washington?",
+    answerEn: "Washington was the first President.",
+    category: "reading",
+    subcategory: "C: History and Presidents",
+  },
+  {
+    id: 23,
+    questionEn: "Who was the second President?",
+    answerEn: "Adams was the second President.",
+    category: "reading",
+    subcategory: "C: History and Presidents",
+  },
+  {
+    id: 24,
+    questionEn: "Who lived here first?",
+    answerEn: "American Indians lived here first.",
+    category: "reading",
+    subcategory: "C: History and Presidents",
+  },
+  {
+    id: 25,
+    questionEn: "When is Columbus Day?",
+    answerEn: "Columbus Day is in October.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+  {
+    id: 26,
+    questionEn: "When is Independence Day?",
+    answerEn: "Independence Day is in July.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+  {
+    id: 27,
+    questionEn: "When is Thanksgiving?",
+    answerEn: "Thanksgiving is in November.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+  {
+    id: 28,
+    questionEn: "When is Presidents' Day?",
+    answerEn: "Presidents' Day is in February.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+  {
+    id: 29,
+    questionEn: "When is Labor Day?",
+    answerEn: "Labor Day is in September.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+  {
+    id: 30,
+    questionEn: "When is Memorial Day?",
+    answerEn: "Memorial Day is in May.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+  {
+    id: 31,
+    questionEn: "When is Flag Day?",
+    answerEn: "Flag Day is in June.",
+    category: "reading",
+    subcategory: "D: Holidays",
+  },
+];
+
+// ─── Helpers ───────────────────────────────────────────────
+
+export const getReadingWritingBySubcategory = (
+  subcategory: string
+): ReadingWritingQuestion[] =>
+  readingWritingQuestions.filter((q) => q.subcategory === subcategory);
+
+export const readingWritingSubcategories = [
+  "A: Geography",
+  "B: Rights and Government",
+  "C: History and Presidents",
+  "D: Holidays",
+] as const;
+
+export type ReadingWritingSubcategory =
+  (typeof readingWritingSubcategories)[number];
