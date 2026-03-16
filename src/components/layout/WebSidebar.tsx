@@ -108,7 +108,7 @@ const WebSidebar: React.FC = () => {
               route.name === 'CategoryPracticeHome' ||
               route.name === 'QuestionTypePracticeHome' ||
               route.name === 'Random20PracticeHome' ||
-              route.name === 'PhotoMemoryHome'
+              route.name === 'ReadingWritingHome'
             ));
           
           return (

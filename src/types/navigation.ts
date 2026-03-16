@@ -72,7 +72,7 @@ export type RootStackParamList = {
   };
   RandomPractice: undefined;
   Random20Practice: undefined;
-  PhotoMemory: undefined;
+  ReadingWriting: undefined;
   IncorrectPractice: undefined;
   MarkedPractice: undefined;
 
@@ -105,7 +105,7 @@ export type RootStackParamList = {
   QuestionTypePracticeHome: undefined;
   Random20PracticeHome: undefined;
   EntrevistaAIHome: undefined;
-  PhotoMemoryHome: undefined;
+  ReadingWritingHome: undefined;
   VocabularioHome: undefined;
   ExamenHome: undefined;
   SpacedRepetitionPractice: undefined;

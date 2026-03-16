@@ -7,7 +7,7 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
   Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProps } from '../types/navigation';
+import { usePremium } from '../context/PremiumContext';
 
 interface PracticeOption {
   id: string;
@@ -30,6 +31,7 @@ interface PracticeOption {
 const PruebaPracticaScreenModerno = () => {
   const navigation = useNavigation<NavigationProps>();
   const insets = useSafeAreaInsets();
+  const { isPremium } = usePremium();
   
   // Estado para estadísticas
   const [stats, setStats] = useState({
@@ -165,35 +167,53 @@ const PruebaPracticaScreenModerno = () => {
       gradient: ['#8B5CF6', '#7C3AED'],
       route: 'SpacedRepetitionPractice',
     },
+    {
+      id: 'reading_writing',
+      title: 'Lectura y Escritura',
+      subtitle: 'Examen de Inglés',
+      description: 'Practica la lectura y dictado de oraciones oficiales',
+      icon: 'book-open-page-variant',
+      gradient: ['#1E3A8A', '#3B82F6'],
+      route: 'ReadingWritingHome',
+    },
   ];
 
+  const PREMIUM_ONLY_ROUTES = ['Random20PracticeHome', 'EntrevistaAIHome', 'SpacedRepetitionPractice'];
+
   const handlePracticePress = (option: PracticeOption) => {
+    if (!isPremium && PREMIUM_ONLY_ROUTES.includes(option.route)) {
+        navigation.navigate('Subscription' as any);
+        return;
+    }
     navigation.navigate(option.route as any);
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       {/* Fixed Header */}
-      <LinearGradient
-        colors={['#667eea', '#764ba2'] as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { paddingTop: Math.max(insets.top - 15, 0) }]}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Práctica</Text>
-            <Text style={styles.headerSubtitle}>Elige tu modo de estudio</Text>
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#3730A3', '#4F46E5', '#6366F1'] as [string, string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: insets.top + 8 }]}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}
+            >
+              <MaterialCommunityIcons name="arrow-left" size={24} color="white" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Práctica</Text>
+              <Text style={styles.headerSubtitle}>Elige tu modo de estudio</Text>
+            </View>
+            <View style={{ width: 44 }} />
           </View>
-          <View style={{ width: 40 }} />
-        </View>
-      </LinearGradient>
+        </LinearGradient>
+      </View>
 
       <ScrollView 
         style={styles.container} 
@@ -218,34 +238,41 @@ const PruebaPracticaScreenModerno = () => {
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="target" size={18} color="#667eea" />
+          <MaterialCommunityIcons name="target" size={18} color="#4F46E5" />
           <Text style={styles.sectionTitle}>Modos de Práctica</Text>
         </View>
 
         {/* Practice Grid */}
         <View style={styles.practiceGrid}>
-          {practiceOptions.map((option) => (
+          {practiceOptions.map((option) => {
+            const isPremiumLocked = !isPremium && PREMIUM_ONLY_ROUTES.includes(option.route);
+            return (
             <TouchableOpacity
               key={option.id}
-              style={styles.practiceCard}
+              style={[styles.practiceCard, isPremiumLocked && { opacity: 0.85 }]}
               onPress={() => handlePracticePress(option)}
               activeOpacity={0.85}
             >
+              {isPremiumLocked && (
+                <View style={styles.premiumLockBadge}>
+                  <MaterialCommunityIcons name="crown" size={14} color="#FFFFFF" />
+                </View>
+              )}
               <LinearGradient
-                colors={option.gradient}
+                colors={isPremiumLocked ? ['#9CA3AF', '#6B7280'] : option.gradient}
                 style={styles.cardIconContainer}
               >
-                <MaterialCommunityIcons name={option.icon as any} size={28} color="white" />
+                <MaterialCommunityIcons name={isPremiumLocked ? "lock" : option.icon as any} size={28} color="white" />
               </LinearGradient>
               <Text style={styles.cardTitle}>{option.title}</Text>
               <Text style={styles.cardSubtitle}>{option.subtitle}</Text>
             </TouchableOpacity>
-          ))}
+          )})}
         </View>
 
         {/* Tips Section */}
         <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="lightbulb" size={18} color="#667eea" />
+          <MaterialCommunityIcons name="lightbulb" size={18} color="#4F46E5" />
           <Text style={styles.sectionTitle}>Consejos de Estudio</Text>
         </View>
 
@@ -279,7 +306,7 @@ const PruebaPracticaScreenModerno = () => {
           </View>
         </LinearGradient>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -290,9 +317,12 @@ const styles = StyleSheet.create({
   },
   
   // =============== HEADER ===============
+  headerContainer: {
+    backgroundColor: '#3730A3',
+  },
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
@@ -300,9 +330,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -312,15 +342,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: 'white',
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: 2,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 1,
   },
 
   // =============== CONTAINER ===============
@@ -363,7 +393,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#667eea',
+    color: '#4F46E5',
   },
   statLabel: {
     fontSize: 10,
@@ -434,6 +464,23 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  premiumLockBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
   },
 
   // =============== TIPS CARD ===============

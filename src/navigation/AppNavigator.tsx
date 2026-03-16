@@ -145,7 +145,6 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { RegisterScreen } from '../screens/auth/RegisterScreen';
 
 // Lazy loading de pantallas principales para mejorar tiempo de inicio
-const DashboardScreen = React.lazy(() => import('../screens/DashboardScreen'));
 const ExamenScreen = React.lazy(() => import('../screens/ExamenScreen'));
 const SubscriptionScreen = React.lazy(() => import('../screens/SubscriptionScreen'));
 
@@ -163,17 +162,12 @@ const CategoryPracticeScreenModerno = React.lazy(() => import('../screens/practi
 const RandomPracticeScreen = React.lazy(() => import('../screens/practice/RandomPracticeScreen'));
 const IncorrectPracticeScreen = React.lazy(() => import('../screens/IncorrectPracticeScreen'));
 const MarkedPracticeScreen = React.lazy(() => import('../screens/MarkedPracticeScreen'));
-const QuestionTypePracticeScreen = React.lazy(() => import('../screens/practice/QuestionTypePracticeScreen'));
 const QuestionTypePracticeScreenModerno = React.lazy(() => import('../screens/practice/QuestionTypePracticeScreenModerno'));
-const Random20PracticeScreen = React.lazy(() => import('../screens/practice/Random20PracticeScreen'));
 const Random20PracticeScreenModerno = React.lazy(() => import('../screens/practice/Random20PracticeScreenModerno'));
 const AIInterviewN400ScreenModerno = React.lazy(() => import('../screens/practice/AIInterviewN400ScreenModerno'));
-const PhotoMemoryScreen = React.lazy(() => import('../screens/practice/PhotoMemoryScreen'));
-const PhotoMemoryScreenModerno = React.lazy(() => import('../screens/practice/PhotoMemoryScreenModerno'));
+const ReadingWritingScreenModerno = React.lazy(() => import('../screens/practice/ReadingWritingScreenModerno'));
 const VocabularioScreenModernoV2 = React.lazy(() => import('../screens/VocabularioScreenModernoV2'));
-const SpacedRepetitionPracticeScreen = React.lazy(() => 
-  import('../screens/practice/SpacedRepetitionPracticeScreen').then(module => ({ default: module.default }))
-);
+const SpacedRepetitionPracticeScreen = React.lazy(() => import('../screens/practice/SpacedRepetitionPracticeScreen'));
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
@@ -260,8 +254,8 @@ const PracticeStack = () => (
       component={AIInterviewN400ScreenModerno}
     />
     <PracticeStackNavigator.Screen
-      name="PhotoMemoryHome"
-      component={PhotoMemoryScreenModerno}
+      name="ReadingWritingHome"
+      component={ReadingWritingScreenModerno}
     />
     <PracticeStackNavigator.Screen
       name="VocabularioHome"
@@ -336,53 +330,28 @@ const AppTabNavigator = () => {
     <Tab.Screen 
       name="Study" 
       component={StudyStack} 
-      options={{ tabBarLabel: 'Estudio' }} 
+      options={{ tabBarLabel: 'Estudio' }}
+      listeners={({ navigation }) => ({
+        tabPress: (e) => {
+          // Reset Study stack to initial screen when tab is pressed
+          navigation.navigate('Study', { screen: 'StudyHome' });
+        },
+      })}
     />
     <Tab.Screen 
       name="Practice" 
       component={PracticeStack} 
-      options={({ navigation }) => ({ 
-        tabBarLabel: 'Práctica',
-        listeners: {
-          tabPress: (e) => {
-            // Prevenir el comportamiento por defecto
-            e.preventDefault();
-            // Navegar al tab Practice y resetear el stack interno a PruebaPracticaHome
-            const state = navigation.getState();
-            const practiceTab = state.routes.find((r: any) => r.name === 'Practice');
-            
-            if (practiceTab?.state) {
-              // Si el stack de Practice tiene más de una pantalla o no está en PruebaPracticaHome
-              const practiceState = practiceTab.state;
-              const currentRoute = practiceState.routes[practiceState.index || 0];
-              
-              if (currentRoute?.name !== 'PruebaPracticaHome' || practiceState.routes.length > 1) {
-                // Resetear solo el stack de Practice
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [
-                      {
-                        name: 'Practice',
-                        state: {
-                          routes: [{ name: 'PruebaPracticaHome' }],
-                          index: 0,
-                        },
-                      },
-                    ],
-                  })
-                );
-              } else {
-                // Si ya está en PruebaPracticaHome, solo navegar al tab
-                navigation.navigate('Practice');
-              }
-            } else {
-              // Si no hay estado, navegar normalmente
-              navigation.navigate('Practice');
-            }
-          },
+      options={{ 
+        tabBarLabel: 'Práctica'
+      }}
+      listeners={({ navigation }) => ({
+        tabPress: (e) => {
+          // Reset Practice stack to initial screen when tab is pressed
+          // This fixes the issue where navigating from Home's Quick Actions
+          // (e.g. Quiz) leaves the Practice tab stuck on a sub-screen
+          navigation.navigate('Practice', { screen: 'PruebaPracticaHome' });
         },
-      })} 
+      })}
     />
     </Tab.Navigator>
   );
@@ -560,14 +529,6 @@ export default function AppNavigator() {
                 </Suspense>
               )}
               options={{ presentation: 'modal' }}
-            />
-            <RootStack.Screen 
-              name="ExamenHome" 
-              component={() => (
-                <Suspense fallback={<LoadingScreen />}>
-                  <ExamenScreen />
-                </Suspense>
-              )}
             />
           </>
         )}
