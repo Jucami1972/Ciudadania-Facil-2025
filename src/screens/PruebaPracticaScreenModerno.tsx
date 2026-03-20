@@ -114,22 +114,13 @@ const PruebaPracticaScreenModerno = () => {
       route: 'RandomPractice',
     },
     {
-      id: 'incorrect',
-      title: 'Incorrectas',
-      subtitle: 'Refuerza lo que fallaste',
-      description: 'Revisa las preguntas que respondiste incorrectamente',
-      icon: 'alert-circle',
-      gradient: ['#ef4444', '#dc2626'],
-      route: 'IncorrectPractice',
-    },
-    {
-      id: 'marked',
-      title: 'Marcadas',
-      subtitle: 'Tus favoritas',
-      description: 'Practica las preguntas que marcaste como importantes',
-      icon: 'bookmark',
-      gradient: ['#f59e0b', '#d97706'],
-      route: 'MarkedPractice',
+      id: 'my_questions',
+      title: 'Mis Preguntas',
+      subtitle: 'Incorrectas y marcadas',
+      description: 'Revisa las preguntas que fallaste o marcaste para repasar',
+      icon: 'account-question',
+      gradient: ['#ef4444', '#f59e0b'],
+      route: 'MisPreguntas',
     },
     {
       id: 'type',
@@ -176,6 +167,24 @@ const PruebaPracticaScreenModerno = () => {
       gradient: ['#1E3A8A', '#3B82F6'],
       route: 'ReadingWritingHome',
     },
+    {
+      id: 'vocabulary',
+      title: 'Vocabulario',
+      subtitle: 'Palabras clave',
+      description: 'Vocabulario del examen cívico y la entrevista N-400',
+      icon: 'alphabetical-variant',
+      gradient: ['#0891B2', '#06B6D4'],
+      route: 'VocabularioHome',
+    },
+    {
+      id: 'n400_practice',
+      title: 'Formulario N-400',
+      subtitle: 'Preguntas de la entrevista',
+      description: 'Practica las 39 preguntas reales del formulario N-400',
+      icon: 'clipboard-text',
+      gradient: ['#7C3AED', '#6D28D9'],
+      route: 'N400PracticeHome',
+    },
   ];
 
   const PREMIUM_ONLY_ROUTES = ['Random20PracticeHome', 'EntrevistaAIHome', 'SpacedRepetitionPractice'];
@@ -190,30 +199,30 @@ const PruebaPracticaScreenModerno = () => {
 
   return (
     <View style={styles.safeArea}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      {/* Fixed Header */}
-      <View style={styles.headerContainer}>
-        <LinearGradient
-          colors={['#3730A3', '#4F46E5', '#6366F1'] as [string, string, string]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: insets.top + 8 }]}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity 
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-            >
-              <MaterialCommunityIcons name="arrow-left" size={24} color="white" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>Práctica</Text>
-              <Text style={styles.headerSubtitle}>Elige tu modo de estudio</Text>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Práctica</Text>
+                <Text style={styles.headerSubtitle}>Elige tu modo de estudio</Text>
+              </View>
+              <View style={{ width: 44 }} />
             </View>
-            <View style={{ width: 44 }} />
-          </View>
-        </LinearGradient>
-      </View>
+          </LinearGradient>
+        </View>
 
       <ScrollView 
         style={styles.container} 
@@ -238,7 +247,7 @@ const PruebaPracticaScreenModerno = () => {
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="target" size={18} color="#4F46E5" />
+          <MaterialCommunityIcons name="target" size={18} color="#1E40AF" />
           <Text style={styles.sectionTitle}>Modos de Práctica</Text>
         </View>
 
@@ -272,7 +281,7 @@ const PruebaPracticaScreenModerno = () => {
 
         {/* Tips Section */}
         <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="lightbulb" size={18} color="#4F46E5" />
+          <MaterialCommunityIcons name="lightbulb" size={18} color="#1E40AF" />
           <Text style={styles.sectionTitle}>Consejos de Estudio</Text>
         </View>
 
@@ -306,6 +315,7 @@ const PruebaPracticaScreenModerno = () => {
           </View>
         </LinearGradient>
       </ScrollView>
+      </View>
     </View>
   );
 };
@@ -313,13 +323,15 @@ const PruebaPracticaScreenModerno = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#1E3A8A',
+  },
+  mainContainer: {
+    flex: 1,
     backgroundColor: '#F8FAFC',
   },
   
   // =============== HEADER ===============
-  headerContainer: {
-    backgroundColor: '#3730A3',
-  },
+  headerContainer: {},
   header: {
     paddingHorizontal: 20,
     paddingBottom: 14,
@@ -333,24 +345,24 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitleContainer: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
+    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '700',
-    color: 'white',
   },
   headerSubtitle: {
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 1,
+    marginTop: 2,
   },
 
   // =============== CONTAINER ===============
@@ -393,7 +405,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#4F46E5',
+    color: '#1E40AF',
   },
   statLabel: {
     fontSize: 10,
