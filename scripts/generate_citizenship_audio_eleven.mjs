@@ -125,6 +125,11 @@ async function concatSpeeds(outputPath) {
   const tempMedium = path.join(tempDir, 'medium.mp3');
   const tempSlow = path.join(tempDir, 'slow.mp3');
   const tempFast = path.join(tempDir, 'fast.mp3');
+  const tempConcat = path.join(tempDir, 'concat_out.mp3');
+
+  // Escribir a temp primero para evitar error de overwrite en Windows
+  if (fs.existsSync(tempConcat)) fs.unlinkSync(tempConcat);
+  if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
 
   await new Promise((resolve, reject) => {
     ffmpeg()
@@ -139,10 +144,13 @@ async function concatSpeeds(outputPath) {
          '[0:a][1:a][2:a][3:a][4:a][5:a][6:a]concat=n=7:v=0:a=1[out]'
       ])
       .map('[out]')
-      .save(outputPath)
+      .save(tempConcat)
       .on('end', resolve)
       .on('error', reject);
   });
+
+  // Mover temp al destino final
+  fs.renameSync(tempConcat, outputPath);
 
   // Limpiar temporales
   fs.unlinkSync(tempMedium);

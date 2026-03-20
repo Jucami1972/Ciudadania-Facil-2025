@@ -1,0 +1,46 @@
+[33m29af63b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m HEAD@{0}: cherry-pick: fix: Corregir navegación a StudyCards usando subcategoría correcta
+[33md69288b[m HEAD@{1}: commit (cherry-pick): feat: Actualizar HomeScreenRedesign con mejoras de diseño
+[33mff5988e[m HEAD@{2}: commit: local: guardar parches de 100 en disco para permitir cherry-pick
+[33mbb071c8[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: commit: fix: recortar mapas de audio a 100 índices oficialmente para resolver Bundling failed
+[33m77040a4[m HEAD@{4}: rebase (finish): returning to refs/heads/main
+[33m77040a4[m HEAD@{5}: pull --rebase origin main (start): checkout 77040a4c9e03c838dffa5cb0d1ca9f47f3d20cae
+[33m89c61b7[m HEAD@{6}: reset: moving to HEAD
+[33m89c61b7[m HEAD@{7}: commit: fix: reducir datasets data de 128 a 100 oficialmente
+[33m14d6e93[m HEAD@{8}: commit: fix: actualizar contadores de preguntas hardcodeados de 128 a 100
+[33m03b7e52[m HEAD@{9}: commit: fix: incluir archivos de datos de lectura y escritura faltantes
+[33me758a5e[m HEAD@{10}: commit: fix: cargar todas las pantallas estáticamente para Vercel
+[33mc7a6cec[m HEAD@{11}: commit: fix: aumentar límite de memoria de Node para el build de Vercel
+[33me5657d0[m HEAD@{12}: commit: fix: corregir errores de TypeScript para limpiar el build
+[33m2012422[m HEAD@{13}: commit: fix: cargar modulo de lectura de forma estatica para vercel
+[33m00339bc[m HEAD@{14}: commit: fix: instalar modulo expo-sharing faltante
+[33md02b948[m HEAD@{15}: commit: feat: modulo de lectura y escritura con evaluacion de voz (Whisper)
+[33m88adeea[m HEAD@{16}: commit: fix: Corregir navegación a StudyCards usando subcategoría correcta
+[33mb6e5e3d[m HEAD@{17}: commit: feat: Actualizar HomeScreenRedesign con mejoras de diseño
+[33m30d123f[m HEAD@{18}: commit: fix: Configurar outputDirectory para Vercel y reducir warnings
+[33m10d6784[m HEAD@{19}: commit: chore: Forzar redeploy en Vercel
+[33m55a1303[m HEAD@{20}: commit: fix: Corregir navegación del tab Practice y sistema de conteo dinámico
+[33m3052e1b[m HEAD@{21}: commit: Fix: Correcciones de errores, optimizaciones y mejoras de compatibilidad
+[33mb71f7a4[m HEAD@{22}: commit: Mejoras en entrevista AI: Validación inteligente, formulario N-400, y mejor manejo de respuestas
+[33mc90ae4d[m HEAD@{23}: commit: Mejoras: onboarding, TTS inglés, manejo errores OpenAI y navegación - Actualizado onboarding con textos optimizados y botón retroceso circular - Mejorado TTS para pronunciación correcta en inglés (N-400 como 'four hundred') - Agregado manejo de errores de cuota OpenAI con fallback automático - Corregido problema de navegación en pestaña Practice - Optimizado hook useVoiceRecognition para Expo Go
+[33m5204b1d[m HEAD@{24}: commit: Actualizar Onboarding: pantalla 4 con onboarding4.webp, botón verde y esquinas redondeadas, botón de regreso mejorado
+[33mff52bff[m HEAD@{25}: commit: Refactor: Simplificar flujo de navegación y limpiar archivos no utilizados
+[33me5525b6[m HEAD@{26}: commit: feat: Implementar Splash Screen y mejorar flujo de Onboarding
+[33ma18cac2[m HEAD@{27}: commit: Actualización de assets y documentación: reemplazo de portada por header.webp, consolidación de documentación y limpieza de archivos redundantes
+[33m45b8900[m HEAD@{28}: commit: feat: Implementación completa de auditoría - 18/18 cambios (100%)
+[33m30c02f3[m HEAD@{29}: commit: Fix: Deshabilitar onboarding en version web
+[33m3152ab5[m HEAD@{30}: commit: Fix: Eliminar referencias a CARD_WIDTH inexistente en estilos
+[33m55773dd[m HEAD@{31}: commit: Fix: Hacer Sentry e IAP compatibles con web para que Vercel build funcione
+[33m799c009[m HEAD@{32}: commit: Agregar dependencias: Sentry, React Native IAP y Expo Notifications
+[33ma0d0dce[m HEAD@{33}: commit: Implementación completa de funcionalidades para App Store y Play Store: Analytics, Sentry, Premium, IAP, Onboarding, Notificaciones, Compartir, Offline Sync, Documentación legal y Optimizaciones
+[33mef8efab[m HEAD@{34}: commit: Fix diseño responsive: web móvil 2 columnas y flip cards más pequeñas en escritorio
+[33m2301ef7[m HEAD@{35}: commit: Fix TypeScript errors y mejoras en diseño responsive
+[33mb9c6c7e[m HEAD@{36}: commit: fix: Corregir error de sintaxis JSX en StudyScreenModerno
+[33me6b3f05[m HEAD@{37}: commit: Rediseño completo UX/UI para versión web: Sidebar, WebLayout, optimización de todas las pantallas
+[33mfeec24d[m HEAD@{38}: commit: Mejoras de diseño web: optimización de Flip Cards y Home Screen para versión web
+[33mb7ed095[m HEAD@{39}: commit: fix: Resolver conflictos de merge en AppNavigator.tsx
+[33mab4c2ab[m HEAD@{40}: commit: Trigger Vercel deployment
+[33m9150d8d[m HEAD@{41}: commit (merge): Merge: Integrar cambios remotos
+[33m713eb32[m HEAD@{42}: rebase (abort): returning to refs/heads/main
+[33mfcb4f61[m HEAD@{43}: pull origin main --rebase (start): checkout fcb4f61919c3ced8be869ff1566245c2a27072d2
+[33m713eb32[m HEAD@{44}: commit: feat: Implementar Entrevista AI autónoma con OpenAI, mejoras en UI y funcionalidades completas
+[33m73c3e3c[m HEAD@{45}: clone: from https://github.com/Jucami1972/Ciudadania-Facil-2025

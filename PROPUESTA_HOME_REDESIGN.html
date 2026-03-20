@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Propuesta Home Screen — Ciudadanía Fácil 2025</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0F172A;
+    color: #111827;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .page {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+  }
+
+  /* ====== COVER ====== */
+  .cover {
+    background: linear-gradient(135deg, #3730A3, #4F46E5, #6366F1);
+    padding: 60px 48px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle at 30% 70%, rgba(255,255,255,0.08) 0%, transparent 60%);
+  }
+  .cover-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+    position: relative;
+  }
+  .cover h1 {
+    color: white;
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .cover h2 {
+    color: rgba(255,255,255,0.8);
+    font-size: 18px;
+    font-weight: 500;
+    position: relative;
+  }
+  .cover-date {
+    color: rgba(255,255,255,0.6);
+    font-size: 14px;
+    margin-top: 20px;
+    position: relative;
+  }
+
+  /* ====== SECTIONS ====== */
+  .section {
+    padding: 48px;
+  }
+  .section + .section {
+    border-top: 1px solid #E2E8F0;
+  }
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: #1E293B;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .section-subtitle {
+    font-size: 14px;
+    color: #6B7280;
+    margin-bottom: 32px;
+  }
+
+  /* ====== AUDIT TABLE ====== */
+  .audit-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 32px;
+    font-size: 14px;
+  }
+  .audit-table th {
+    background: #F8FAFC;
+    color: #475569;
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #E2E8F0;
+  }
+  .audit-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #F1F5F9;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .audit-table tr:hover td { background: #FAFBFD; }
+  .badge-error {
+    display: inline-block;
+    background: #FEE2E2;
+    color: #DC2626;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .badge-warn {
+    display: inline-block;
+    background: #FEF3C7;
+    color: #D97706;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* ====== COMPARISON ====== */
+  .comparison {
+    display: flex;
+    gap: 32px;
+    margin-bottom: 40px;
+  }
+  .comp-col {
+    flex: 1;
+  }
+  .comp-label {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    display: inline-block;
+  }
+  .comp-label.old { background: #FEE2E2; color: #DC2626; }
+  .comp-label.new { background: #D1FAE5; color: #059669; }
+
+  /* ====== PHONE MOCKUP ====== */
+  .mockup-wrapper {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .phone-container {
+    text-align: center;
+  }
+  .phone-container .phone-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .phone {
+    width: 320px;
+    border-radius: 40px;
+    border: 8px solid #1E293B;
+    overflow: hidden;
+    background: #F8FAFC;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15), inset 0 0 0 2px #334155;
+    position: relative;
+  }
+  .phone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 28px;
+    background: #1E293B;
+    border-radius: 0 0 16px 16px;
+    z-index: 10;
+  }
+
+  /* ====== OLD HOME MOCKUP ====== */
+  .old-header {
+    background: linear-gradient(135deg, #4F46E5, #6366F1);
+    padding: 44px 20px 16px;
+  }
+  .old-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .old-greeting {
+    color: rgba(255,255,255,0.9);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .old-username {
+    color: white;
+    font-size: 19px;
+    font-weight: 800;
+    margin-top: 2px;
+  }
+  .old-profile {
+    width: 34px;
+    height: 34px;
+    border-radius: 17px;
+    background: rgba(255,255,255,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .old-quote {
+    color: rgba(255,255,255,0.95);
+    font-size: 12px;
+    font-style: italic;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .old-progress {
+    background: #fffaf0;
+    border-radius: 20px;
+    padding: 20px;
+    margin: 12px 14px;
+  }
+  .old-stats {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .old-stat {
+    flex: 1;
+    padding: 10px 6px;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .old-stat.green { background: #D4EEC4; }
+  .old-stat.teal { background: #96eee4; }
+  .old-stat.mint { background: #71f7c3; }
+  .old-stat-val {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .old-stat-label {
+    font-size: 9px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .old-stat.green .old-stat-val, .old-stat.green .old-stat-label { color: #91be50; }
+  .old-stat.teal .old-stat-val, .old-stat.teal .old-stat-label { color: #42c1b2; }
+  .old-stat.mint .old-stat-val, .old-stat.mint .old-stat-label { color: #47a581; }
+  .old-cta {
+    background: linear-gradient(90deg, #f1833b, #F58A64);
+    margin: 0 14px 12px;
+    padding: 14px 20px;
+    border-radius: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+  }
+  .old-cta-title { font-size: 14px; font-weight: 700; }
+  .old-cta-sub { font-size: 10px; opacity: 0.9; margin-top: 2px; }
+  .old-cta-icon {
+    width: 36px; height: 36px; border-radius: 18px;
+    background: rgba(255,255,255,0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .old-section-title {
+    font-size: 13px; font-weight: 700; color: #111827;
+    margin: 0 14px 10px; display: flex; gap: 6px; align-items: center;
+  }
+  .old-path {
+    background: #fffaf0;
+    border-radius: 18px;
+    padding: 16px;
+    margin: 0 14px 12px;
+  }
+  .old-path-step {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .old-step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .old-step-title { font-size: 12px; font-weight: 700; color: #111827; }
+  .old-step-sub { font-size: 10px; color: #6B7280; }
+  .old-step-bar {
+    height: 4px;
+    background: #E5E7EB;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .old-step-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #4F46E5, #6366F1);
+  }
+  .old-connector {
+    width: 2px;
+    height: 12px;
+    background: #E5E7EB;
+    margin-left: 19px;
+    margin-bottom: 8px;
+  }
+
+  /* ====== NEW HOME MOCKUP ====== */
+  .new-header {
+    background: linear-gradient(135deg, #3730A3, #4F46E5, #6366F1);
+    padding: 44px 20px 18px;
+    text-align: center;
+    position: relative;
+  }
+  .new-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .new-header-title {
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .new-header-subtitle {
+    color: rgba(255,255,255,0.8);
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .new-profile {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+  .new-stats-bar {
+    display: flex;
+    gap: 1px;
+    background: #E2E8F0;
+    margin: 0;
+  }
+  .new-stat-item {
+    flex: 1;
+    background: #F8FAFC;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .new-stat-val {
+    font-size: 16px;
+    font-weight: 800;
+    color: #1E40AF;
+  }
+  .new-stat-label {
+    font-size: 9px;
+    color: #64748B;
+    font-weight: 600;
+    margin-top: 2px;
+  }
+  .new-progress-card {
+    background: white;
+    border-radius: 16px;
+    padding: 18px;
+    margin: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .new-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+  .new-progress-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .new-streak-badge {
+    background: linear-gradient(90deg, #F59E0B, #FBBF24);
+    padding: 4px 12px;
+    border-radius: 14px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .new-streak-text {
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .new-progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .new-progress-count {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+  }
+  .new-progress-pct {
+    font-size: 20px;
+    font-weight: 800;
+    color: #1E40AF;
+  }
+  .new-bar-track {
+    height: 10px;
+    background: #E2E8F0;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .new-bar-fill {
+    height: 100%;
+    border-radius: 5px;
+    background: linear-gradient(90deg, #1E40AF, #3B82F6);
+    width: 24%;
+  }
+  .new-cta {
+    background: linear-gradient(90deg, #1E40AF, #3B82F6);
+    margin: 0 14px 14px;
+    padding: 14px 20px;
+    border-radius: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: white;
+    box-shadow: 0 4px 16px rgba(30,64,175,0.3);
+  }
+  .new-cta-title { font-size: 14px; font-weight: 700; }
+  .new-cta-sub { font-size: 10px; opacity: 0.85; margin-top: 2px; }
+  .new-cta-icon {
+    width: 36px; height: 36px; border-radius: 18px;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .new-section-title {
+    font-size: 13px; font-weight: 700; color: #111827;
+    margin: 0 14px 10px; display: flex; gap: 6px; align-items: center;
+  }
+  .new-section-icon {
+    color: #4F46E5;
+    font-size: 14px;
+  }
+  .new-path {
+    background: white;
+    border-radius: 16px;
+    padding: 16px;
+    margin: 0 14px 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .new-path-step {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .new-step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #1E40AF, #3B82F6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .new-step-content { flex: 1; }
+  .new-step-title { font-size: 12px; font-weight: 700; color: #111827; }
+  .new-step-sub { font-size: 10px; color: #64748B; }
+  .new-step-bar {
+    height: 4px;
+    background: #E2E8F0;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .new-step-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #1E40AF, #3B82F6);
+  }
+  .new-connector {
+    width: 2px;
+    height: 12px;
+    background: #E2E8F0;
+    margin-left: 19px;
+    margin-bottom: 8px;
+  }
+  .new-actions-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0 14px 14px;
+  }
+  .new-action-card {
+    background: white;
+    border-radius: 14px;
+    padding: 16px 12px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .new-action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    margin: 0 auto 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: white;
+  }
+  .new-action-label { font-size: 12px; font-weight: 700; color: #111827; }
+  .new-action-sublabel { font-size: 9px; color: #64748B; font-weight: 500; margin-top: 2px; }
+
+  /* Grid icons with brand colors */
+  .icon-quiz { background: linear-gradient(135deg, #1E40AF, #3B82F6); }
+  .icon-review { background: linear-gradient(135deg, #6D28D9, #8B5CF6); }
+  .icon-voice { background: linear-gradient(135deg, #3730A3, #6366F1); }
+  .icon-stats { background: linear-gradient(135deg, #047857, #10B981); }
+
+  /* ====== COLOR PALETTE SECTION ====== */
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .palette-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #F8FAFC;
+    border-radius: 12px;
+  }
+  .palette-swatch {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .palette-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+  }
+  .palette-hex {
+    font-size: 12px;
+    color: #6B7280;
+    font-family: 'Courier New', monospace;
+  }
+  .palette-usage {
+    font-size: 11px;
+    color: #94A3B8;
+  }
+
+  /* ====== CHANGES TABLE ====== */
+  .changes-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .changes-table th {
+    background: #F8FAFC;
+    color: #475569;
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #E2E8F0;
+  }
+  .changes-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid #F1F5F9;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+  .changes-table tr:nth-child(even) td {
+    background: #FAFBFD;
+  }
+  .tag-old {
+    display: inline-block;
+    background: #FEE2E2;
+    color: #B91C1C;
+    padding: 1px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+  }
+  .tag-new {
+    display: inline-block;
+    background: #D1FAE5;
+    color: #047857;
+    padding: 1px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ====== ANNOTATIONS ====== */
+  .annotation-list {
+    list-style: none;
+    padding: 0;
+  }
+  .annotation-list li {
+    display: flex;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid #F1F5F9;
+    align-items: flex-start;
+  }
+  .annotation-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: #EEF2FF;
+    color: #4F46E5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  .annotation-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: #334155;
+  }
+  .annotation-text strong {
+    color: #111827;
+  }
+
+  /* ====== FOOTER ====== */
+  .footer {
+    background: #F8FAFC;
+    padding: 32px 48px;
+    text-align: center;
+    border-top: 1px solid #E2E8F0;
+  }
+  .footer p {
+    color: #94A3B8;
+    font-size: 13px;
+  }
+
+  /* Error highlight red dots on old mockup */
+  .error-dot {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background: #EF4444;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(239,68,68,0.4);
+    z-index: 5;
+  }
+  .check-dot {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    background: #10B981;
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 6px rgba(16,185,129,0.4);
+    z-index: 5;
+  }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .page { box-shadow: none; border-radius: 0; }
+    .section { break-inside: avoid; }
+    .mockup-wrapper { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ==================== COVER ==================== -->
+  <div class="cover">
+    <div class="cover-badge">Propuesta de Rediseño</div>
+    <h1>Home Screen</h1>
+    <h2>Ciudadanía Fácil 2025</h2>
+    <div class="cover-date">Marzo 2026 — Auditoría de Diseño UI/UX</div>
+  </div>
+
+  <!-- ==================== AUDIT ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <span class="icon" style="background:#FEE2E2;">🔍</span>
+      Auditoría del Diseño Actual
+    </div>
+    <div class="section-subtitle">Violaciones detectadas según el Design System y las reglas de diseño del proyecto</div>
+    
+    <table class="audit-table">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Problema</th>
+          <th style="width:130px">Severidad</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td><strong>Header inconsistente</strong> — Usa gradiente 2 colores con layout izquierda, mientras el resto de la app (Práctica, Subcategorías) usa 3 colores centrado</td>
+          <td><span class="badge-error">ALTA</span></td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td><strong>~30 colores hex hardcodeados</strong> — #fffaf0, #D4EEC4, #91be50, #96eee4, #42c1b2, #71f7c3, #47a581, #59a4fc, #f1833b, #f2f2f2... ninguno existe en designSystem</td>
+          <td><span class="badge-error">ALTA</span></td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td><strong>Fondos cream #fffaf0</strong> en ProgressHero y LearningPath — no es un token del designSystem (debería ser #FFFFFF o #F8FAFC)</td>
+          <td><span class="badge-error">ALTA</span></td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td><strong>Paleta caótica</strong> — mezcla verde, turquesa, menta, naranja, azul y amarillo sin justificación semántica</td>
+          <td><span class="badge-warn">MEDIA</span></td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td><strong>Header con position: absolute</strong> + spacer hack de altura fija — causa desalineación en dispositivos con notch diferente</td>
+          <td><span class="badge-warn">MEDIA</span></td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td><strong>Conteos incorrectos</strong> en LearningPath: muestra 72/46/10 preguntas en vez de los 57/30/13 reales</td>
+          <td><span class="badge-error">ALTA</span></td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td><strong>Fondo general #f2f2f2</strong> en lugar del token designSystem.background.secondary (#F8FAFC)</td>
+          <td><span class="badge-warn">MEDIA</span></td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td><strong>Progress ring casero con bordes CSS</strong> — frágil, no se renderiza bien en todas las plataformas</td>
+          <td><span class="badge-warn">MEDIA</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== VISUAL COMPARISON ==================== -->
+  <div class="section" style="background: #F8FAFC;">
+    <div class="section-title">
+      <span class="icon" style="background:#EEF2FF;">📱</span>
+      Comparación Visual
+    </div>
+    <div class="section-subtitle">Diseño actual vs. propuesta de rediseño</div>
+
+    <div class="mockup-wrapper">
+      <!-- OLD DESIGN -->
+      <div class="phone-container">
+        <div class="phone-label" style="color:#DC2626;">❌ Diseño Actual</div>
+        <div class="phone" style="position:relative;">
+          <div class="error-dot" style="top:38px;right:12px;">1</div>
+          <div class="error-dot" style="top:160px;left:12px;">3</div>
+          <div class="error-dot" style="top:278px;left:12px;">4</div>
+          <div class="error-dot" style="top:420px;right:12px;">6</div>
+
+          <div class="old-header">
+            <div class="old-header-top">
+              <div>
+                <div class="old-greeting">Bienvenido de nuevo</div>
+                <div class="old-username">¡Sigue así, Juan! 🎯</div>
+              </div>
+              <div class="old-profile">👤</div>
+            </div>
+            <div class="old-quote">"Cada pregunta te acerca más a tu meta"</div>
+          </div>
+
+          <div class="old-progress">
+            <div style="font-size:14px;font-weight:700;color:#111827;">Tu Progreso</div>
+            <div class="old-stats">
+              <div class="old-stat green">
+                <div class="old-stat-val">24</div>
+                <div class="old-stat-label">Logrado</div>
+              </div>
+              <div class="old-stat teal">
+                <div class="old-stat-val">5</div>
+                <div class="old-stat-label">Hoy</div>
+              </div>
+              <div class="old-stat mint">
+                <div class="old-stat-val">76</div>
+                <div class="old-stat-label">Falta</div>
+              </div>
+            </div>
+            <div style="text-align:center;margin-top:14px;">
+              <div style="width:70px;height:70px;border-radius:35px;background:#59a4fc;display:inline-flex;align-items:center;justify-content:center;">
+                <div style="width:58px;height:58px;border-radius:29px;background:white;display:flex;align-items:center;justify-content:center;flex-direction:column;">
+                  <div style="font-size:18px;font-weight:800;color:#2563EB;">24%</div>
+                  <div style="font-size:7px;color:#6B7280;font-weight:600;text-transform:uppercase;">Total</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="old-cta">
+            <div>
+              <div class="old-cta-title">Continuar Estudiando</div>
+              <div class="old-cta-sub">Gobierno • Preguntas 1-12</div>
+            </div>
+            <div class="old-cta-icon">▶</div>
+          </div>
+
+          <div class="old-section-title">📚 Tu Camino de Aprendizaje</div>
+          <div class="old-path">
+            <div class="old-path-step">
+              <div class="old-step-icon">🏛</div>
+              <div style="flex:1">
+                <div class="old-step-title">Gobierno Americano</div>
+                <div class="old-step-sub" style="color:#DC2626;font-weight:700;">72 preguntas ⚠️</div>
+                <div class="old-step-bar"><div class="old-step-fill" style="width:35%"></div></div>
+              </div>
+            </div>
+            <div class="old-connector"></div>
+            <div class="old-path-step">
+              <div class="old-step-icon">📜</div>
+              <div style="flex:1">
+                <div class="old-step-title">Historia Americana</div>
+                <div class="old-step-sub" style="color:#DC2626;font-weight:700;">46 preguntas ⚠️</div>
+                <div class="old-step-bar"><div class="old-step-fill" style="width:15%"></div></div>
+              </div>
+            </div>
+            <div class="old-connector"></div>
+            <div class="old-path-step">
+              <div class="old-step-icon">🗽</div>
+              <div style="flex:1">
+                <div class="old-step-title">Educación Cívica</div>
+                <div class="old-step-sub" style="color:#DC2626;font-weight:700;">10 preguntas ⚠️</div>
+                <div class="old-step-bar"><div class="old-step-fill" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NEW DESIGN -->
+      <div class="phone-container">
+        <div class="phone-label" style="color:#059669;">✅ Propuesta Nueva</div>
+        <div class="phone" style="position:relative;">
+          <div class="check-dot" style="top:38px;right:12px;">✓</div>
+          <div class="check-dot" style="top:140px;left:12px;">✓</div>
+          <div class="check-dot" style="top:275px;left:12px;">✓</div>
+          <div class="check-dot" style="top:430px;right:12px;">✓</div>
+
+          <div class="new-header">
+            <div class="new-header-content">
+              <div>
+                <div class="new-header-title">Ciudadanía Fácil</div>
+                <div class="new-header-subtitle">Tu preparación para el examen</div>
+              </div>
+              <div class="new-profile">👤</div>
+            </div>
+          </div>
+
+          <div class="new-stats-bar">
+            <div class="new-stat-item">
+              <div class="new-stat-val">24</div>
+              <div class="new-stat-label">Completadas</div>
+            </div>
+            <div class="new-stat-item">
+              <div class="new-stat-val">5</div>
+              <div class="new-stat-label">Hoy</div>
+            </div>
+            <div class="new-stat-item">
+              <div class="new-stat-val">76%</div>
+              <div class="new-stat-label">Precisión</div>
+            </div>
+          </div>
+
+          <div class="new-progress-card">
+            <div class="new-progress-header">
+              <div class="new-progress-title">Tu Progreso</div>
+              <div class="new-streak-badge">
+                <span>🔥</span>
+                <span class="new-streak-text">3 días</span>
+              </div>
+            </div>
+            <div class="new-progress-info">
+              <span class="new-progress-count">24 de 100 preguntas</span>
+              <span class="new-progress-pct">24%</span>
+            </div>
+            <div class="new-bar-track">
+              <div class="new-bar-fill"></div>
+            </div>
+          </div>
+
+          <div class="new-cta">
+            <div>
+              <div class="new-cta-title">Continuar Estudiando</div>
+              <div class="new-cta-sub">Gobierno • Preguntas 1-12</div>
+            </div>
+            <div class="new-cta-icon">▶</div>
+          </div>
+
+          <div class="new-section-title"><span class="new-section-icon">📚</span> Tu Camino de Aprendizaje</div>
+          <div class="new-path">
+            <div class="new-path-step">
+              <div class="new-step-icon">🏛</div>
+              <div class="new-step-content">
+                <div class="new-step-title">Gobierno Americano</div>
+                <div class="new-step-sub">57 preguntas</div>
+                <div class="new-step-bar"><div class="new-step-fill" style="width:35%"></div></div>
+              </div>
+            </div>
+            <div class="new-connector"></div>
+            <div class="new-path-step">
+              <div class="new-step-icon">📜</div>
+              <div class="new-step-content">
+                <div class="new-step-title">Historia Americana</div>
+                <div class="new-step-sub">30 preguntas</div>
+                <div class="new-step-bar"><div class="new-step-fill" style="width:15%"></div></div>
+              </div>
+            </div>
+            <div class="new-connector"></div>
+            <div class="new-path-step">
+              <div class="new-step-icon">🗽</div>
+              <div class="new-step-content">
+                <div class="new-step-title">Educación Cívica</div>
+                <div class="new-step-sub">13 preguntas</div>
+                <div class="new-step-bar"><div class="new-step-fill" style="width:0%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="new-section-title"><span class="new-section-icon">⚡</span> Acciones Rápidas</div>
+          <div class="new-actions-grid">
+            <div class="new-action-card">
+              <div class="new-action-icon icon-quiz">📝</div>
+              <div class="new-action-label">Quiz 20</div>
+              <div class="new-action-sublabel">Práctica rápida</div>
+            </div>
+            <div class="new-action-card">
+              <div class="new-action-icon icon-review">🔄</div>
+              <div class="new-action-label">Repaso</div>
+              <div class="new-action-sublabel">Revisar marcadas</div>
+            </div>
+            <div class="new-action-card">
+              <div class="new-action-icon icon-voice">🎤</div>
+              <div class="new-action-label">Voz AI</div>
+              <div class="new-action-sublabel">Práctica oral</div>
+            </div>
+            <div class="new-action-card">
+              <div class="new-action-icon icon-stats">📊</div>
+              <div class="new-action-label">Estadísticas</div>
+              <div class="new-action-sublabel">Ver progreso</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== COLOR PALETTE ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <span class="icon" style="background:#EEF2FF;">🎨</span>
+      Paleta de Colores Propuesta
+    </div>
+    <div class="section-subtitle">Solo tokens del designSystem — cero hex hardcodeados</div>
+
+    <div class="palette-grid">
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:linear-gradient(135deg,#3730A3,#4F46E5,#6366F1);"></div>
+        <div>
+          <div class="palette-name">Header Gradient</div>
+          <div class="palette-hex">#3730A3 → #6366F1</div>
+          <div class="palette-usage">Igual que Práctica</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#1E40AF;"></div>
+        <div>
+          <div class="palette-name">brand.primary</div>
+          <div class="palette-hex">#1E40AF</div>
+          <div class="palette-usage">CTA, valores destacados</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#3B82F6;"></div>
+        <div>
+          <div class="palette-name">brand.secondary</div>
+          <div class="palette-hex">#3B82F6</div>
+          <div class="palette-usage">Barras progreso, acentos</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#8B5CF6;"></div>
+        <div>
+          <div class="palette-name">brand.accent</div>
+          <div class="palette-hex">#8B5CF6</div>
+          <div class="palette-usage">Iconos secundarios</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#F8FAFC;"></div>
+        <div>
+          <div class="palette-name">background.secondary</div>
+          <div class="palette-hex">#F8FAFC</div>
+          <div class="palette-usage">Fondo general de pantalla</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#FFFFFF;border:1px solid #E2E8F0;"></div>
+        <div>
+          <div class="palette-name">background.primary</div>
+          <div class="palette-hex">#FFFFFF</div>
+          <div class="palette-usage">Cards, contenedores</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#F59E0B;"></div>
+        <div>
+          <div class="palette-name">functional.warning</div>
+          <div class="palette-hex">#F59E0B</div>
+          <div class="palette-usage">Badge racha</div>
+        </div>
+      </div>
+      <div class="palette-item">
+        <div class="palette-swatch" style="background:#10B981;"></div>
+        <div>
+          <div class="palette-name">functional.success</div>
+          <div class="palette-hex">#10B981</div>
+          <div class="palette-usage">Completados, Stats</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DETAILED CHANGES ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <span class="icon" style="background:#D1FAE5;">📋</span>
+      Cambios Detallados
+    </div>
+    <div class="section-subtitle">Resumen de cada componente a modificar</div>
+
+    <table class="changes-table">
+      <thead>
+        <tr>
+          <th>Componente</th>
+          <th>Actual</th>
+          <th>Propuesto</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Header</strong></td>
+          <td>
+            2 colores <span class="tag-old">#4F46E5 → #6366F1</span><br>
+            Layout izquierda (greeting + username)<br>
+            <code>position: absolute</code> + spacer
+          </td>
+          <td>
+            3 colores <span class="tag-new">#3730A3 → #4F46E5 → #6366F1</span><br>
+            Título centrado + subtítulo (como Práctica)<br>
+            Flow normal sin hacks
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Stats Bar</strong></td>
+          <td>
+            3 cajas colored dentro del ProgressHero<br>
+            <span class="tag-old">#D4EEC4</span> <span class="tag-old">#96eee4</span> <span class="tag-old">#71f7c3</span>
+          </td>
+          <td>
+            Fila horizontal debajo del header<br>
+            <span class="tag-new">neutral.50</span> fondo limpio
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Progress Card</strong></td>
+          <td>
+            Fondo <span class="tag-old">#fffaf0</span> (cream)<br>
+            Ring CSS circular casero <span class="tag-old">#59a4fc</span>
+          </td>
+          <td>
+            Fondo <span class="tag-new">#FFFFFF</span> (white)<br>
+            Barra horizontal <span class="tag-new">brand.primary → brand.secondary</span>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>CTA Button</strong></td>
+          <td>Gradiente <span class="tag-old">#f1833b → #F58A64</span> (naranja)</td>
+          <td>Gradiente <span class="tag-new">#1E40AF → #3B82F6</span> (brand azul)</td>
+        </tr>
+        <tr>
+          <td><strong>Learning Path</strong></td>
+          <td>
+            Fondo <span class="tag-old">#fffaf0</span><br>
+            Conteos: <span class="tag-old">72 / 46 / 10</span>
+          </td>
+          <td>
+            Fondo <span class="tag-new">#FFFFFF</span><br>
+            Conteos: <span class="tag-new">57 / 30 / 13</span>
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Quick Actions</strong></td>
+          <td>4 gradientes diferentes (azul/morado/rojo/verde)</td>
+          <td>Variantes del brand palette (azul/morado/indigo/verde)</td>
+        </tr>
+        <tr>
+          <td><strong>Background</strong></td>
+          <td><span class="tag-old">#f2f2f2</span></td>
+          <td><span class="tag-new">#F8FAFC</span> (designSystem.background.secondary)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ==================== DESIGN PRINCIPLES ==================== -->
+  <div class="section">
+    <div class="section-title">
+      <span class="icon" style="background:#FEF3C7;">✨</span>
+      Principios Aplicados
+    </div>
+    <div class="section-subtitle">Reglas del Design System que guían esta propuesta</div>
+
+    <ul class="annotation-list">
+      <li>
+        <span class="annotation-num">1</span>
+        <span class="annotation-text"><strong>Consistencia</strong> — Header unificado con el patrón de Práctica y Subcategorías: gradiente 3 colores, título centrado, subtítulo descriptivo</span>
+      </li>
+      <li>
+        <span class="annotation-num">2</span>
+        <span class="annotation-text"><strong>Tokens del designSystem</strong> — Eliminar los ~30 hex hardcodeados. Solo usar colores de brand, functional, neutral y background</span>
+      </li>
+      <li>
+        <span class="annotation-num">3</span>
+        <span class="annotation-text"><strong>Jerarquía visual</strong> — Un foco principal (Progress Card), seguido de CTA y secciones secundarias. Máximo 3 niveles tipográficos</span>
+      </li>
+      <li>
+        <span class="annotation-num">4</span>
+        <span class="annotation-text"><strong>Fondos neutrales</strong> — Reemplazar cream (#fffaf0) por white/neutral para consistencia con MD3 y el resto de la app</span>
+      </li>
+      <li>
+        <span class="annotation-num">5</span>
+        <span class="annotation-text"><strong>Datos correctos</strong> — Gobierno: 57 preguntas, Historia: 30 preguntas, Cívica: 13 preguntas = 100 total</span>
+      </li>
+      <li>
+        <span class="annotation-num">6</span>
+        <span class="annotation-text"><strong>Progreso simplificado</strong> — Barra horizontal en lugar de ring CSS casero: más legible, más confiable cross-platform</span>
+      </li>
+      <li>
+        <span class="annotation-num">7</span>
+        <span class="annotation-text"><strong>Touch targets</strong> — Todos los botones/touchables mantienen mínimo 44×44px según reglas de accesibilidad</span>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ==================== FOOTER ==================== -->
+  <div class="footer">
+    <p>Ciudadanía Fácil 2025 — Propuesta de Rediseño Home Screen</p>
+    <p style="margin-top:4px;">Para imprimir: Ctrl+P → Guardar como PDF</p>
+  </div>
+
+</div>
+
+</body>
+</html>
