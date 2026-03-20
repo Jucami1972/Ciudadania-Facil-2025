@@ -14,6 +14,7 @@ interface PremiumContextType {
   subscriptionExpiry: Date | null;
   purchaseDate: Date | null;
   refreshPremiumStatus: () => Promise<void>;
+  simulatePremiumActivation: () => Promise<void>;
 }
 
 const PremiumContext = createContext<PremiumContextType | undefined>(undefined);
@@ -121,6 +122,43 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
     }
   }, [user]);
 
+  // Simular activación premium (para desarrollo / Expo Go)
+  const simulatePremiumActivation = useCallback(async () => {
+    if (__DEV__) {
+      console.log('[Premium] Simulando activación premium');
+    }
+    const now = new Date();
+    const expiry = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 1 año
+
+    setIsPremium(true);
+    setSubscriptionType('lifetime');
+    setSubscriptionExpiry(expiry);
+    setPurchaseDate(now);
+
+    await AsyncStorage.multiSet([
+      [STORAGE_KEY, 'true'],
+      [STORAGE_EXPIRY_KEY, expiry.toISOString()],
+      [STORAGE_TYPE_KEY, 'lifetime'],
+      [STORAGE_PURCHASE_KEY, now.toISOString()],
+    ]);
+
+    if (user) {
+      try {
+        await db.collection('users').doc(user.uid).set({
+          premium: {
+            isActive: true,
+            type: 'lifetime',
+            expiry: firebase.firestore.Timestamp.fromDate(expiry),
+            purchaseDate: firebase.firestore.Timestamp.fromDate(now),
+            transactionId: 'simulated_dev',
+          },
+        }, { merge: true });
+      } catch (error) {
+        if (__DEV__) console.error('Error saving simulated premium:', error);
+      }
+    }
+  }, [user]);
+
   // Refrescar estado premium
   const refreshPremiumStatus = useCallback(async () => {
     setIsLoading(true);
@@ -165,8 +203,9 @@ export const PremiumProvider: React.FC<{ children: ReactNode }> = ({ children })
       subscriptionExpiry,
       purchaseDate,
       refreshPremiumStatus,
+      simulatePremiumActivation,
     }),
-    [isPremium, isLoading, subscriptionType, subscriptionExpiry, purchaseDate, refreshPremiumStatus]
+    [isPremium, isLoading, subscriptionType, subscriptionExpiry, purchaseDate, refreshPremiumStatus, simulatePremiumActivation]
   );
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;

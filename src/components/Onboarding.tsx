@@ -249,12 +249,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   // Debug: verificar qué imagen se está usando
   useEffect(() => {
-    const stepImage = ONBOARDING_STEPS[currentStep]?.image;
-    console.log(`📱 [DEBUG] Paso actual: ${currentStep}`);
-    console.log(`📱 [DEBUG] Step ID: ${ONBOARDING_STEPS[currentStep]?.id}`);
-    console.log(`📱 [DEBUG] Imagen del paso: ${stepImage}`);
-    console.log(`📱 [DEBUG] currentStepData.image: ${currentStepData.image}`);
-    console.log(`📱 [DEBUG] ¿Coinciden? ${stepImage === currentStepData.image}`);
+    if (__DEV__) {
+      const stepImage = ONBOARDING_STEPS[currentStep]?.image;
+      console.log(`📱 [DEBUG] Paso actual: ${currentStep}`);
+      console.log(`📱 [DEBUG] Step ID: ${ONBOARDING_STEPS[currentStep]?.id}`);
+      console.log(`📱 [DEBUG] Imagen del paso: ${stepImage}`);
+      console.log(`📱 [DEBUG] currentStepData.image: ${currentStepData.image}`);
+      console.log(`📱 [DEBUG] ¿Coinciden? ${stepImage === currentStepData.image}`);
+    }
   }, [currentStep, currentStepData]);
 
   return (

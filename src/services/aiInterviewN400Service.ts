@@ -382,9 +382,8 @@ class AIInterviewN400Service {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           messages: messages,
-          temperature: 0.3, // Lower temperature for more consistent, professional responses
-          max_tokens: 250, // Limit length to ensure concise, clear speech
-          // 🔑 CRÍTICO: Forzar respuesta en formato JSON
+          temperature: 0.7,
+          max_tokens: 400,
           response_format: { type: "json_object" }
         }),
       });
@@ -466,9 +465,10 @@ class AIInterviewN400Service {
     this.sessions.set(sessionId, session);
 
     // Generar saludo inicial del oficial (se habla automáticamente)
+    const contextInfo = this.buildApplicantProfile(context);
     const greetingResponse = await this.generateOfficerMessage(
       sessionId,
-      `You are a professional and friendly USCIS immigration officer conducting a naturalization interview. You must greet ${context.applicantName} cordially and begin the citizenship interview. Be professional but friendly. Briefly explain the interview process in clear, well-structured sentences.`,
+      `Greet the applicant ${context.applicantName} warmly but professionally. Introduce yourself by a realistic name (e.g. "Officer Johnson", "Officer Martinez"). Briefly outline what will happen during the interview: identity verification, form review, oath, civics test, and English reading/writing tests. Make small talk to put the applicant at ease — you might comment on the weather, ask how their day is going, or mention you appreciate them coming in on time. Keep it natural and conversational, not scripted.\n\nApplicant profile:\n${contextInfo}`,
       undefined
     );
 
@@ -650,7 +650,7 @@ class AIInterviewN400Service {
       case 'identity': {
         const jsonResponse = await this.generateOfficerMessage(
           sessionId,
-          `You are a professional USCIS immigration officer. Confirm that the information is correct and proceed to the next stage. If there is N-400 form data, mention that you will review the form.`,
+          `The applicant just responded to your identity verification question. Acknowledge their answer naturally. If something seems off or incomplete, ask a clarifying follow-up. If the info checks out, confirm it casually (e.g. "Great, that matches what I have here") and smoothly transition to the next part. Don't just say "proceed to next stage" — act like a real officer reviewing a file. You might flip through papers, mention you're checking their record on the computer, etc.`,
           applicantResponse
         );
         officerResponse = jsonResponse.respuesta_oficial;
@@ -658,9 +658,11 @@ class AIInterviewN400Service {
         break;
       }
       case 'n400_review': {
+        const n400Data = session.context.n400FormData;
+        const n400Context = n400Data ? this.buildN400QuestionContext(n400Data, session.n400QuestionsAsked) : '';
         const jsonResponse = await this.generateOfficerMessage(
           sessionId,
-          `You are a professional USCIS immigration officer conducting a naturalization interview. Ask the next question about the N-400 form.`,
+          `You are reviewing the applicant's N-400 form. This is question ${session.n400QuestionsAsked + 1} of ${session.totalN400Questions}.\n\nFirst, react naturally to their previous answer — confirm it, express mild curiosity, or ask a brief follow-up if something is interesting or potentially inconsistent. Then ask the NEXT question about a DIFFERENT topic from the form.\n\n${n400Context}\n\nBe conversational. Real officers don't just fire questions — they comment, they follow up, they show genuine curiosity. If the applicant mentions travel, ask where they went. If they mention work, ask what they do. Vary your phrasing each time.`,
           applicantResponse
         );
         officerResponse = jsonResponse.respuesta_oficial;
@@ -669,10 +671,9 @@ class AIInterviewN400Service {
         break;
       }
       case 'oath': {
-        // El juramento se confirma, luego pasa automáticamente a civismo
         const jsonResponse = await this.generateOfficerMessage(
           sessionId,
-          `You are a professional USCIS immigration officer. The applicant has taken or confirmed the oath of allegiance. Thank them for their commitment and proceed to the civics questions section.`,
+          `The applicant has just responded regarding the oath of allegiance. If they confirmed willingness to take it, thank them sincerely and say something encouraging like "That's an important commitment" or "Good, we take this very seriously." Then naturally transition to the civics test by saying something like "Now let's move on to the civics portion" or "Alright, let's test your knowledge of US history and government." Make the transition feel natural, not robotic.`,
           applicantResponse
         );
         officerResponse = jsonResponse.respuesta_oficial;
@@ -691,23 +692,23 @@ class AIInterviewN400Service {
       case 'reading': {
         const jsonResponse = await this.generateOfficerMessage(
           sessionId,
-          `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant read: "${applicantResponse}". Evaluate if the reading was correct. If correct, confirm and proceed to the writing test.`,
+          `The applicant just attempted to read a sentence aloud. They said: "${applicantResponse}". Evaluate whether they read it correctly and clearly. Comment on their reading — if it was good, say something encouraging like "Very good, nice and clear." If there were issues, gently point them out. Then naturally transition to the writing test. You might say "Now I'm going to dictate a sentence, and I'd like you to write it down for me."`,
           applicantResponse
         );
         officerResponse = jsonResponse.respuesta_oficial;
         fluencyEvaluation = jsonResponse.evaluacion_fluidez;
-        isCorrect = applicantResponse.length > 10; // Evaluación simple
+        isCorrect = applicantResponse.length > 10;
         break;
       }
       case 'writing': {
         const jsonResponse = await this.generateOfficerMessage(
           sessionId,
-          `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant wrote: "${applicantResponse}". Evaluate if the writing was correct. If correct, confirm and proceed to close the interview.`,
+          `The applicant just wrote down a dictated sentence. They wrote: "${applicantResponse}". Evaluate their writing — check for correctness and completeness. If it's good, congratulate them. If there are minor errors, be encouraging but note them. Then transition to closing the interview naturally. You might say "Alright, that wraps up the English portion" or "Good job on the writing test."`,
           applicantResponse
         );
         officerResponse = jsonResponse.respuesta_oficial;
         fluencyEvaluation = jsonResponse.evaluacion_fluidez;
-        isCorrect = applicantResponse.length > 10; // Evaluación simple
+        isCorrect = applicantResponse.length > 10;
         break;
       }
       case 'closing':
@@ -760,13 +761,62 @@ class AIInterviewN400Service {
   }
 
   /**
+   * Construye un perfil textual del aplicante para incluir en prompts
+   */
+  private buildApplicantProfile(context: InterviewContext): string {
+    const lines: string[] = [];
+    lines.push(`Name: ${context.applicantName}`);
+    if (context.applicantAge) lines.push(`Age: ${context.applicantAge}`);
+    if (context.countryOfOrigin && context.countryOfOrigin !== 'Desconocido') lines.push(`Country of origin: ${context.countryOfOrigin}`);
+    if (context.yearsInUS) lines.push(`Years in the US: ${context.yearsInUS}`);
+    if (context.currentOccupation && context.currentOccupation !== 'Desconocido') lines.push(`Occupation: ${context.currentOccupation}`);
+    if (context.maritalStatus && context.maritalStatus !== 'Desconocido') lines.push(`Marital status: ${context.maritalStatus}`);
+    if (context.children !== undefined) lines.push(`Children: ${context.children}`);
+    if (context.n400FormData) {
+      const f = context.n400FormData;
+      if (f.currentAddress) lines.push(`Address: ${f.currentAddress}, ${f.city || ''} ${f.state || ''}`);
+      if (f.tripsOutsideUS?.length) lines.push(`Trips outside US: ${f.tripsOutsideUS.length} trip(s)`);
+      if (f.arrests) lines.push(`Has arrest history: yes`);
+      if (f.criminalHistory?.length) lines.push(`Criminal history entries: ${f.criminalHistory.length}`);
+      if (f.militaryService) lines.push(`Military service: yes`);
+    }
+    return lines.join('\n');
+  }
+
+  /**
+   * Construye contexto específico para preguntas del N-400 basado en qué ya se preguntó
+   */
+  private buildN400QuestionContext(n400Data: N400FormData, questionsAsked: number): string {
+    const topics = [
+      { topic: 'current address and how long they have lived there', data: n400Data.currentAddress },
+      { topic: 'employment — current job, employer, what they do', data: n400Data.currentOccupation },
+      { topic: 'marital status and spouse details', data: n400Data.maritalStatus },
+      { topic: 'children — names, ages, citizenship status', data: n400Data.children },
+      { topic: 'travel outside the US — destinations, duration, reasons', data: n400Data.tripsOutsideUS },
+      { topic: 'tax filing history and any issues', data: n400Data.taxReturns },
+      { topic: 'criminal or legal history — arrests, citations, tickets', data: n400Data.arrests },
+      { topic: 'previous addresses in the last 5 years', data: n400Data.previousAddresses },
+      { topic: 'military or selective service registration', data: n400Data.militaryService },
+      { topic: 'employment history over the last 5 years', data: n400Data.employmentHistory },
+    ];
+
+    const nextTopic = topics[questionsAsked % topics.length];
+    const alreadyCovered = topics.slice(0, questionsAsked).map(t => t.topic).join(', ');
+
+    let context = `Suggested next topic: ${nextTopic.topic}`;
+    if (alreadyCovered) context += `\nTopics already covered: ${alreadyCovered}`;
+    context += `\nDo NOT repeat a topic already covered. Ask about something new.`;
+    return context;
+  }
+
+  /**
    * Genera verificación de identidad
    */
   private async generateIdentityVerification(sessionId: string): Promise<string> {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You must verify the identity of applicant ${session.context.applicantName}. Ask them to confirm their full name and date of birth. Be professional and friendly.`;
+    const prompt = `Now begin identity verification. Ask the applicant to confirm their full legal name as it appears on their green card, and their date of birth. You might also ask them to confirm their A-number or show their green card. Make it feel natural — like you're just double-checking your paperwork. You could say something like "Alright, let's get started. Can you state your full name for me?" or "Before we begin, I just need to verify a few things."\n\nApplicant: ${session.context.applicantName}`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
     return response.respuesta_oficial;
@@ -794,10 +844,10 @@ class AIInterviewN400Service {
 
     const n400Data = session.context.n400FormData;
     if (!n400Data) {
-      return 'Continuemos con la entrevista.';
+      return 'Let\'s continue with the interview.';
     }
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You have the N-400 form from applicant ${session.context.applicantName}. Now you must ask questions about the form data to verify that the information is correct and up to date. Start with a question about basic personal information (address, work, family, etc.). Be professional and friendly.`;
+    const prompt = `Transition naturally to the N-400 form review. You have the applicant's form in front of you. Mention that you'll be going through some of the information they submitted to make sure everything is current and accurate. Start with an easy, non-threatening question — like confirming their current address, or asking about their current job. Make it conversational: "I have your application here, let me just go through a few things with you..." or "Okay, I'm looking at your N-400 now. Let's make sure everything is up to date."\n\nApplicant: ${session.context.applicantName}`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
     return response.respuesta_oficial;
@@ -840,7 +890,7 @@ class AIInterviewN400Service {
   private async generateOathPrompt(sessionId: string): Promise<string> {
     const oathText = `"I hereby declare, on oath, that I absolutely and entirely renounce and abjure all allegiance and fidelity to any foreign prince, potentate, state, or sovereignty, of whom or which I have heretofore been a subject or citizen; that I will support and defend the Constitution and laws of the United States of America against all enemies, foreign and domestic; that I will bear true faith and allegiance to the same; that I will bear arms on behalf of the United States when required by the law; that I will perform noncombatant service in the Armed Forces of the United States when required by the law; that I will perform work of national importance under civilian direction when required by the law; and that I take this obligation freely, without any mental reservation or purpose of evasion; so help me God."`;
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You must administer the Oath of Allegiance. Explain that this is an important step in the naturalization process. Read the complete oath in English and ask the applicant to repeat it after you, or confirm that they are willing to take it. Be clear, professional and friendly.`;
+    const prompt = `It's time for the Oath of Allegiance. Introduce it naturally — explain that this is an important and solemn part of the process. You might say something like "Now, before we continue, there's something very important I need to go over with you" or "This next part is the oath. I want you to listen carefully." Read the oath or present it, and ask if they understand and are willing to take it. Be respectful and serious but not intimidating.`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
     return `${response.respuesta_oficial}\n\n${oathText}`;
@@ -863,7 +913,7 @@ class AIInterviewN400Service {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Applicant ${session.context.applicantName} has completed the oath of allegiance. Now begins the civics questions section. Ask the first civics question clearly and professionally. Ask about the Constitution, government, or American rights. Maintain a friendly but professional tone.`;
+    const prompt = `Transition to the civics test portion. Make it feel natural — you could say "Alright, now we're going to do the civics portion. I'll ask you up to 10 questions about US history and government. You need to get at least 6 right to pass." Then ask the FIRST civics question. Choose from official USCIS 100 questions. Phrase it conversationally — not like reading from a test sheet. For example, instead of "What is the supreme law of the land?" you might say "Let's start with an easy one — can you tell me what the supreme law of the land is?"`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
     return response.respuesta_oficial;
@@ -923,7 +973,7 @@ class AIInterviewN400Service {
       .filter(Boolean)
       .join('\n');
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Evaluate if the answer is correct by comparing it with: "${answerEn}". If correct, briefly confirm and ask the next question: "${randomQuestion.questionEn}". If incorrect or incomplete, provide friendly feedback and ask the next question. Question ${session.civicsQuestionsAsked + 1} of ${session.totalCivicsQuestions}. Recent conversation history: ${conversationHistory}`;
+    const prompt = `This is civics question ${session.civicsQuestionsAsked + 1} of ${session.totalCivicsQuestions}.\n\nThe applicant just answered the previous civics question. The correct answer was: "${answerEn}".\n\nFirst, evaluate their answer. If correct, react positively and naturally — "That's right!", "Good job!", "Exactly." Vary your reactions. If wrong, be gentle: "Not quite", "Close, but..." and briefly mention the correct answer.\n\nThen ask the NEXT civics question: "${randomQuestion.questionEn}"\n\nPhrase it conversationally, not like reading from a card. For example:\n- "Okay, next one — ${randomQuestion.questionEn}"\n- "Alright, let me ask you this — ${randomQuestion.questionEn}"\n- "Here's another one for you — ${randomQuestion.questionEn}"`;
 
     const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, applicantResponse);
     
@@ -968,29 +1018,34 @@ class AIInterviewN400Service {
    */
   private async generateReadingTest(sessionId: string): Promise<string> {
     const readingSentences = [
-      '¿Cuál es la capital de Estados Unidos?',
-      '¿Quién fue el primer presidente?',
-      '¿Cuántos estados tiene Estados Unidos?',
-      '¿Cuál es la ley suprema del país?',
-      '¿Cuándo celebramos el Día de la Independencia?',
+      'Abraham Lincoln was the President during the Civil War.',
+      'The United States has fifty states.',
+      'Congress meets in Washington, D.C.',
+      'George Washington is the Father of Our Country.',
+      'Citizens have the right to vote.',
+      'The President lives in the White House.',
+      'The American flag has red, white, and blue.',
+      'People vote for the President in November.',
+      'New York was the first capital of the United States.',
+      'The capital of the United States is Washington, D.C.',
     ];
 
     const randomSentence = readingSentences[Math.floor(Math.random() * readingSentences.length)];
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You have completed the civics questions. Now you will conduct the English reading test. Show this sentence to the applicant and ask them to read it aloud: "${randomSentence}". Explain the test clearly.`;
+    const prompt = `Transition to the English reading test. Be natural about it — you might say something like "Okay, we're almost done. I just need to check your English reading ability. I'm going to show you a sentence, and I'd like you to read it out loud for me." Then present the sentence: "${randomSentence}". Don't make it feel like a big test — keep it casual and encouraging.`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
-    return `${response.respuesta_oficial}\n\nPlease read this sentence in English: "${randomSentence}"`;
+    return `${response.respuesta_oficial}\n\n📖 Read this sentence aloud: "${randomSentence}"`;
   }
 
   /**
    * Genera resultado de prueba de lectura
    */
   private async generateReadingResult(sessionId: string, response: string): Promise<{ response: string; isCorrect: boolean }> {
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant read: "${response}". Evaluate if the reading was correct. If correct, confirm and proceed to the writing test. If there are minor errors, you can continue.`;
+    const prompt = `The applicant just read the sentence. They said: "${response}". Evaluate whether they read it correctly. Be encouraging even if there are minor errors. Comment naturally then transition to writing.`;
 
     const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, response);
-    const isCorrect = response.length > 10; // Evaluación simple
+    const isCorrect = response.length > 10;
 
     return { response: jsonResponse.respuesta_oficial, isCorrect };
   }
@@ -1000,29 +1055,34 @@ class AIInterviewN400Service {
    */
   private async generateWritingTest(sessionId: string): Promise<string> {
     const writingSentences = [
-      'Washington is the capital.',
+      'Washington is the capital of the United States.',
       'The President lives in the White House.',
-      'We have fifty states.',
-      'The Constitution is the supreme law.',
-      'Independence Day is July 4th.',
+      'Congress makes the laws.',
+      'We have freedom of speech.',
+      'Independence Day is in July.',
+      'Citizens can vote for President.',
+      'Lincoln freed the slaves.',
+      'The flag has fifty stars.',
+      'Everyone must pay taxes.',
+      'The United States has one hundred senators.',
     ];
 
     const randomSentence = writingSentences[Math.floor(Math.random() * writingSentences.length)];
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. Now you will conduct the English writing test. Dictate this sentence to the applicant and ask them to write it: "${randomSentence}". Explain the test clearly.`;
+    const prompt = `Now do the English writing test. Explain naturally that you'll say a sentence and they need to write it down. You might say "Alright, one more thing — I'm going to say a sentence, and I'd like you to write it down for me. Ready?" Then dictate the sentence: "${randomSentence}". Speak clearly since they need to write it.`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
-    return `${response.respuesta_oficial}\n\nPlease write this sentence in English: "${randomSentence}"`;
+    return `${response.respuesta_oficial}\n\n✍️ Write this sentence: "${randomSentence}"`;
   }
 
   /**
    * Genera resultado de prueba de escritura
    */
   private async generateWritingResult(sessionId: string, response: string): Promise<{ response: string; isCorrect: boolean }> {
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. The applicant wrote: "${response}". Evaluate if the writing was correct. If correct, confirm and proceed to close the interview. If there are minor spelling errors, you can continue.`;
+    const prompt = `The applicant wrote: "${response}". Check if it's correct or close enough. Be encouraging. Then transition to closing the interview naturally.`;
 
     const jsonResponse = await this.generateOfficerMessage(sessionId, prompt, response);
-    const isCorrect = response.length > 10; // Evaluación simple
+    const isCorrect = response.length > 10;
 
     return { response: jsonResponse.respuesta_oficial, isCorrect };
   }
@@ -1034,7 +1094,7 @@ class AIInterviewN400Service {
     const session = this.sessions.get(sessionId);
     if (!session) throw new Error('Sesión no encontrada');
 
-    const prompt = `You are a professional USCIS immigration officer conducting a naturalization interview. You have completed the citizenship interview with ${session.context.applicantName}. Now you must make a professional closing statement, thanking the applicant for their time and explaining that they will be notified about the result of their application by mail in the coming weeks. Maintain a professional, friendly and encouraging tone.`;
+    const prompt = `The interview is now complete. Close it naturally and professionally. Thank ${session.context.applicantName} personally for their time and patience. Give a brief summary of how they did (in general terms — don't give a score). Tell them they'll receive a decision by mail in the coming weeks. You might shake their hand (figuratively), wish them well, or say something warm like "I think you did great today" or "You should be proud of the effort you've put into this." Be human and encouraging.`;
 
     const response = await this.generateOfficerMessage(sessionId, prompt, undefined);
     return response.respuesta_oficial;
@@ -1062,49 +1122,54 @@ class AIInterviewN400Service {
 
     const estadoEntrevista = stageMap[currentStage] || 'VERIFICACION_IDENTIDAD';
 
-    const unifiedPrompt = `**ROL:** Eres un Oficial de Inmigración de USCIS, formal, objetivo y profesional, conduciendo la entrevista de naturalización (Formulario N-400, prueba Cívica y prueba de Inglés).
+    const unifiedPrompt = `**ROL:** You are a REAL USCIS Immigration Officer conducting a naturalization interview. You have a unique personality — you are professional but also human. You have your own name (pick one and keep it consistent). You've been doing this job for years. You are thorough but fair, and you genuinely want applicants to succeed.
 
-**TAREA PRINCIPAL:**
+**PERSONALITY GUIDELINES:**
+- You are NOT a robot reading from a script. You are a real human officer.
+- You make small talk, you react to answers, you show curiosity.
+- If an answer is interesting, comment on it before moving on. ("Oh, you're from Colombia? Beautiful country.")
+- If an answer is vague, probe deeper naturally. ("You said you traveled abroad — where exactly did you go?")
+- Vary your phrasing. Never ask two questions the same way.
+- Use filler language real officers use: "Okay", "Alright", "Let me check that", "Good", "I see", "Mmhmm".
+- Show appropriate empathy for nervous applicants.
+- Keep responses concise (2-4 sentences max for speaking aloud), but natural.
 
-1. **Simular la entrevista:** Guía al usuario a través de las secciones N-400 (saludo, datos, carácter moral) y realiza la prueba Cívica (hasta 10 preguntas) y las pruebas de Lectura/Escritura.
+**INTERVIEW STRUCTURE:**
+1. Identity Verification — Confirm name, DOB, address, green card/A-number
+2. N-400 Form Review — Go through their form: work, family, travel, legal history, etc.
+3. Oath of Allegiance — Administer the oath
+4. Civics Test — Up to 10 questions from the official 100, 6 to pass
+5. English Reading Test — Ask them to read a sentence
+6. English Writing Test — Dictate a sentence for them to write
+7. Closing — Thank them, summarize, explain next steps
 
-2. **Evaluar Fluidez:** En CADA respuesta del usuario, evalúa su fluidez, gramática y pronunciación en inglés (escala 1-10) y sugiere 1-2 mejoras concretas. Esta evaluación DEBE ser en español.
+**CRITICAL RULES:**
+1. ALL your spoken dialogue (\`respuesta_oficial\`) MUST be in **ENGLISH ONLY**.
+2. Your response MUST be a single valid **JSON object**. Never respond with plain text.
+3. The field \`evaluacion_fluidez.mejora_sugerida\` MUST be in **Spanish** (this is feedback for the learner).
+4. React to what the applicant actually says — don't ignore their responses.
+5. If the applicant gives a suspicious, inconsistent, or interesting answer, follow up on it.
 
-3. **Mantener la Coherencia:** Las preguntas deben ser conversacionales y ligeramente variadas.
-
-**RESTRICCIONES CRÍTICAS:**
-
-1. **IDIOMA DE LA ENTREVISTA:** TODAS tus preguntas y respuestas conversacionales (campo \`respuesta_oficial\`) deben ser **EXCLUSIVAMENTE EN INGLÉS**. Habla en inglés nativo, profesional y con gramática perfecta.
-
-2. **FORMATO DE SALIDA:** Tu respuesta DEBE ser **SIEMPRE** un único objeto JSON válido. NUNCA respondas con texto plano.
-
-3. **FLUJO:** Utiliza el campo \`estado_entrevista\` para señalar la etapa actual.
-
-**FORMATO JSON REQUERIDO:**
-
+**JSON FORMAT:**
 \`\`\`json
 {
-  "respuesta_oficial": "The question/statement the USCIS Officer says next, in English.",
+  "respuesta_oficial": "What the officer says next (in English)",
   "evaluacion_fluidez": {
     "puntaje_pronunciacion_y_gramatica": "X/10",
-    "mejora_sugerida": "Breve sugerencia para mejorar la respuesta anterior del usuario (en español)."
+    "mejora_sugerida": "Sugerencia concreta en español para mejorar."
   },
   "estado_entrevista": "VERIFICACION_IDENTIDAD | REVISION_N400 | PREGUNTA_CIVICA | PRUEBA_LECTURA | PRUEBA_ESCRITURA | CIERRE"
 }
 \`\`\`
 
-**CONTEXTO ESPECÍFICO:**
+**CURRENT STAGE:** ${estadoEntrevista}
+
+**SPECIFIC CONTEXT:**
 ${contextPrompt}
 
-**ESTADO ACTUAL:** ${estadoEntrevista}
+${applicantResponse ? `**APPLICANT SAID:** "${applicantResponse}"` : ''}
 
-${applicantResponse ? `**RESPUESTA DEL SOLICITANTE:** "${applicantResponse}"` : ''}
-
-**IMPORTANTE:** 
-- Tu respuesta DEBE ser ÚNICAMENTE un objeto JSON válido, sin texto adicional antes o después
-- El campo \`respuesta_oficial\` debe estar en inglés profesional y perfecto
-- El campo \`evaluacion_fluidez.mejora_sugerida\` debe estar en español
-- El campo \`estado_entrevista\` debe ser uno de: VERIFICACION_IDENTIDAD, REVISION_N400, PREGUNTA_CIVICA, PRUEBA_LECTURA, PRUEBA_ESCRITURA, CIERRE`;
+**REMEMBER:** Be human. Be real. React to what they say. Don't repeat yourself. Vary your language.`;
 
     return unifiedPrompt;
   }

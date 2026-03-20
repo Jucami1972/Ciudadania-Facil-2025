@@ -8,7 +8,7 @@ const EducacionCivicaWrapper = () => {
 
   useEffect(() => {
     navigation.replace('StudyCards', {
-      category: 'symbols_holidays',
+      category: 'civics',
       title: 'Educación Cívica',
       subtitle: 'A: Geografía',
       questionRange: '88-95',

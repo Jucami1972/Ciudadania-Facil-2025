@@ -75,6 +75,7 @@ export type RootStackParamList = {
   ReadingWriting: undefined;
   IncorrectPractice: undefined;
   MarkedPractice: undefined;
+  MisPreguntas: undefined;
 
   // Pantallas de estudio (nuevas rutas con tabs)
   StudyHome: undefined;
@@ -109,6 +110,11 @@ export type RootStackParamList = {
   VocabularioHome: undefined;
   ExamenHome: undefined;
   SpacedRepetitionPractice: undefined;
+  N400PracticeHome: undefined;
+  N400SectionPractice: {
+    categoryId: string;
+    mode: 'study' | 'quick';
+  };
 
   // Pantallas de categorías principales
   GobiernoAmericano: { 

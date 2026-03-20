@@ -1,0 +1,782 @@
+{
+  "abraham-lincoln": {
+    "definition": "vocab_abraham-lincoln_def.mp3",
+    "term": "vocab_abraham-lincoln_term.mp3"
+  },
+  "addition-to-constitution": {
+    "definition": "vocab_addition-to-constitution_def.mp3",
+    "term": "vocab_addition-to-constitution_term.mp3"
+  },
+  "advises-president": {
+    "definition": "vocab_advises-president_def.mp3",
+    "term": "vocab_advises-president_term.mp3"
+  },
+  "africans-slavery": {
+    "definition": "vocab_africans-slavery_def.mp3",
+    "term": "vocab_africans-slavery_term.mp3"
+  },
+  "all-people-state": {
+    "definition": "vocab_all-people-state_def.mp3",
+    "term": "vocab_all-people-state_term.mp3"
+  },
+  "amendment": {
+    "definition": "vocab_amendment_def.mp3",
+    "term": "vocab_amendment_term.mp3"
+  },
+  "american-economy": {
+    "definition": "vocab_american-economy_def.mp3",
+    "term": "vocab_american-economy_term.mp3"
+  },
+  "american-indian-tribes": {
+    "definition": "vocab_american-indian-tribes_def.mp3",
+    "term": "vocab_american-indian-tribes_term.mp3"
+  },
+  "anthem": {
+    "definition": "vocab_anthem_def.mp3",
+    "term": "vocab_anthem_term.mp3"
+  },
+  "approve-zoning": {
+    "definition": "vocab_approve-zoning_def.mp3",
+    "term": "vocab_approve-zoning_term.mp3"
+  },
+  "april-fifteen": {
+    "definition": "vocab_april-fifteen_def.mp3",
+    "term": "vocab_april-fifteen_term.mp3"
+  },
+  "assembly-right": {
+    "definition": "vocab_assembly-right_def.mp3",
+    "term": "vocab_assembly-right_term.mp3"
+  },
+  "atlantic-ocean": {
+    "definition": "vocab_atlantic-ocean_def.mp3",
+    "term": "vocab_atlantic-ocean_term.mp3"
+  },
+  "axis-powers": {
+    "definition": "vocab_axis-powers_def.mp3",
+    "term": "vocab_axis-powers_term.mp3"
+  },
+  "benjamin-franklin": {
+    "definition": "vocab_benjamin-franklin_def.mp3",
+    "term": "vocab_benjamin-franklin_term.mp3"
+  },
+  "bill-of-rights": {
+    "definition": "vocab_bill-of-rights_def.mp3",
+    "term": "vocab_bill-of-rights_term.mp3"
+  },
+  "cabinet-positions": {
+    "definition": "vocab_cabinet-positions_def.mp3",
+    "term": "vocab_cabinet-positions_term.mp3"
+  },
+  "cabinet": {
+    "definition": "vocab_cabinet_def.mp3",
+    "term": "vocab_cabinet_term.mp3"
+  },
+  "canada-border-states": {
+    "definition": "vocab_canada-border-states_def.mp3",
+    "term": "vocab_canada-border-states_term.mp3"
+  },
+  "capital-washington-dc": {
+    "definition": "vocab_capital-washington-dc_def.mp3",
+    "term": "vocab_capital-washington-dc_term.mp3"
+  },
+  "capitalist-economy": {
+    "definition": "vocab_capitalist-economy_def.mp3",
+    "term": "vocab_capitalist-economy_term.mp3"
+  },
+  "change-to-constitution": {
+    "definition": "vocab_change-to-constitution_def.mp3",
+    "term": "vocab_change-to-constitution_term.mp3"
+  },
+  "checks-balances": {
+    "definition": "vocab_checks-balances_def.mp3",
+    "term": "vocab_checks-balances_term.mp3"
+  },
+  "chief-justice": {
+    "definition": "vocab_chief-justice_def.mp3",
+    "term": "vocab_chief-justice_term.mp3"
+  },
+  "citizen-responsibilities": {
+    "definition": "vocab_citizen-responsibilities_def.mp3",
+    "term": "vocab_citizen-responsibilities_term.mp3"
+  },
+  "citizen-rights": {
+    "definition": "vocab_citizen-rights_def.mp3",
+    "term": "vocab_citizen-rights_term.mp3"
+  },
+  "citizenship-promises": {
+    "definition": "vocab_citizenship-promises_def.mp3",
+    "term": "vocab_citizenship-promises_term.mp3"
+  },
+  "civil-rights-movement": {
+    "definition": "vocab_civil-rights-movement_def.mp3",
+    "term": "vocab_civil-rights-movement_term.mp3"
+  },
+  "civil-war-causes": {
+    "definition": "vocab_civil-war-causes_def.mp3",
+    "term": "vocab_civil-war-causes_term.mp3"
+  },
+  "civil-war": {
+    "definition": "vocab_civil-war_def.mp3",
+    "term": "vocab_civil-war_term.mp3"
+  },
+  "cold-war-communism": {
+    "definition": "vocab_cold-war-communism_def.mp3",
+    "term": "vocab_cold-war-communism_term.mp3"
+  },
+  "colonist-reasons": {
+    "definition": "vocab_colonist-reasons_def.mp3",
+    "term": "vocab_colonist-reasons_term.mp3"
+  },
+  "commander-in-chief": {
+    "definition": "vocab_commander-in-chief_def.mp3",
+    "term": "vocab_commander-in-chief_term.mp3"
+  },
+  "congress": {
+    "definition": "vocab_congress_def.mp3",
+    "term": "vocab_congress_term.mp3"
+  },
+  "constitution-written-1787": {
+    "definition": "vocab_constitution-written-1787_def.mp3",
+    "term": "vocab_constitution-written-1787_term.mp3"
+  },
+  "constitutional-convention": {
+    "definition": "vocab_constitutional-convention_def.mp3",
+    "term": "vocab_constitutional-convention_term.mp3"
+  },
+  "constitution": {
+    "definition": "vocab_constitution_def.mp3",
+    "term": "vocab_constitution_term.mp3"
+  },
+  "create-army": {
+    "definition": "vocab_create-army_def.mp3",
+    "term": "vocab_create-army_term.mp3"
+  },
+  "decides-law-against-constitution": {
+    "definition": "vocab_decides-law-against-constitution_def.mp3",
+    "term": "vocab_decides-law-against-constitution_term.mp3"
+  },
+  "declaration-independence": {
+    "definition": "vocab_declaration-independence_def.mp3",
+    "term": "vocab_declaration-independence_term.mp3"
+  },
+  "declare-war": {
+    "definition": "vocab_declare-war_def.mp3",
+    "term": "vocab_declare-war_term.mp3"
+  },
+  "defines-government": {
+    "definition": "vocab_defines-government_def.mp3",
+    "term": "vocab_defines-government_term.mp3"
+  },
+  "democratic-participation": {
+    "definition": "vocab_democratic-participation_def.mp3",
+    "term": "vocab_democratic-participation_term.mp3"
+  },
+  "democratic-republican-parties": {
+    "definition": "vocab_democratic-republican-parties_def.mp3",
+    "term": "vocab_democratic-republican-parties_term.mp3"
+  },
+  "drivers-license": {
+    "definition": "vocab_drivers-license_def.mp3",
+    "term": "vocab_drivers-license_term.mp3"
+  },
+  "eighteen-vote": {
+    "definition": "vocab_eighteen-vote_def.mp3",
+    "term": "vocab_eighteen-vote_term.mp3"
+  },
+  "eisenhower": {
+    "definition": "vocab_eisenhower_def.mp3",
+    "term": "vocab_eisenhower_term.mp3"
+  },
+  "emancipation-proclamation": {
+    "definition": "vocab_emancipation-proclamation_def.mp3",
+    "term": "vocab_emancipation-proclamation_term.mp3"
+  },
+  "everyone-follow-law": {
+    "definition": "vocab_everyone-follow-law_def.mp3",
+    "term": "vocab_everyone-follow-law_term.mp3"
+  },
+  "everyone-rights": {
+    "definition": "vocab_everyone-rights_def.mp3",
+    "term": "vocab_everyone-rights_term.mp3"
+  },
+  "executive-branch": {
+    "definition": "vocab_executive-branch_def.mp3",
+    "term": "vocab_executive-branch_term.mp3"
+  },
+  "explains-laws": {
+    "definition": "vocab_explains-laws_def.mp3",
+    "term": "vocab_explains-laws_term.mp3"
+  },
+  "federal-laws": {
+    "definition": "vocab_federal-laws_def.mp3",
+    "term": "vocab_federal-laws_term.mp3"
+  },
+  "federal-powers": {
+    "definition": "vocab_federal-powers_def.mp3",
+    "term": "vocab_federal-powers_term.mp3"
+  },
+  "federalist-papers": {
+    "definition": "vocab_federalist-papers_def.mp3",
+    "term": "vocab_federalist-papers_term.mp3"
+  },
+  "fifty-stars": {
+    "definition": "vocab_fifty-stars_def.mp3",
+    "term": "vocab_fifty-stars_term.mp3"
+  },
+  "first-amendment": {
+    "definition": "vocab_first-amendment_def.mp3",
+    "term": "vocab_first-amendment_term.mp3"
+  },
+  "flag": {
+    "definition": "vocab_flag_def.mp3",
+    "term": "vocab_flag_term.mp3"
+  },
+  "founding-fathers": {
+    "definition": "vocab_founding-fathers_def.mp3",
+    "term": "vocab_founding-fathers_term.mp3"
+  },
+  "four-hundred-thirty-five": {
+    "definition": "vocab_four-hundred-thirty-five_def.mp3",
+    "term": "vocab_four-hundred-thirty-five_term.mp3"
+  },
+  "four-year-term-president": {
+    "definition": "vocab_four-year-term-president_def.mp3",
+    "term": "vocab_four-year-term-president_term.mp3"
+  },
+  "franklin-roosevelt": {
+    "definition": "vocab_franklin-roosevelt_def.mp3",
+    "term": "vocab_franklin-roosevelt_term.mp3"
+  },
+  "freedom-assembly": {
+    "definition": "vocab_freedom-assembly_def.mp3",
+    "term": "vocab_freedom-assembly_term.mp3"
+  },
+  "freedom-expression": {
+    "definition": "vocab_freedom-expression_def.mp3",
+    "term": "vocab_freedom-expression_term.mp3"
+  },
+  "freedom-of-religion": {
+    "definition": "vocab_freedom-of-religion_def.mp3",
+    "term": "vocab_freedom-of-religion_term.mp3"
+  },
+  "freedom-petition": {
+    "definition": "vocab_freedom-petition_def.mp3",
+    "term": "vocab_freedom-petition_term.mp3"
+  },
+  "george-washington": {
+    "definition": "vocab_george-washington_def.mp3",
+    "term": "vocab_george-washington_term.mp3"
+  },
+  "government-obey-law": {
+    "definition": "vocab_government-obey-law_def.mp3",
+    "term": "vocab_government-obey-law_term.mp3"
+  },
+  "great-depression": {
+    "definition": "vocab_great-depression_def.mp3",
+    "term": "vocab_great-depression_term.mp3"
+  },
+  "house-representatives": {
+    "definition": "vocab_house-representatives_def.mp3",
+    "term": "vocab_house-representatives_term.mp3"
+  },
+  "independence-day": {
+    "definition": "vocab_independence-day_def.mp3",
+    "term": "vocab_independence-day_term.mp3"
+  },
+  "judicial-branch": {
+    "definition": "vocab_judicial-branch_def.mp3",
+    "term": "vocab_judicial-branch_term.mp3"
+  },
+  "judicial-review": {
+    "definition": "vocab_judicial-review_def.mp3",
+    "term": "vocab_judicial-review_term.mp3"
+  },
+  "july-fourth-1776": {
+    "definition": "vocab_july-fourth-1776_def.mp3",
+    "term": "vocab_july-fourth-1776_term.mp3"
+  },
+  "leaders-obey-law": {
+    "definition": "vocab_leaders-obey-law_def.mp3",
+    "term": "vocab_leaders-obey-law_term.mp3"
+  },
+  "legislative-branch": {
+    "definition": "vocab_legislative-branch_def.mp3",
+    "term": "vocab_legislative-branch_term.mp3"
+  },
+  "life-liberty-pursuit-happiness": {
+    "definition": "vocab_life-liberty-pursuit-happiness_def.mp3",
+    "term": "vocab_life-liberty-pursuit-happiness_term.mp3"
+  },
+  "longest-rivers": {
+    "definition": "vocab_longest-rivers_def.mp3",
+    "term": "vocab_longest-rivers_term.mp3"
+  },
+  "louisiana-purchase": {
+    "definition": "vocab_louisiana-purchase_def.mp3",
+    "term": "vocab_louisiana-purchase_term.mp3"
+  },
+  "make-treaties": {
+    "definition": "vocab_make-treaties_def.mp3",
+    "term": "vocab_make-treaties_term.mp3"
+  },
+  "market-economy": {
+    "definition": "vocab_market-economy_def.mp3",
+    "term": "vocab_market-economy_term.mp3"
+  },
+  "martin-luther-king": {
+    "definition": "vocab_martin-luther-king_def.mp3",
+    "term": "vocab_martin-luther-king_term.mp3"
+  },
+  "mexico-border-states": {
+    "definition": "vocab_mexico-border-states_def.mp3",
+    "term": "vocab_mexico-border-states_term.mp3"
+  },
+  "n400-appointment-letter": {
+    "definition": "vocab_n400-appointment-letter_def.mp3",
+    "term": "vocab_n400-appointment-letter_term.mp3"
+  },
+  "n400-arrested": {
+    "definition": "vocab_n400-arrested_def.mp3",
+    "term": "vocab_n400-arrested_term.mp3"
+  },
+  "n400-bear-arms": {
+    "definition": "vocab_n400-bear-arms_def.mp3",
+    "term": "vocab_n400-bear-arms_term.mp3"
+  },
+  "n400-children": {
+    "definition": "vocab_n400-children_def.mp3",
+    "term": "vocab_n400-children_term.mp3"
+  },
+  "n400-civic-duty": {
+    "definition": "vocab_n400-civic-duty_def.mp3",
+    "term": "vocab_n400-civic-duty_term.mp3"
+  },
+  "n400-claimed-citizen": {
+    "definition": "vocab_n400-claimed-citizen_def.mp3",
+    "term": "vocab_n400-claimed-citizen_term.mp3"
+  },
+  "n400-continuous-residence": {
+    "definition": "vocab_n400-continuous-residence_def.mp3",
+    "term": "vocab_n400-continuous-residence_term.mp3"
+  },
+  "n400-country-of-birth": {
+    "definition": "vocab_n400-country-of-birth_def.mp3",
+    "term": "vocab_n400-country-of-birth_term.mp3"
+  },
+  "n400-current-address": {
+    "definition": "vocab_n400-current-address_def.mp3",
+    "term": "vocab_n400-current-address_term.mp3"
+  },
+  "n400-date-of-birth": {
+    "definition": "vocab_n400-date-of-birth_def.mp3",
+    "term": "vocab_n400-date-of-birth_term.mp3"
+  },
+  "n400-documents-request": {
+    "definition": "vocab_n400-documents-request_def.mp3",
+    "term": "vocab_n400-documents-request_term.mp3"
+  },
+  "n400-eligibility": {
+    "definition": "vocab_n400-eligibility_def.mp3",
+    "term": "vocab_n400-eligibility_term.mp3"
+  },
+  "n400-employer": {
+    "definition": "vocab_n400-employer_def.mp3",
+    "term": "vocab_n400-employer_term.mp3"
+  },
+  "n400-employment-status": {
+    "definition": "vocab_n400-employment-status_def.mp3",
+    "term": "vocab_n400-employment-status_term.mp3"
+  },
+  "n400-full-legal-name": {
+    "definition": "vocab_n400-full-legal-name_def.mp3",
+    "term": "vocab_n400-full-legal-name_term.mp3"
+  },
+  "n400-good-moral-character": {
+    "definition": "vocab_n400-good-moral-character_def.mp3",
+    "term": "vocab_n400-good-moral-character_term.mp3"
+  },
+  "n400-green-card": {
+    "definition": "vocab_n400-green-card_def.mp3",
+    "term": "vocab_n400-green-card_term.mp3"
+  },
+  "n400-how-long-address": {
+    "definition": "vocab_n400-how-long-address_def.mp3",
+    "term": "vocab_n400-how-long-address_term.mp3"
+  },
+  "n400-how-long-job": {
+    "definition": "vocab_n400-how-long-job_def.mp3",
+    "term": "vocab_n400-how-long-job_term.mp3"
+  },
+  "n400-lawful-permanent-resident": {
+    "definition": "vocab_n400-lawful-permanent-resident_def.mp3",
+    "term": "vocab_n400-lawful-permanent-resident_term.mp3"
+  },
+  "n400-marital-status": {
+    "definition": "vocab_n400-marital-status_def.mp3",
+    "term": "vocab_n400-marital-status_term.mp3"
+  },
+  "n400-nationality": {
+    "definition": "vocab_n400-nationality_def.mp3",
+    "term": "vocab_n400-nationality_term.mp3"
+  },
+  "n400-naturalization": {
+    "definition": "vocab_n400-naturalization_def.mp3",
+    "term": "vocab_n400-naturalization_term.mp3"
+  },
+  "n400-non-combatant": {
+    "definition": "vocab_n400-non-combatant_def.mp3",
+    "term": "vocab_n400-non-combatant_term.mp3"
+  },
+  "n400-non-resident-alien": {
+    "definition": "vocab_n400-non-resident-alien_def.mp3",
+    "term": "vocab_n400-non-resident-alien_term.mp3"
+  },
+  "n400-oath-of-allegiance": {
+    "definition": "vocab_n400-oath-of-allegiance_def.mp3",
+    "term": "vocab_n400-oath-of-allegiance_term.mp3"
+  },
+  "n400-occupation": {
+    "definition": "vocab_n400-occupation_def.mp3",
+    "term": "vocab_n400-occupation_term.mp3"
+  },
+  "n400-overdue": {
+    "definition": "vocab_n400-overdue_def.mp3",
+    "term": "vocab_n400-overdue_term.mp3"
+  },
+  "n400-persecuted": {
+    "definition": "vocab_n400-persecuted_def.mp3",
+    "term": "vocab_n400-persecuted_term.mp3"
+  },
+  "n400-phrase-for-vacation": {
+    "definition": "vocab_n400-phrase-for-vacation_def.mp3",
+    "term": "vocab_n400-phrase-for-vacation_term.mp3"
+  },
+  "n400-phrase-i-live-at": {
+    "definition": "vocab_n400-phrase-i-live-at_def.mp3",
+    "term": "vocab_n400-phrase-i-live-at_term.mp3"
+  },
+  "n400-phrase-i-was-born": {
+    "definition": "vocab_n400-phrase-i-was-born_def.mp3",
+    "term": "vocab_n400-phrase-i-was-born_term.mp3"
+  },
+  "n400-phrase-i-work-as": {
+    "definition": "vocab_n400-phrase-i-work-as_def.mp3",
+    "term": "vocab_n400-phrase-i-work-as_term.mp3"
+  },
+  "n400-phrase-my-name-is": {
+    "definition": "vocab_n400-phrase-my-name-is_def.mp3",
+    "term": "vocab_n400-phrase-my-name-is_term.mp3"
+  },
+  "n400-phrase-no-i-have-not": {
+    "definition": "vocab_n400-phrase-no-i-have-not_def.mp3",
+    "term": "vocab_n400-phrase-no-i-have-not_term.mp3"
+  },
+  "n400-phrase-yes-i-do": {
+    "definition": "vocab_n400-phrase-yes-i-do_def.mp3",
+    "term": "vocab_n400-phrase-yes-i-do_term.mp3"
+  },
+  "n400-physical-presence": {
+    "definition": "vocab_n400-physical-presence_def.mp3",
+    "term": "vocab_n400-physical-presence_term.mp3"
+  },
+  "n400-please-be-seated": {
+    "definition": "vocab_n400-please-be-seated_def.mp3",
+    "term": "vocab_n400-please-be-seated_term.mp3"
+  },
+  "n400-previous-address": {
+    "definition": "vocab_n400-previous-address_def.mp3",
+    "term": "vocab_n400-previous-address_term.mp3"
+  },
+  "n400-purpose-trip": {
+    "definition": "vocab_n400-purpose-trip_def.mp3",
+    "term": "vocab_n400-purpose-trip_term.mp3"
+  },
+  "n400-renounce-allegiance": {
+    "definition": "vocab_n400-renounce-allegiance_def.mp3",
+    "term": "vocab_n400-renounce-allegiance_term.mp3"
+  },
+  "n400-selective-service": {
+    "definition": "vocab_n400-selective-service_def.mp3",
+    "term": "vocab_n400-selective-service_term.mp3"
+  },
+  "n400-six-months-trip": {
+    "definition": "vocab_n400-six-months-trip_def.mp3",
+    "term": "vocab_n400-six-months-trip_term.mp3"
+  },
+  "n400-social-security": {
+    "definition": "vocab_n400-social-security_def.mp3",
+    "term": "vocab_n400-social-security_term.mp3"
+  },
+  "n400-spouse": {
+    "definition": "vocab_n400-spouse_def.mp3",
+    "term": "vocab_n400-spouse_term.mp3"
+  },
+  "n400-support-constitution": {
+    "definition": "vocab_n400-support-constitution_def.mp3",
+    "term": "vocab_n400-support-constitution_term.mp3"
+  },
+  "n400-swear-in": {
+    "definition": "vocab_n400-swear-in_def.mp3",
+    "term": "vocab_n400-swear-in_term.mp3"
+  },
+  "n400-taxes": {
+    "definition": "vocab_n400-taxes_def.mp3",
+    "term": "vocab_n400-taxes_term.mp3"
+  },
+  "n400-terrorist-organization": {
+    "definition": "vocab_n400-terrorist-organization_def.mp3",
+    "term": "vocab_n400-terrorist-organization_term.mp3"
+  },
+  "n400-trips-outside": {
+    "definition": "vocab_n400-trips-outside_def.mp3",
+    "term": "vocab_n400-trips-outside_term.mp3"
+  },
+  "n400-work-national-importance": {
+    "definition": "vocab_n400-work-national-importance_def.mp3",
+    "term": "vocab_n400-work-national-importance_term.mp3"
+  },
+  "national-holidays": {
+    "definition": "vocab_national-holidays_def.mp3",
+    "term": "vocab_national-holidays_term.mp3"
+  },
+  "national-legislature": {
+    "definition": "vocab_national-legislature_def.mp3",
+    "term": "vocab_national-legislature_term.mp3"
+  },
+  "native-americans": {
+    "definition": "vocab_native-americans_def.mp3",
+    "term": "vocab_native-americans_term.mp3"
+  },
+  "naturalization-oath": {
+    "definition": "vocab_naturalization-oath_def.mp3",
+    "term": "vocab_naturalization-oath_term.mp3"
+  },
+  "no-one-above-law": {
+    "definition": "vocab_no-one-above-law_def.mp3",
+    "term": "vocab_no-one-above-law_term.mp3"
+  },
+  "november-election": {
+    "definition": "vocab_november-election_def.mp3",
+    "term": "vocab_november-election_term.mp3"
+  },
+  "one-hundred-senators": {
+    "definition": "vocab_one-hundred-senators_def.mp3",
+    "term": "vocab_one-hundred-senators_term.mp3"
+  },
+  "pacific-ocean": {
+    "definition": "vocab_pacific-ocean_def.mp3",
+    "term": "vocab_pacific-ocean_term.mp3"
+  },
+  "petition-government": {
+    "definition": "vocab_petition-government_def.mp3",
+    "term": "vocab_petition-government_term.mp3"
+  },
+  "pledge-allegiance": {
+    "definition": "vocab_pledge-allegiance_def.mp3",
+    "term": "vocab_pledge-allegiance_term.mp3"
+  },
+  "president": {
+    "definition": "vocab_president_def.mp3",
+    "term": "vocab_president_term.mp3"
+  },
+  "press-right": {
+    "definition": "vocab_press-right_def.mp3",
+    "term": "vocab_press-right_term.mp3"
+  },
+  "print-money": {
+    "definition": "vocab_print-money_def.mp3",
+    "term": "vocab_print-money_term.mp3"
+  },
+  "protects-basic-rights": {
+    "definition": "vocab_protects-basic-rights_def.mp3",
+    "term": "vocab_protects-basic-rights_term.mp3"
+  },
+  "provide-protection": {
+    "definition": "vocab_provide-protection_def.mp3",
+    "term": "vocab_provide-protection_term.mp3"
+  },
+  "provide-safety": {
+    "definition": "vocab_provide-safety_def.mp3",
+    "term": "vocab_provide-safety_term.mp3"
+  },
+  "provide-schooling": {
+    "definition": "vocab_provide-schooling_def.mp3",
+    "term": "vocab_provide-schooling_term.mp3"
+  },
+  "religion-right": {
+    "definition": "vocab_religion-right_def.mp3",
+    "term": "vocab_religion-right_term.mp3"
+  },
+  "resolves-disputes": {
+    "definition": "vocab_resolves-disputes_def.mp3",
+    "term": "vocab_resolves-disputes_term.mp3"
+  },
+  "reviews-laws": {
+    "definition": "vocab_reviews-laws_def.mp3",
+    "term": "vocab_reviews-laws_term.mp3"
+  },
+  "right-bear-arms": {
+    "definition": "vocab_right-bear-arms_def.mp3",
+    "term": "vocab_right-bear-arms_term.mp3"
+  },
+  "rule-of-law": {
+    "definition": "vocab_rule-of-law_def.mp3",
+    "term": "vocab_rule-of-law_term.mp3"
+  },
+  "run-federal-office": {
+    "definition": "vocab_run-federal-office_def.mp3",
+    "term": "vocab_run-federal-office_term.mp3"
+  },
+  "selective-service": {
+    "definition": "vocab_selective-service_def.mp3",
+    "term": "vocab_selective-service_term.mp3"
+  },
+  "self-government": {
+    "definition": "vocab_self-government_def.mp3",
+    "term": "vocab_self-government_term.mp3"
+  },
+  "senate-house-representatives": {
+    "definition": "vocab_senate-house-representatives_def.mp3",
+    "term": "vocab_senate-house-representatives_term.mp3"
+  },
+  "senate": {
+    "definition": "vocab_senate_def.mp3",
+    "term": "vocab_senate_term.mp3"
+  },
+  "separation-of-powers": {
+    "definition": "vocab_separation-of-powers_def.mp3",
+    "term": "vocab_separation-of-powers_term.mp3"
+  },
+  "september-eleven": {
+    "definition": "vocab_september-eleven_def.mp3",
+    "term": "vocab_september-eleven_term.mp3"
+  },
+  "serve-jury": {
+    "definition": "vocab_serve-jury_def.mp3",
+    "term": "vocab_serve-jury_term.mp3"
+  },
+  "sets-up-government": {
+    "definition": "vocab_sets-up-government_def.mp3",
+    "term": "vocab_sets-up-government_term.mp3"
+  },
+  "signs-bills": {
+    "definition": "vocab_signs-bills_def.mp3",
+    "term": "vocab_signs-bills_term.mp3"
+  },
+  "six-year-term": {
+    "definition": "vocab_six-year-term_def.mp3",
+    "term": "vocab_six-year-term_term.mp3"
+  },
+  "speaker-house": {
+    "definition": "vocab_speaker-house_def.mp3",
+    "term": "vocab_speaker-house_term.mp3"
+  },
+  "speech-right": {
+    "definition": "vocab_speech-right_def.mp3",
+    "term": "vocab_speech-right_term.mp3"
+  },
+  "star-spangled-banner": {
+    "definition": "vocab_star-spangled-banner_def.mp3",
+    "term": "vocab_star-spangled-banner_term.mp3"
+  },
+  "state-population": {
+    "definition": "vocab_state-population_def.mp3",
+    "term": "vocab_state-population_term.mp3"
+  },
+  "state-powers": {
+    "definition": "vocab_state-powers_def.mp3",
+    "term": "vocab_state-powers_term.mp3"
+  },
+  "statue-of-liberty": {
+    "definition": "vocab_statue-of-liberty_def.mp3",
+    "term": "vocab_statue-of-liberty_term.mp3"
+  },
+  "supreme-court": {
+    "definition": "vocab_supreme-court_def.mp3",
+    "term": "vocab_supreme-court_term.mp3"
+  },
+  "supreme-law": {
+    "definition": "vocab_supreme-law_def.mp3",
+    "term": "vocab_supreme-law_term.mp3"
+  },
+  "susan-b-anthony": {
+    "definition": "vocab_susan-b-anthony_def.mp3",
+    "term": "vocab_susan-b-anthony_term.mp3"
+  },
+  "taxation-without-representation": {
+    "definition": "vocab_taxation-without-representation_def.mp3",
+    "term": "vocab_taxation-without-representation_term.mp3"
+  },
+  "territory": {
+    "definition": "vocab_territory_def.mp3",
+    "term": "vocab_territory_term.mp3"
+  },
+  "thirteen-original-states": {
+    "definition": "vocab_thirteen-original-states_def.mp3",
+    "term": "vocab_thirteen-original-states_term.mp3"
+  },
+  "thirteen-stripes": {
+    "definition": "vocab_thirteen-stripes_def.mp3",
+    "term": "vocab_thirteen-stripes_term.mp3"
+  },
+  "thomas-jefferson": {
+    "definition": "vocab_thomas-jefferson_def.mp3",
+    "term": "vocab_thomas-jefferson_term.mp3"
+  },
+  "twenty-seven-amendments": {
+    "definition": "vocab_twenty-seven-amendments_def.mp3",
+    "term": "vocab_twenty-seven-amendments_term.mp3"
+  },
+  "two-year-term": {
+    "definition": "vocab_two-year-term_def.mp3",
+    "term": "vocab_two-year-term_term.mp3"
+  },
+  "united-states-flag": {
+    "definition": "vocab_united-states-flag_def.mp3",
+    "term": "vocab_united-states-flag_term.mp3"
+  },
+  "us-territories": {
+    "definition": "vocab_us-territories_def.mp3",
+    "term": "vocab_us-territories_term.mp3"
+  },
+  "vetoes-bills": {
+    "definition": "vocab_vetoes-bills_def.mp3",
+    "term": "vocab_vetoes-bills_term.mp3"
+  },
+  "vice-president": {
+    "definition": "vocab_vice-president_def.mp3",
+    "term": "vocab_vice-president_term.mp3"
+  },
+  "vote-federal-election": {
+    "definition": "vocab_vote-federal-election_def.mp3",
+    "term": "vocab_vote-federal-election_term.mp3"
+  },
+  "voting-amendments": {
+    "definition": "vocab_voting-amendments_def.mp3",
+    "term": "vocab_voting-amendments_term.mp3"
+  },
+  "voting-rights": {
+    "definition": "vocab_voting-rights_def.mp3",
+    "term": "vocab_voting-rights_term.mp3"
+  },
+  "wars-1800s": {
+    "definition": "vocab_wars-1800s_def.mp3",
+    "term": "vocab_wars-1800s_term.mp3"
+  },
+  "wars-1900s": {
+    "definition": "vocab_wars-1900s_def.mp3",
+    "term": "vocab_wars-1900s_term.mp3"
+  },
+  "we-the-people": {
+    "definition": "vocab_we-the-people_def.mp3",
+    "term": "vocab_we-the-people_term.mp3"
+  },
+  "woodrow-wilson": {
+    "definition": "vocab_woodrow-wilson_def.mp3",
+    "term": "vocab_woodrow-wilson_term.mp3"
+  },
+  "world-war-two": {
+    "definition": "vocab_world-war-two_def.mp3",
+    "term": "vocab_world-war-two_term.mp3"
+  }
+}

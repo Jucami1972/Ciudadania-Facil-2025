@@ -7,22 +7,26 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   TextInput,
   ActivityIndicator,
   Alert,
   Platform,
+  StatusBar,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Speech from 'expo-speech';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProps } from '../../types/navigation';
 import aiInterviewN400Service, { InterviewContext } from '../../services/aiInterviewN400Service';
-import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 import WebLayout from '../../components/layout/WebLayout';
 import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
 import { USE_BACKEND, BACKEND_URL } from '../../constants/backend';
+
+const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || '';
 
 const isWeb = Platform.OS === 'web';
 
@@ -45,26 +49,66 @@ const AIInterviewN400ScreenModerno = () => {
   const [applicantName, setApplicantName] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [waitingForAutoMessage, setWaitingForAutoMessage] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const ttsSound = useRef<Audio.Sound | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const welcomeScrollRef = useRef<ScrollView>(null);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [pastSessionCount, setPastSessionCount] = useState(0);
 
-  // Hook de reconocimiento de voz - siempre se llama (requisito de React)
-  const {
-    isRecording: isListening,
-    isSupported: voiceSupported,
-    startRecording,
-    stopRecording,
-  } = useVoiceRecognition({
-    onSpeechResult: (text) => {
-      setUserInput(text);
-      stopRecording();
-    },
-    onError: (error) => {
-      // No mostrar errores automáticos de disponibilidad
-      // Solo mostrar errores reales cuando el usuario intenta usar la voz
-      // El mensaje de disponibilidad se maneja en handleVoiceInput
-    },
-  });
+  // Cargar conteo de sesiones pasadas
+  useEffect(() => {
+    const loadSessionCount = async () => {
+      try {
+        const data = await AsyncStorage.getItem('@interview:sessions');
+        if (data) {
+          const sessions = JSON.parse(data);
+          setPastSessionCount(Array.isArray(sessions) ? sessions.length : 0);
+        }
+      } catch {
+        // silently ignore
+      }
+    };
+    loadSessionCount();
+  }, []);
+
+  // Guardar sesión al terminar
+  const saveSession = async () => {
+    if (messages.length < 2) return;
+    try {
+      const session = {
+        id: sessionId || Date.now().toString(),
+        date: new Date().toISOString(),
+        applicantName,
+        messageCount: messages.length,
+        officerMessages: messages.filter(m => m.role === 'officer').length,
+        applicantMessages: messages.filter(m => m.role === 'applicant').length,
+      };
+      const existing = await AsyncStorage.getItem('@interview:sessions');
+      const sessions = existing ? JSON.parse(existing) : [];
+      sessions.unshift(session);
+      // Mantener últimas 20 sesiones
+      const trimmed = sessions.slice(0, 20);
+      await AsyncStorage.setItem('@interview:sessions', JSON.stringify(trimmed));
+      setPastSessionCount(trimmed.length);
+    } catch {
+      if (__DEV__) console.error('Error saving interview session');
+    }
+  };
+
+  const handleEndInterview = async () => {
+    // Stop any playing TTS audio
+    if (ttsSound.current) {
+      try { await ttsSound.current.stopAsync(); await ttsSound.current.unloadAsync(); } catch {}
+      ttsSound.current = null;
+    }
+    await saveSession();
+    setSessionStarted(false);
+    setMessages([]);
+    setSessionId(null);
+  };
 
   // Mostrar estado del backend cuando se carga la pantalla
   useEffect(() => {
@@ -136,28 +180,172 @@ const AIInterviewN400ScreenModerno = () => {
   };
 
 
-  // Función para hablar un mensaje
+  // ========== OpenAI TTS — voz natural del oficial ==========
   const speakMessage = async (text: string): Promise<void> => {
-    return new Promise((resolve) => {
-      setIsSpeaking(true);
-      Speech.speak(text, {
-        language: 'en-US',
-        rate: 0.85,
-        pitch: 1.0,
-        onDone: () => {
-          setIsSpeaking(false);
-          resolve();
+    if (!OPENAI_API_KEY) {
+      if (__DEV__) console.warn('No OPENAI_API_KEY — TTS desactivado');
+      return;
+    }
+    setIsSpeaking(true);
+    try {
+      // Detener audio previo
+      if (ttsSound.current) {
+        try { await ttsSound.current.stopAsync(); await ttsSound.current.unloadAsync(); } catch {}
+        ttsSound.current = null;
+      }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
+
+      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
         },
-        onStopped: () => {
-          setIsSpeaking(false);
-          resolve();
-        },
-        onError: () => {
-          setIsSpeaking(false);
-          resolve();
-        },
+        body: JSON.stringify({
+          model: 'tts-1',
+          voice: 'nova',
+          input: text,
+          speed: 0.95,
+          response_format: 'mp3',
+        }),
       });
-    });
+
+      if (!response.ok) {
+        throw new Error(`TTS API error: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: `data:audio/mp3;base64,${base64}` },
+        { shouldPlay: true }
+      );
+      ttsSound.current = sound;
+
+      await new Promise<void>((resolve) => {
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            resolve();
+          }
+        });
+      });
+
+      await sound.unloadAsync();
+      ttsSound.current = null;
+    } catch (error) {
+      if (__DEV__) console.error('OpenAI TTS error:', error);
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
+  // ========== Grabación de voz del usuario ==========
+  const startVoiceRecording = async () => {
+    try {
+      // Detener TTS si está hablando
+      if (ttsSound.current) {
+        try { await ttsSound.current.stopAsync(); await ttsSound.current.unloadAsync(); } catch {}
+        ttsSound.current = null;
+        setIsSpeaking(false);
+      }
+
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Permisos', 'Se necesitan permisos de micrófono para responder con voz.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      recordingRef.current = recording;
+      setIsRecording(true);
+    } catch (err) {
+      if (__DEV__) console.error('Failed to start recording:', err);
+      Alert.alert('Error', 'No se pudo iniciar la grabación');
+    }
+  };
+
+  const stopVoiceRecording = async () => {
+    const recording = recordingRef.current;
+    if (!recording) return;
+    setIsRecording(false);
+    setIsTranscribing(true);
+
+    try {
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      if (uri) {
+        await transcribeAndSend(uri);
+      }
+    } catch (err) {
+      if (__DEV__) console.error('Failed to stop recording:', err);
+      setIsTranscribing(false);
+    }
+    recordingRef.current = null;
+  };
+
+  const transcribeAndSend = async (uri: string) => {
+    if (!OPENAI_API_KEY) {
+      Alert.alert('Error', 'No se encontró EXPO_PUBLIC_OPENAI_API_KEY');
+      setIsTranscribing(false);
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append('file', {
+        uri,
+        name: 'audio.m4a',
+        type: 'audio/m4a',
+      } as any);
+      formData.append('model', 'whisper-1');
+      formData.append('language', 'en');
+
+      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.text && data.text.trim()) {
+        setUserInput(data.text.trim());
+      } else {
+        Alert.alert('No se entendió', 'No se pudo transcribir tu audio. Intenta de nuevo o escribe tu respuesta.');
+      }
+    } catch (err) {
+      if (__DEV__) console.error('Transcription error:', err);
+      Alert.alert('Error', 'Error al transcribir. Verifica tu conexión.');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleVoiceInput = async () => {
+    if (isRecording) {
+      await stopVoiceRecording();
+    } else {
+      await startVoiceRecording();
+    }
   };
 
   // Función para generar mensaje automático después de una respuesta
@@ -240,30 +428,16 @@ const AIInterviewN400ScreenModerno = () => {
     }
   };
 
-  const handleVoiceInput = async () => {
-    if (isListening) {
-      stopRecording();
-    } else {
-      if (!voiceSupported) {
-        Alert.alert(
-          'Reconocimiento de Voz No Disponible',
-          'El reconocimiento de voz requiere un development build y no está disponible en Expo Go.\n\nPuedes continuar la entrevista escribiendo tus respuestas en el campo de texto.',
-          [{ text: 'Entendido', style: 'default' }]
-        );
-        return;
-      }
-      try {
-        await startRecording('en-US'); // Inglés para la entrevista
-      } catch (error) {
-        Alert.alert('Error', 'No se pudo iniciar el reconocimiento de voz');
-      }
-    }
-  };
-
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
-      Speech.stop();
+      if (ttsSound.current) {
+        ttsSound.current.stopAsync().catch(() => {});
+        ttsSound.current.unloadAsync().catch(() => {});
+      }
+      if (recordingRef.current) {
+        recordingRef.current.stopAndUnloadAsync().catch(() => {});
+      }
       if (speechTimeoutRef.current) {
         clearTimeout(speechTimeoutRef.current);
       }
@@ -272,165 +446,250 @@ const AIInterviewN400ScreenModerno = () => {
 
   if (!sessionStarted) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Entrevista AI</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        <ScrollView 
-          style={styles.container} 
-          contentContainerStyle={styles.centerContent}
-        >
-          <View style={styles.welcomeCard}>
-            <View style={styles.iconWrapper}>
-              <MaterialCommunityIcons name="robot-happy" size={64} color="#1E40AF" />
-            </View>
-            <Text style={styles.welcomeTitle}>Entrevista de Ciudadanía</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Practica con un oficial de inmigración AI que simula una entrevista real del USCIS.
-            </Text>
-
-            <View style={styles.featuresList}>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="keyboard" size={20} color="#1E40AF" />
-                <Text style={styles.featureText}>Responde escribiendo (voz opcional)</Text>
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Entrevista AI</Text>
+                <Text style={styles.headerSubtitle}>Simulación USCIS N-400</Text>
               </View>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="chat" size={20} color="#1E40AF" />
-                <Text style={styles.featureText}>Conversación realista</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <MaterialCommunityIcons name="volume-high" size={20} color="#1E40AF" />
-                <Text style={styles.featureText}>El oficial habla automáticamente</Text>
-              </View>
+              <View style={{ width: 44 }} />
             </View>
+          </LinearGradient>
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Tu Nombre Completo</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Ej: Juan García"
-                value={applicantName}
-                onChangeText={setApplicantName}
-              />
-            </View>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+          <ScrollView
+            ref={welcomeScrollRef}
+            style={styles.container}
+            contentContainerStyle={styles.centerContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.welcomeCard}>
+              <View style={styles.iconWrapper}>
+                <MaterialCommunityIcons name="account-tie" size={40} color="#1E40AF" />
+              </View>
+              <Text style={styles.welcomeTitle}>Entrevista de Ciudadanía</Text>
+              <Text style={styles.welcomeSubtitle}>
+                Practica con un oficial de inmigración AI que simula una entrevista real del USCIS.
+              </Text>
 
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={startInterview}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="play" size={20} color="#fff" />
-                  <Text style={styles.buttonText}>Comenzar Entrevista</Text>
-                </>
+              <View style={styles.featuresContainer}>
+                <Text style={styles.featuresTitle}>Qué incluye</Text>
+                <View style={styles.featureItem}>
+                  <View style={styles.featureBullet}>
+                    <MaterialCommunityIcons name="keyboard" size={16} color="#1E40AF" />
+                  </View>
+                  <Text style={styles.featureText}>Responde escribiendo (voz opcional)</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <View style={styles.featureBullet}>
+                    <MaterialCommunityIcons name="chat-processing" size={16} color="#1E40AF" />
+                  </View>
+                  <Text style={styles.featureText}>Conversación realista con AI</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <View style={styles.featureBullet}>
+                    <MaterialCommunityIcons name="volume-high" size={16} color="#1E40AF" />
+                  </View>
+                  <Text style={styles.featureText}>El oficial habla automáticamente</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <View style={styles.featureBullet}>
+                    <MaterialCommunityIcons name="file-document-check" size={16} color="#1E40AF" />
+                  </View>
+                  <Text style={styles.featureText}>Fases: identidad, N-400, civismo, juramento</Text>
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Tu Nombre Completo</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ej: Juan García"
+                  placeholderTextColor="#9CA3AF"
+                  value={applicantName}
+                  onChangeText={setApplicantName}
+                  onFocus={() => {
+                    setTimeout(() => {
+                      welcomeScrollRef.current?.scrollToEnd({ animated: true });
+                    }, 300);
+                  }}
+                />
+              </View>
+
+              {pastSessionCount > 0 && (
+                <View style={styles.sessionsBadge}>
+                  <MaterialCommunityIcons name="history" size={14} color="#6B7280" />
+                  <Text style={styles.sessionsText}>
+                    {pastSessionCount} {pastSessionCount === 1 ? 'entrevista completada' : 'entrevistas completadas'}
+                  </Text>
+                </View>
               )}
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
 
-      </SafeAreaView>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={startInterview}
+                disabled={isLoading}
+                activeOpacity={0.8}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="play" size={20} color="#fff" />
+                    <Text style={styles.primaryButtonText}>Comenzar Entrevista</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </View>
     );
   }
 
   const content = (
     <>
       {!isWeb && (
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Entrevista en Curso</Text>
-          <TouchableOpacity onPress={() => setSessionStarted(false)}>
-            <MaterialCommunityIcons name="close" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
+        <LinearGradient
+          colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { paddingTop: insets.top + 8 }]}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Entrevista en Curso</Text>
+              <Text style={styles.headerSubtitle}>Responde al oficial</Text>
+            </View>
+            <TouchableOpacity onPress={handleEndInterview} style={styles.backButton}>
+              <MaterialCommunityIcons name="close" size={22} color="white" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       )}
 
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
-        {messages.map((message, index) => (
-          <View
-            key={index}
-            style={[
-              styles.messageBubble,
-              message.role === 'officer' ? styles.officerBubble : styles.applicantBubble,
-            ]}
-          >
-            <View style={styles.messageHeader}>
-              <MaterialCommunityIcons
-                name={message.role === 'officer' ? 'robot-happy' : 'account'}
-                size={16}
-                color={message.role === 'officer' ? '#1E40AF' : '#666'}
-              />
-              <Text style={styles.messageSender}>
-                {message.role === 'officer' ? 'Oficial' : 'Tú'}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+        >
+          {messages.map((message, index) => (
+            <View
+              key={index}
+              style={[
+                styles.messageBubble,
+                message.role === 'officer' ? styles.officerBubble : styles.applicantBubble,
+              ]}
+            >
+              <View style={styles.messageHeader}>
+                <MaterialCommunityIcons
+                  name={message.role === 'officer' ? 'shield-account' : 'account'}
+                  size={16}
+                  color={message.role === 'officer' ? '#1E40AF' : '#6B7280'}
+                />
+                <Text style={[
+                  styles.messageSender,
+                  message.role === 'officer' && { color: '#1E40AF' }
+                ]}>
+                  {message.role === 'officer' ? 'Oficial USCIS' : 'Tú'}
+                </Text>
+              </View>
+              <Text style={[
+                styles.messageText,
+                message.role === 'applicant' && styles.applicantMessageText
+              ]}>
+                {message.content}
               </Text>
             </View>
-            <Text style={[
-              styles.messageText,
-              message.role === 'applicant' && styles.applicantMessageText
-            ]}>
-              {message.content}
-            </Text>
-          </View>
-        ))}
-        {isLoading && (
-          <View style={styles.loadingBubble}>
-            <ActivityIndicator color="#1E40AF" />
-            <Text style={styles.loadingText}>El oficial está pensando...</Text>
-          </View>
-        )}
-        {isSpeaking && (
-          <View style={styles.speakingIndicator}>
-            <MaterialCommunityIcons name="volume-high" size={16} color="#1E40AF" />
-            <Text style={styles.speakingText}>El oficial está hablando...</Text>
-          </View>
-        )}
-      </ScrollView>
+          ))}
+          {isLoading && (
+            <View style={styles.loadingBubble}>
+              <ActivityIndicator color="#1E40AF" size="small" />
+              <Text style={styles.loadingText}>El oficial está pensando...</Text>
+            </View>
+          )}
+          {isSpeaking && (
+            <View style={styles.speakingIndicator}>
+              <MaterialCommunityIcons name="volume-high" size={16} color="#1E40AF" />
+              <Text style={styles.speakingText}>El oficial está hablando...</Text>
+            </View>
+          )}
+        </ScrollView>
 
-      <View style={styles.inputArea}>
-        <View style={styles.inputRow}>
-          <TouchableOpacity
-            style={[styles.voiceButton, !voiceSupported && styles.voiceButtonDisabled]}
-            onPress={handleVoiceInput}
-            disabled={isLoading || isSpeaking}
-          >
-            <MaterialCommunityIcons
-              name={isListening ? 'microphone' : 'microphone-outline'}
-              size={24}
-              color={isListening ? '#ef4444' : (!voiceSupported ? '#9ca3af' : '#1E40AF')}
+        <View style={styles.inputArea}>
+          <View style={styles.inputRow}>
+            <TouchableOpacity
+              style={[
+                styles.voiceButton,
+                isRecording && styles.voiceButtonRecording,
+              ]}
+              onPress={handleVoiceInput}
+              disabled={isLoading || isSpeaking || isTranscribing}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name={isRecording ? 'microphone' : 'microphone-outline'}
+                size={24}
+                color={isRecording ? '#fff' : '#1E40AF'}
+              />
+            </TouchableOpacity>
+
+            <TextInput
+              style={styles.messageInput}
+              placeholder={
+                isRecording ? "Grabando... toca el mic para parar"
+                : isTranscribing ? "Transcribiendo tu voz..."
+                : isSpeaking ? "Escuchando al oficial..."
+                : "Escribe o habla tu respuesta..."
+              }
+              placeholderTextColor="#9CA3AF"
+              value={userInput}
+              onChangeText={setUserInput}
+              multiline
+              editable={!isLoading && !isSpeaking && !isRecording && !isTranscribing}
             />
-          </TouchableOpacity>
 
-          <TextInput
-            style={styles.messageInput}
-            placeholder={isSpeaking ? "Escuchando al oficial..." : "Escribe tu respuesta..."}
-            value={userInput}
-            onChangeText={setUserInput}
-            multiline
-            editable={!isLoading && !isSpeaking}
-          />
-
-          <TouchableOpacity
-            style={[styles.sendButton, (isLoading || isSpeaking || !userInput.trim()) && styles.sendButtonDisabled]}
-            onPress={handleSendMessage}
-            disabled={isLoading || isSpeaking || !userInput.trim()}
-          >
-            <MaterialCommunityIcons name="send" size={20} color="#fff" />
-          </TouchableOpacity>
+            {isTranscribing ? (
+              <View style={styles.sendButton}>
+                <ActivityIndicator color="#fff" size="small" />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={[styles.sendButton, (isLoading || isSpeaking || isRecording || !userInput.trim()) && styles.sendButtonDisabled]}
+                onPress={handleSendMessage}
+                disabled={isLoading || isSpeaking || isRecording || !userInput.trim()}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="send" size={20} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </>
   );
 
@@ -443,40 +702,62 @@ const AIInterviewN400ScreenModerno = () => {
     );
   }
 
-  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
+  // Web móvil o app móvil
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {content}
-    </SafeAreaView>
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        {content}
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#1E3A8A',
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   header: {
-    backgroundColor: '#1E40AF', // Azul profesional
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 1,
   },
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   centerContent: {
     justifyContent: 'center',
@@ -490,27 +771,29 @@ const styles = StyleSheet.create({
     padding: 28,
     alignItems: 'center',
     marginVertical: 20,
-    shadowColor: '#1E40AF', // Azul profesional
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 6,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: '#E5E7EB',
+    width: '100%',
+    maxWidth: 480,
   },
   iconWrapper: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   welcomeTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#1f2937',
+    color: '#1F2937',
     marginTop: 8,
     marginBottom: 10,
     textAlign: 'center',
@@ -518,60 +801,95 @@ const styles = StyleSheet.create({
   },
   welcomeSubtitle: {
     fontSize: 15,
-    color: '#6b7280',
+    color: '#6B7280',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
   },
-  featuresList: {
+  featuresContainer: {
     width: '100%',
     marginBottom: 24,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 16,
+  },
+  featuresTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 14,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
+  featureBullet: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   featureText: {
     marginLeft: 12,
     fontSize: 14,
-    color: '#1f2937',
+    color: '#374151',
     fontWeight: '500',
+    flex: 1,
   },
   inputContainer: {
     width: '100%',
     marginBottom: 16,
   },
+  sessionsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    marginBottom: 16,
+    alignSelf: 'center',
+  },
+  sessionsText: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
+    color: '#1F2937',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#D1D5DB',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
     backgroundColor: '#fff',
+    color: '#1F2937',
   },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#1E40AF', // Azul profesional
+    backgroundColor: '#1E40AF',
     paddingVertical: 16,
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1E40AF', // Azul profesional
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 5,
   },
-  buttonText: {
+  primaryButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '700',
@@ -579,10 +897,9 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
     ...Platform.select({
-      web: {
-        // maxHeight se maneja con flex en React Native
-      },
+      web: {},
     }),
   },
   messagesContent: {
@@ -607,13 +924,14 @@ const styles = StyleSheet.create({
   },
   officerBubble: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e0e7ff',
-    borderLeftWidth: 4,
+    backgroundColor: '#EFF6FF',
+    borderLeftWidth: 3,
     borderLeftColor: '#1E40AF',
   },
   applicantBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#1E40AF', // Azul profesional
+    backgroundColor: '#1E40AF',
+    borderRadius: 16,
   },
   messageHeader: {
     flexDirection: 'row',
@@ -624,11 +942,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 6,
-    color: '#6b7280',
+    color: '#6B7280',
   },
   messageText: {
     fontSize: 15,
-    color: '#1f2937',
+    color: '#1F2937',
     lineHeight: 22,
     fontWeight: '500',
   },
@@ -637,7 +955,7 @@ const styles = StyleSheet.create({
   },
   loadingBubble: {
     alignSelf: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 16,
@@ -647,11 +965,11 @@ const styles = StyleSheet.create({
   loadingText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#6b7280',
+    color: '#6B7280',
   },
   speakingIndicator: {
     alignSelf: 'center',
-    backgroundColor: '#e0e7ff',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
@@ -659,30 +977,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#1E40AF', // Azul profesional
+    borderColor: '#BFDBFE',
   },
   speakingText: {
     marginLeft: 8,
     fontSize: 12,
-    color: '#1E40AF', // Azul profesional
+    color: '#1E40AF',
     fontWeight: '600',
   },
   inputArea: {
     backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#E5E7EB',
     paddingHorizontal: 16,
     paddingVertical: 12,
     ...Platform.select({
       web: {
-        // position: 'sticky' no es compatible con React Native
-        // Se manejará con flex en el contenedor padre
         maxWidth: 1000,
         alignSelf: 'center',
         width: '100%',
         paddingHorizontal: 24,
         paddingVertical: 16,
-        boxShadow: '0 -2px 8px rgba(0,0,0,0.1)',
+        boxShadow: '0 -2px 8px rgba(0,0,0,0.06)',
       },
     }),
   },
@@ -697,7 +1013,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#EFF6FF',
+  },
+  voiceButtonRecording: {
+    backgroundColor: '#EF4444',
   },
   voiceButtonDisabled: {
     opacity: 0.5,
@@ -726,7 +1045,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#E5E7EB',
   },
   modalTitle: {
     fontSize: 20,
@@ -748,7 +1067,7 @@ const styles = StyleSheet.create({
   },
   formInput: {
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
@@ -759,14 +1078,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    borderTopColor: '#E5E7EB',
     gap: 12,
   },
   cancelButton: {
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#F3F4F6',
   },
   cancelButtonText: {
     color: '#374151',
@@ -785,25 +1104,26 @@ const styles = StyleSheet.create({
   messageInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#D1D5DB',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
     maxHeight: 100,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F8FAFC',
+    color: '#1F2937',
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1E40AF', // Azul profesional
+    backgroundColor: '#1E40AF',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
-    shadowColor: '#1E40AF', // Azul profesional
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },

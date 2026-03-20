@@ -1,1061 +1,410 @@
 // src/screens/VocabularioScreenModernoV2.tsx
-// Rediseño moderno y atractivo de la pantalla de Vocabulario
+// Vocabulario con dos secciones: Examen Cívico y Entrevista N-400
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
   TextInput,
   FlatList,
   Modal,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import * as Speech from 'expo-speech';
 
 import { NavigationProps } from '../types/navigation';
 import WebLayout from '../components/layout/WebLayout';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
+import { vocabulary, VocabEntry } from '../data/vocabulary';
+import { designSystem } from '../config/designSystem';
+import { vocabTermAudioMap, vocabDefAudioMap } from '../assets/audio/vocabulary/vocabularyAudioMap';
+import { audioManager } from '../services/AudioManagerService';
 
-const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
+
+// --- Tipos ---
+type MainTab = 'civics' | 'interview';
 
 interface VocabularyWord {
   id: string;
   word: string;
-  wordEs: string; // Palabra en español para búsqueda
-  pronunciation: string;
-  definition: string;
-  example: string;
-  category: string;
-  difficulty: 'fácil' | 'medio' | 'difícil';
+  wordEs: string;
+  definitionEs: string;
+  definitionEn: string;
+  originalCategory: string;
+  tags: string[];
 }
 
-const categories = [
-  { id: 'government', name: 'Gobierno Americano', icon: 'bank', color: '#1E40AF' }, // Azul profesional
-  { id: 'history', name: 'Historia Americana', icon: 'book-open-variant', color: '#1E3A8A' }, // Azul oscuro
-  { id: 'symbols_holidays', name: 'Educación Cívica', icon: 'school', color: '#60A5FA' }, // Azul claro
+// --- Subcategorías temáticas ---
+interface SubCategory {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+}
+
+const civicsSubCategories: SubCategory[] = [
+  { id: 'all', name: 'Todos', icon: 'view-grid', color: '#1E40AF' },
+  { id: 'government', name: 'Gobierno', icon: 'bank', color: '#1E40AF' },
+  { id: 'history', name: 'Historia', icon: 'book-open-variant', color: '#7C3AED' },
+  { id: 'rights', name: 'Derechos', icon: 'shield-check', color: '#059669' },
+  { id: 'geography', name: 'Geografía', icon: 'earth', color: '#0891B2' },
+  { id: 'symbols', name: 'Símbolos', icon: 'flag', color: '#DC2626' },
+  { id: 'holidays', name: 'Feriados', icon: 'calendar-star', color: '#D97706' },
+  { id: 'civics', name: 'Cívica', icon: 'school', color: '#3B82F6' },
 ];
 
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-const vocabularyWords: VocabularyWord[] = [
-  // GOBIERNO AMERICANO - FÁCILES
-  {
-    id: '1',
-    word: 'Constitution',
-    wordEs: 'Constitución',
-    pronunciation: 'con-sti-TU-shon',
-    definition: 'El documento fundamental que establece el gobierno de los Estados Unidos.',
-    example: 'La Constitución es la ley suprema del país.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '2',
-    word: 'Congress',
-    wordEs: 'Congreso',
-    pronunciation: 'CON-gres',
-    definition: 'El poder legislativo del gobierno federal, compuesto por el Senado y la Cámara de Representantes.',
-    example: 'El Congreso escribe las leyes federales.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '3',
-    word: 'President',
-    wordEs: 'Presidente',
-    pronunciation: 'PRE-si-dent',
-    definition: 'El jefe del poder ejecutivo y líder de los Estados Unidos.',
-    example: 'El Presidente firma los proyectos de ley para convertirlos en ley.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '4',
-    word: 'Senate',
-    wordEs: 'Senado',
-    pronunciation: 'SE-net',
-    definition: 'Una de las dos cámaras del Congreso, con dos senadores por estado.',
-    example: 'El Senado tiene 100 senadores.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '5',
-    word: 'House of Representatives',
-    wordEs: 'Cámara de Representantes',
-    pronunciation: 'jaus of re-pre-SEN-ta-tivs',
-    definition: 'Una de las dos cámaras del Congreso, con representantes basados en la población.',
-    example: 'La Cámara de Representantes tiene 435 miembros.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '6',
-    word: 'Bill',
-    wordEs: 'Proyecto de Ley',
-    pronunciation: 'bil',
-    definition: 'Una propuesta de ley presentada al Congreso.',
-    example: 'El proyecto de ley fue aprobado por el Congreso.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '7',
-    word: 'Vote',
-    wordEs: 'Votar',
-    pronunciation: 'vot',
-    definition: 'Expresar una preferencia o elección en una elección.',
-    example: 'Los ciudadanos votan para elegir a sus representantes.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '8',
-    word: 'Citizen',
-    wordEs: 'Ciudadano',
-    pronunciation: 'SI-ti-zen',
-    definition: 'Una persona que es miembro legal de un país.',
-    example: 'Los ciudadanos tienen derechos y responsabilidades.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '9',
-    word: 'Rights',
-    wordEs: 'Derechos',
-    pronunciation: 'raits',
-    definition: 'Libertades y privilegios garantizados a los ciudadanos.',
-    example: 'La Carta de Derechos protege los derechos básicos de los estadounidenses.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '10',
-    word: 'Democracy',
-    wordEs: 'Democracia',
-    pronunciation: 'di-MO-cra-si',
-    definition: 'Sistema de gobierno donde el poder reside en el pueblo.',
-    example: 'Estados Unidos es una democracia representativa.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  // GOBIERNO AMERICANO - MEDIO/DIFÍCIL
-  {
-    id: '11',
-    word: 'Amendment',
-    wordEs: 'Enmienda',
-    pronunciation: 'a-MEND-ment',
-    definition: 'Una modificación o adición a la Constitución.',
-    example: 'La Constitución tiene 27 enmiendas.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '12',
-    word: 'Bill of Rights',
-    wordEs: 'Carta de Derechos',
-    pronunciation: 'bil of raits',
-    definition: 'Las primeras diez enmiendas a la Constitución que protegen los derechos básicos.',
-    example: 'La Carta de Derechos protege la libertad de expresión.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '13',
-    word: 'Veto',
-    wordEs: 'Veto',
-    pronunciation: 'VI-to',
-    definition: 'El poder del Presidente para rechazar un proyecto de ley.',
-    example: 'El Presidente puede vetar proyectos de ley del Congreso.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '14',
-    word: 'Cabinet',
-    wordEs: 'Gabinete',
-    pronunciation: 'CA-bi-net',
-    definition: 'Un grupo de asesores del Presidente que encabezan los departamentos ejecutivos.',
-    example: 'El Gabinete aconseja al Presidente.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '15',
-    word: 'Supreme Court',
-    wordEs: 'Corte Suprema',
-    pronunciation: 'su-PRIM cort',
-    definition: 'El tribunal más alto del sistema judicial federal.',
-    example: 'La Corte Suprema tiene nueve jueces.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '16',
-    word: 'Electoral College',
-    wordEs: 'Colegio Electoral',
-    pronunciation: 'i-LEK-to-ral CO-lich',
-    definition: 'El sistema que elige al Presidente de los Estados Unidos.',
-    example: 'El Colegio Electoral decide quién es elegido presidente.',
-    category: 'government',
-    difficulty: 'difícil',
-  },
-  {
-    id: '17',
-    word: 'Ratify',
-    wordEs: 'Ratificar',
-    pronunciation: 'RA-ti-fai',
-    definition: 'Confirmar o aprobar formalmente, especialmente un tratado o enmienda.',
-    example: 'Los estados ratificaron la Constitución en 1788.',
-    category: 'government',
-    difficulty: 'difícil',
-  },
-  {
-    id: '18',
-    word: 'Checks and Balances',
-    wordEs: 'Controles y Equilibrios',
-    pronunciation: 'cheks and BA-lan-ses',
-    definition: 'Sistema que previene que una rama del gobierno se vuelva demasiado poderosa.',
-    example: 'Los controles y equilibrios protegen contra el abuso de poder.',
-    category: 'government',
-    difficulty: 'difícil',
-  },
-  {
-    id: '19',
-    word: 'Separation of Powers',
-    wordEs: 'Separación de Poderes',
-    pronunciation: 'se-pa-REI-shon of PAU-ers',
-    definition: 'La división del gobierno en tres ramas: legislativa, ejecutiva y judicial.',
-    example: 'La separación de poderes es un principio fundamental del gobierno estadounidense.',
-    category: 'government',
-    difficulty: 'difícil',
-  },
-  {
-    id: '20',
-    word: 'Federal',
-    wordEs: 'Federal',
-    pronunciation: 'FE-de-ral',
-    definition: 'Relacionado con el gobierno nacional de los Estados Unidos.',
-    example: 'El gobierno federal tiene poderes específicos según la Constitución.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  // HISTORIA AMERICANA - FÁCILES
-  {
-    id: '21',
-    word: 'Independence',
-    wordEs: 'Independencia',
-    pronunciation: 'in-di-PEN-dens',
-    definition: 'La libertad de controlar el propio destino.',
-    example: 'Estados Unidos declaró su independencia en 1776.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '22',
-    word: 'Declaration of Independence',
-    wordEs: 'Declaración de Independencia',
-    pronunciation: 'de-cla-REI-shon of in-di-PEN-dens',
-    definition: 'El documento que declaró que las colonias americanas eran libres de Gran Bretaña.',
-    example: 'La Declaración de Independencia fue firmada en 1776.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '23',
-    word: 'Colony',
-    wordEs: 'Colonia',
-    pronunciation: 'CO-lo-ni',
-    definition: 'Un territorio controlado por otro país.',
-    example: 'Las trece colonias originales estaban bajo control británico.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '24',
-    word: 'War',
-    wordEs: 'Guerra',
-    pronunciation: 'uor',
-    definition: 'Un conflicto armado entre naciones o grupos.',
-    example: 'La Guerra de Independencia duró de 1775 a 1783.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '25',
-    word: 'Revolution',
-    wordEs: 'Revolución',
-    pronunciation: 're-vo-LU-shon',
-    definition: 'Un cambio fundamental en el poder político o la estructura organizativa.',
-    example: 'La Revolución Americana estableció los Estados Unidos como nación independiente.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '26',
-    word: 'Slavery',
-    wordEs: 'Esclavitud',
-    pronunciation: 'SLEI-vo-ri',
-    definition: 'El sistema donde las personas son propiedad de otras.',
-    example: 'La esclavitud fue abolida después de la Guerra Civil.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '27',
-    word: 'Civil War',
-    wordEs: 'Guerra Civil',
-    pronunciation: 'SI-vol uor',
-    definition: 'La guerra entre el Norte y el Sur de los Estados Unidos (1861-1865).',
-    example: 'La Guerra Civil terminó la esclavitud en los Estados Unidos.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '28',
-    word: 'Founding Fathers',
-    wordEs: 'Padres Fundadores',
-    pronunciation: 'FAUN-ding FA-thers',
-    definition: 'Los líderes que establecieron los Estados Unidos y escribieron la Constitución.',
-    example: 'Los Padres Fundadores incluyen a George Washington y Thomas Jefferson.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '29',
-    word: 'Territory',
-    wordEs: 'Territorio',
-    pronunciation: 'TE-ri-to-ri',
-    definition: 'Un área de tierra bajo la jurisdicción de un gobierno.',
-    example: 'Estados Unidos adquirió nuevos territorios durante su expansión.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '30',
-    word: 'Immigration',
-    wordEs: 'Inmigración',
-    pronunciation: 'i-mi-GREI-shon',
-    definition: 'El acto de venir a vivir permanentemente en un país extranjero.',
-    example: 'La inmigración ha sido importante en la historia de Estados Unidos.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  // HISTORIA AMERICANA - DIFÍCILES
-  {
-    id: '31',
-    word: 'Abolition',
-    wordEs: 'Abolición',
-    pronunciation: 'a-bo-LI-shon',
-    definition: 'El movimiento para poner fin a la esclavitud.',
-    example: 'La abolición de la esclavitud fue un logro importante.',
-    category: 'history',
-    difficulty: 'difícil',
-  },
-  {
-    id: '32',
-    word: 'Emancipation',
-    wordEs: 'Emancipación',
-    pronunciation: 'i-man-si-PEI-shon',
-    definition: 'El acto de liberar a alguien de la esclavitud.',
-    example: 'La Proclamación de Emancipación liberó a los esclavos en los estados confederados.',
-    category: 'history',
-    difficulty: 'difícil',
-  },
-  {
-    id: '33',
-    word: 'Manifest Destiny',
-    wordEs: 'Destino Manifiesto',
-    pronunciation: 'MA-ni-fest DES-ti-ni',
-    definition: 'La creencia de que Estados Unidos estaba destinado a expandirse hacia el oeste.',
-    example: 'El Destino Manifiesto justificó la expansión territorial de Estados Unidos.',
-    category: 'history',
-    difficulty: 'difícil',
-  },
-  // EDUCACIÓN CÍVICA - FÁCILES
-  {
-    id: '34',
-    word: 'Citizenship',
-    wordEs: 'Ciudadanía',
-    pronunciation: 'SI-ti-zen-ship',
-    definition: 'El estado de ser ciudadano de un país con derechos y responsabilidades.',
-    example: 'Obtuve la ciudadanía estadounidense el año pasado.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '35',
-    word: 'Flag',
-    wordEs: 'Bandera',
-    pronunciation: 'flag',
-    definition: 'Un símbolo nacional que representa un país.',
-    example: 'La bandera estadounidense tiene 50 estrellas y 13 rayas.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '36',
-    word: 'Holiday',
-    wordEs: 'Día Festivo',
-    pronunciation: 'JO-li-dei',
-    definition: 'Un día especial de celebración o conmemoración.',
-    example: 'El Día de la Independencia es un día festivo nacional.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '37',
-    word: 'Pledge of Allegiance',
-    wordEs: 'Juramento de Lealtad',
-    pronunciation: 'plech of a-LI-chans',
-    definition: 'Una promesa de lealtad a la bandera y a los Estados Unidos.',
-    example: 'El Juramento de Lealtad es parte de la ceremonia de naturalización.',
-    category: 'symbols_holidays',
-    difficulty: 'medio',
-  },
-  {
-    id: '38',
-    word: 'Allegiance',
-    wordEs: 'Lealtad',
-    pronunciation: 'a-LI-chans',
-    definition: 'Lealtad o devoción a una persona, país o causa.',
-    example: 'Los ciudadanos juran lealtad a los Estados Unidos.',
-    category: 'symbols_holidays',
-    difficulty: 'difícil',
-  },
-  {
-    id: '39',
-    word: 'Naturalization',
-    wordEs: 'Naturalización',
-    pronunciation: 'na-chu-ra-li-ZEI-shon',
-    definition: 'El proceso legal por el cual un extranjero se convierte en ciudadano.',
-    example: 'La naturalización requiere pasar un examen de ciudadanía.',
-    category: 'symbols_holidays',
-    difficulty: 'medio',
-  },
-  {
-    id: '40',
-    word: 'Oath',
-    wordEs: 'Juramento',
-    pronunciation: 'oz',
-    definition: 'Una promesa solemne, especialmente una promesa de lealtad.',
-    example: 'Los nuevos ciudadanos hacen un juramento de lealtad.',
-    category: 'symbols_holidays',
-    difficulty: 'medio',
-  },
-  // MÁS PALABRAS - GOBIERNO
-  {
-    id: '41',
-    word: 'Legislative',
-    wordEs: 'Legislativo',
-    pronunciation: 'LE-chis-lei-tiv',
-    definition: 'La rama del gobierno que hace las leyes.',
-    example: 'La rama legislativa incluye el Congreso.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '42',
-    word: 'Executive',
-    wordEs: 'Ejecutivo',
-    pronunciation: 'ig-ZE-cu-tiv',
-    definition: 'La rama del gobierno que aplica las leyes.',
-    example: 'El Presidente encabeza la rama ejecutiva.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '43',
-    word: 'Judicial',
-    wordEs: 'Judicial',
-    pronunciation: 'chu-DI-shal',
-    definition: 'La rama del gobierno que interpreta las leyes.',
-    example: 'La rama judicial incluye la Corte Suprema.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '44',
-    word: 'Senator',
-    wordEs: 'Senador',
-    pronunciation: 'SE-na-ter',
-    definition: 'Un miembro del Senado de los Estados Unidos.',
-    example: 'Cada estado tiene dos senadores.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '45',
-    word: 'Representative',
-    wordEs: 'Representante',
-    pronunciation: 're-pre-SEN-ta-tiv',
-    definition: 'Un miembro de la Cámara de Representantes.',
-    example: 'Los representantes son elegidos por distritos.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '46',
-    word: 'Vice President',
-    wordEs: 'Vicepresidente',
-    pronunciation: 'vais PRE-si-dent',
-    definition: 'El segundo cargo más alto en el poder ejecutivo.',
-    example: 'El Vicepresidente asume si el Presidente no puede servir.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '47',
-    word: 'Capital',
-    wordEs: 'Capital',
-    pronunciation: 'CA-pi-tal',
-    definition: 'La ciudad donde se encuentra el gobierno de un estado o país.',
-    example: 'Washington, D.C. es la capital de los Estados Unidos.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '48',
-    word: 'Governor',
-    wordEs: 'Gobernador',
-    pronunciation: 'GO-ver-ner',
-    definition: 'El jefe del poder ejecutivo de un estado.',
-    example: 'El gobernador es elegido por los ciudadanos del estado.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  {
-    id: '49',
-    word: 'Treaty',
-    wordEs: 'Tratado',
-    pronunciation: 'TRI-ti',
-    definition: 'Un acuerdo formal entre países.',
-    example: 'El Presidente puede hacer tratados con otros países.',
-    category: 'government',
-    difficulty: 'medio',
-  },
-  {
-    id: '50',
-    word: 'State',
-    wordEs: 'Estado',
-    pronunciation: 'steit',
-    definition: 'Una de las 50 divisiones principales de los Estados Unidos.',
-    example: 'Hay 50 estados en los Estados Unidos.',
-    category: 'government',
-    difficulty: 'fácil',
-  },
-  // MÁS PALABRAS - HISTORIA
-  {
-    id: '51',
-    word: 'Revolutionary War',
-    wordEs: 'Guerra Revolucionaria',
-    pronunciation: 're-vo-LU-sho-ne-ri uor',
-    definition: 'La guerra por la independencia de Estados Unidos (1775-1783).',
-    example: 'La Guerra Revolucionaria estableció a Estados Unidos como nación independiente.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '52',
-    word: 'Colonist',
-    wordEs: 'Colono',
-    pronunciation: 'CO-lo-nist',
-    definition: 'Una persona que vive en una colonia.',
-    example: 'Los colonos vinieron a América buscando libertad.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '53',
-    word: 'Freedom',
-    wordEs: 'Libertad',
-    pronunciation: 'FRI-dom',
-    definition: 'El poder de actuar, hablar o pensar sin restricciones.',
-    example: 'La libertad es un derecho fundamental en Estados Unidos.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '54',
-    word: 'Liberty',
-    wordEs: 'Libertad',
-    pronunciation: 'LI-ber-ti',
-    definition: 'La libertad de restricciones o control.',
-    example: 'La Estatua de la Libertad simboliza la libertad.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '55',
-    word: 'Equality',
-    wordEs: 'Igualdad',
-    pronunciation: 'i-CUA-lo-ti',
-    definition: 'El estado de ser igual en derechos y oportunidades.',
-    example: 'La igualdad es un principio fundamental de Estados Unidos.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '56',
-    word: 'Abolish',
-    wordEs: 'Abolir',
-    pronunciation: 'a-BO-lish',
-    definition: 'Poner fin formalmente a algo, especialmente una ley o sistema.',
-    example: 'La 13.ª Enmienda abolió la esclavitud.',
-    category: 'history',
-    difficulty: 'difícil',
-  },
-  {
-    id: '57',
-    word: 'Suffrage',
-    wordEs: 'Sufragio',
-    pronunciation: 'SA-frich',
-    definition: 'El derecho a votar en elecciones políticas.',
-    example: 'El sufragio femenino fue otorgado en 1920.',
-    category: 'history',
-    difficulty: 'difícil',
-  },
-  {
-    id: '58',
-    word: 'Proclamation',
-    wordEs: 'Proclamación',
-    pronunciation: 'pro-cla-MEI-shon',
-    definition: 'Un anuncio público oficial.',
-    example: 'La Proclamación de Emancipación liberó a los esclavos.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '59',
-    word: 'Union',
-    wordEs: 'Unión',
-    pronunciation: 'IUN-ion',
-    definition: 'Los estados del Norte durante la Guerra Civil.',
-    example: 'La Unión luchó contra la Confederación en la Guerra Civil.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '60',
-    word: 'Confederacy',
-    wordEs: 'Confederación',
-    pronunciation: 'con-FE-de-ra-si',
-    definition: 'Los estados del Sur que se separaron durante la Guerra Civil.',
-    example: 'La Confederación se formó durante la Guerra Civil.',
-    category: 'history',
-    difficulty: 'difícil',
-  },
-  {
-    id: '61',
-    word: 'Great Depression',
-    wordEs: 'Gran Depresión',
-    pronunciation: 'greit di-PRE-shon',
-    definition: 'El período de grave recesión económica en la década de 1930.',
-    example: 'La Gran Depresión comenzó en 1929.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '62',
-    word: 'World War',
-    wordEs: 'Guerra Mundial',
-    pronunciation: 'uorld uor',
-    definition: 'Un conflicto global que involucra a muchas naciones.',
-    example: 'Estados Unidos participó en la Primera y Segunda Guerra Mundial.',
-    category: 'history',
-    difficulty: 'fácil',
-  },
-  {
-    id: '63',
-    word: 'Cold War',
-    wordEs: 'Guerra Fría',
-    pronunciation: 'cold uor',
-    definition: 'El período de tensión entre Estados Unidos y la Unión Soviética.',
-    example: 'La Guerra Fría duró desde 1947 hasta 1991.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '64',
-    word: 'Communism',
-    wordEs: 'Comunismo',
-    pronunciation: 'CO-mu-nis-m',
-    definition: 'Un sistema político y económico donde el estado controla todo.',
-    example: 'Estados Unidos luchó contra la propagación del comunismo.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  {
-    id: '65',
-    word: 'Civil Rights',
-    wordEs: 'Derechos Civiles',
-    pronunciation: 'SI-vol raits',
-    definition: 'Los derechos de los ciudadanos a la igualdad política y social.',
-    example: 'El movimiento por los derechos civiles luchó contra la discriminación.',
-    category: 'history',
-    difficulty: 'medio',
-  },
-  // MÁS PALABRAS - EDUCACIÓN CÍVICA
-  {
-    id: '66',
-    word: 'Symbol',
-    wordEs: 'Símbolo',
-    pronunciation: 'SIM-bol',
-    definition: 'Algo que representa o significa otra cosa.',
-    example: 'La bandera es un símbolo de la nación.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '67',
-    word: 'Statue of Liberty',
-    wordEs: 'Estatua de la Libertad',
-    pronunciation: 'STA-chu of LI-ber-ti',
-    definition: 'Un símbolo importante de libertad y democracia en Nueva York.',
-    example: 'La Estatua de la Libertad fue un regalo de Francia.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '68',
-    word: 'Independence Day',
-    wordEs: 'Día de la Independencia',
-    pronunciation: 'in-di-PEN-dens dei',
-    definition: 'El día festivo que celebra la independencia de Estados Unidos (4 de julio).',
-    example: 'El Día de la Independencia se celebra el 4 de julio.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '69',
-    word: 'Memorial Day',
-    wordEs: 'Día de los Caídos',
-    pronunciation: 'me-MO-ri-al dei',
-    definition: 'Un día festivo para honrar a los soldados que murieron en servicio.',
-    example: 'El Día de los Caídos se celebra en mayo.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '70',
-    word: 'Veterans Day',
-    wordEs: 'Día de los Veteranos',
-    pronunciation: 'VE-te-rans dei',
-    definition: 'Un día festivo para honrar a todos los veteranos militares.',
-    example: 'El Día de los Veteranos se celebra el 11 de noviembre.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '71',
-    word: 'Thanksgiving',
-    wordEs: 'Día de Acción de Gracias',
-    pronunciation: 'zanks-GI-ving',
-    definition: 'Un día festivo para dar gracias, celebrado en noviembre.',
-    example: 'El Día de Acción de Gracias es una tradición estadounidense.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '72',
-    word: 'Tax',
-    wordEs: 'Impuesto',
-    pronunciation: 'taks',
-    definition: 'Un pago requerido al gobierno.',
-    example: 'Es importante pagar impuestos federales.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
-  {
-    id: '73',
-    word: 'Jury',
-    wordEs: 'Jurado',
-    pronunciation: 'CHU-ri',
-    definition: 'Un grupo de ciudadanos que decide casos en un tribunal.',
-    example: 'Los ciudadanos pueden servir en un jurado.',
-    category: 'symbols_holidays',
-    difficulty: 'medio',
-  },
-  {
-    id: '74',
-    word: 'Responsibility',
-    wordEs: 'Responsabilidad',
-    pronunciation: 'ri-spon-si-BI-lo-ti',
-    definition: 'Un deber o obligación.',
-    example: 'Los ciudadanos tienen responsabilidades cívicas.',
-    category: 'symbols_holidays',
-    difficulty: 'medio',
-  },
-  {
-    id: '75',
-    word: 'Duty',
-    wordEs: 'Deber',
-    pronunciation: 'DU-ti',
-    definition: 'Una obligación moral o legal.',
-    example: 'Es el deber de los ciudadanos votar.',
-    category: 'symbols_holidays',
-    difficulty: 'fácil',
-  },
+const interviewSubCategories: SubCategory[] = [
+  { id: 'all', name: 'Todos', icon: 'view-grid', color: '#1E40AF' },
+  { id: 'identidad', name: 'Identidad', icon: 'card-account-details', color: '#1E40AF' },
+  { id: 'dirección', name: 'Dirección', icon: 'home-map-marker', color: '#7C3AED' },
+  { id: 'empleo', name: 'Empleo', icon: 'briefcase', color: '#059669' },
+  { id: 'familia', name: 'Familia', icon: 'account-group', color: '#D97706' },
+  { id: 'viajes', name: 'Viajes', icon: 'airplane', color: '#0891B2' },
+  { id: 'legal', name: 'Legal', icon: 'gavel', color: '#DC2626' },
+  { id: 'impuestos', name: 'Impuestos', icon: 'cash-multiple', color: '#059669' },
+  { id: 'juramento', name: 'Juramento', icon: 'hand-heart', color: '#1E3A8A' },
+  { id: 'protocolo', name: 'Protocolo', icon: 'clipboard-check', color: '#6D28D9' },
+  { id: 'frases', name: 'Frases Clave', icon: 'message-text', color: '#3B82F6' },
 ];
 
-const getDifficultyColor = (difficulty: string) => {
-  switch (difficulty) {
-    case 'fácil':
-      return '#10B981';
-    case 'medio':
-      return '#F59E0B';
-    case 'difícil':
-      return '#EF4444';
-    default:
-      return '#1E40AF'; // Azul profesional
+// Mapear tags del vocabulario a subcategorías de entrevista
+const tagToInterviewSub = (tags: string[]): string => {
+  const tagMap: Record<string, string> = {
+    identidad: 'identidad', nombre: 'identidad', documentos: 'identidad',
+    verificación: 'identidad', fecha: 'identidad', nacimiento: 'identidad',
+    nacionalidad: 'identidad', ciudadanía: 'identidad', SSN: 'identidad',
+    'formato americano': 'identidad', LPR: 'identidad', cita: 'identidad',
+    USCIS: 'identidad', país: 'identidad', residencia: 'identidad',
+    dirección: 'dirección', domicilio: 'dirección', mudanza: 'dirección',
+    historial: 'dirección', tiempo: 'dirección',
+    empleo: 'empleo', trabajo: 'empleo', ocupación: 'empleo',
+    empresa: 'empleo', empleador: 'empleo', profesión: 'empleo',
+    'duración': 'empleo', 'historial laboral': 'empleo',
+    familia: 'familia', matrimonio: 'familia', cónyuge: 'familia',
+    hijos: 'familia', dependientes: 'familia', 'estado civil': 'familia',
+    viajes: 'viajes', salidas: 'viajes', pasaporte: 'viajes',
+    'residencia continua': 'viajes', presencia: 'viajes', continuidad: 'viajes',
+    razón: 'viajes', motivo: 'viajes',
+    impuestos: 'impuestos', IRS: 'impuestos', deuda: 'impuestos',
+    pago: 'impuestos', declaración: 'impuestos', estatus: 'impuestos',
+    legal: 'legal', arresto: 'legal', policía: 'legal',
+    'ciudadanía falsa': 'legal', fraude: 'legal', seguridad: 'legal',
+    organización: 'legal', discriminación: 'legal', daño: 'legal',
+    moral: 'legal', honestidad: 'legal',
+    juramento: 'juramento', lealtad: 'juramento', militar: 'juramento',
+    defensa: 'juramento', 'servicio': 'juramento', 'no combate': 'juramento',
+    constitución: 'juramento', gobierno: 'juramento', renuncia: 'juramento',
+    'servicio civil': 'juramento', emergencia: 'juramento',
+    protocolo: 'protocolo', inicio: 'protocolo', verdad: 'protocolo',
+    modales: 'protocolo', cortesía: 'protocolo', preparación: 'protocolo',
+    frases: 'frases', respuesta: 'frases',
+  };
+  for (const tag of tags) {
+    if (tagMap[tag]) return tagMap[tag];
   }
+  return 'identidad';
 };
+
+// Convertir datos de vocabulario
+const allWords: VocabularyWord[] = vocabulary.map((entry: VocabEntry) => ({
+  id: entry.id,
+  word: entry.termEn,
+  wordEs: entry.termEs,
+  definitionEs: entry.definitionEs,
+  definitionEn: entry.definitionEn,
+  originalCategory: entry.category,
+  tags: entry.tags || [],
+}));
+
+const civicsWords = allWords.filter((w) => w.originalCategory !== 'interview');
+const interviewWords = allWords.filter((w) => w.originalCategory === 'interview');
 
 const VocabularioScreenModernoV2 = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProps>();
   const isWebDesktop = useIsWebDesktop();
+
+  const [mainTab, setMainTab] = useState<MainTab>('civics');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('government'); // government, history, symbols_holidays
-  const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
+  const [civicsSub, setCivicsSub] = useState('all');
+  const [interviewSub, setInterviewSub] = useState('all');
   const [selectedWord, setSelectedWord] = useState<VocabularyWord | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
-  const filteredWords = useMemo(() => {
-    return vocabularyWords.filter((word) => {
-      // Búsqueda en español (wordEs) pero mostramos en inglés (word)
-      const matchesSearch =
-        searchQuery === '' ||
-        word.wordEs.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        word.definition.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        word.word.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Filtro por categoría (ya no hay "all")
-      const matchesCategory = word.category === selectedCategory;
-      
-      // Filtro por letra inicial
-      const matchesLetter = selectedLetter === null || word.word.toUpperCase().startsWith(selectedLetter);
-      
-      return matchesSearch && matchesCategory && matchesLetter;
-    });
-  }, [searchQuery, selectedCategory, selectedLetter]);
+  const selectedSub = mainTab === 'civics' ? civicsSub : interviewSub;
+  const setSelectedSub = mainTab === 'civics' ? setCivicsSub : setInterviewSub;
+  const subCategories = mainTab === 'civics' ? civicsSubCategories : interviewSubCategories;
 
-  const handleSpeakWord = async (word: string) => {
+  const filteredWords = useMemo(() => {
+    const base = mainTab === 'civics' ? civicsWords : interviewWords;
+    return base.filter((word) => {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch =
+        q === '' ||
+        word.wordEs.toLowerCase().includes(q) ||
+        word.word.toLowerCase().includes(q) ||
+        word.definitionEs.toLowerCase().includes(q);
+
+      if (!matchesSearch) return false;
+      if (selectedSub === 'all') return true;
+
+      if (mainTab === 'civics') {
+        return word.originalCategory === selectedSub;
+      }
+      // Entrevista: mapear tags a subcategoría
+      return tagToInterviewSub(word.tags) === selectedSub;
+    });
+  }, [mainTab, searchQuery, selectedSub]);
+
+  const subCategoryCounts = useMemo(() => {
+    const base = mainTab === 'civics' ? civicsWords : interviewWords;
+    const counts: Record<string, number> = { all: base.length };
+    base.forEach((w) => {
+      const sub = mainTab === 'civics' ? w.originalCategory : tagToInterviewSub(w.tags);
+      counts[sub] = (counts[sub] || 0) + 1;
+    });
+    return counts;
+  }, [mainTab]);
+
+  const handlePlayTerm = useCallback(async (vocabId: string) => {
     setIsSpeaking(true);
     try {
-      await Speech.speak(word, {
-        language: 'en',
-        rate: 0.9,
-      });
+      const audioSource = vocabTermAudioMap[vocabId];
+      if (audioSource) {
+        await audioManager.playAudio(audioSource);
+      } else {
+        // Fallback a expo-speech si no hay audio pregrabado
+        const entry = allWords.find(w => w.id === vocabId);
+        if (entry) await Speech.speak(entry.word, { language: 'en', rate: 0.9 });
+      }
     } catch (error) {
-      console.error('Error al reproducir palabra:', error);
+      if (__DEV__) console.error('Error al reproducir término:', error);
     } finally {
       setIsSpeaking(false);
     }
-  };
+  }, []);
 
-  const renderCategory = ({ item }: { item: (typeof categories)[number] }) => {
-    const isActive = selectedCategory === item.id;
-    // Dividir el nombre en palabras para mostrar en dos líneas
-    const words = item.name.split(' ');
-    const firstWord = words[0] || '';
-    const secondWord = words.slice(1).join(' ') || '';
-    
+  const handlePlayDefinition = useCallback(async (vocabId: string) => {
+    setIsSpeaking(true);
+    try {
+      const audioSource = vocabDefAudioMap[vocabId];
+      if (audioSource) {
+        await audioManager.playAudio(audioSource);
+      } else {
+        const entry = allWords.find(w => w.id === vocabId);
+        if (entry) await Speech.speak(entry.definitionEn, { language: 'en', rate: 0.9 });
+      }
+    } catch (error) {
+      if (__DEV__) console.error('Error al reproducir definición:', error);
+    } finally {
+      setIsSpeaking(false);
+    }
+  }, []);
+
+  const handleTabChange = useCallback((tab: MainTab) => {
+    setMainTab(tab);
+    setSearchQuery('');
+  }, []);
+
+  const renderSubCategory = (item: SubCategory) => {
+    const isActive = selectedSub === item.id;
+    const count = subCategoryCounts[item.id] || 0;
     return (
       <TouchableOpacity
-        style={[
-          styles.categoryButton,
-          isActive && { backgroundColor: item.color },
-          !isActive && { backgroundColor: '#f3f4f6' },
-        ]}
-        onPress={() => {
-          setSelectedCategory(item.id);
-          setSelectedLetter(null); // Limpiar filtro de letra al cambiar categoría
-        }}
+        key={item.id}
+        style={[styles.subCatChip, isActive && { backgroundColor: item.color }]}
+        onPress={() => setSelectedSub(item.id)}
         activeOpacity={0.7}
       >
-        <MaterialCommunityIcons 
-          name={item.icon as any} 
-          size={18} 
-          color={isActive ? '#FFFFFF' : item.color} 
+        <MaterialCommunityIcons
+          name={item.icon as any}
+          size={16}
+          color={isActive ? '#FFFFFF' : item.color}
         />
-        <View style={styles.categoryButtonTextContainer}>
-          <Text
-            style={[
-              styles.categoryButtonText,
-              isActive && { color: '#FFFFFF' },
-              !isActive && { color: '#6b7280' },
-            ]}
-            numberOfLines={1}
-          >
-            {firstWord}
+        <Text
+          style={[styles.subCatChipText, isActive && { color: '#FFFFFF' }]}
+          numberOfLines={1}
+        >
+          {item.name}
+        </Text>
+        <View style={[styles.subCatBadge, isActive && { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
+          <Text style={[styles.subCatBadgeText, isActive && { color: '#FFFFFF' }]}>
+            {count}
           </Text>
-          {secondWord ? (
-            <Text
-              style={[
-                styles.categoryButtonText,
-                isActive && { color: '#FFFFFF' },
-                !isActive && { color: '#6b7280' },
-              ]}
-              numberOfLines={1}
-            >
-              {secondWord}
-            </Text>
-          ) : null}
         </View>
-        {isActive && (
-          <View style={[styles.categoryButtonIndicator, { backgroundColor: item.color }]} />
-        )}
       </TouchableOpacity>
     );
   };
 
-  const renderWord = ({ item }: { item: VocabularyWord }) => (
-    <TouchableOpacity
-      style={styles.wordCard}
-      onPress={() => {
-        setSelectedWord(item);
-        setShowDetailModal(true);
-      }}
-      activeOpacity={0.85}
-    >
-      <LinearGradient
-        colors={['#FFFFFF', '#F8FAFC']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.wordCardGradient}
+  const renderWord = ({ item }: { item: VocabularyWord }) => {
+    const subCat = mainTab === 'civics'
+      ? civicsSubCategories.find((s) => s.id === item.originalCategory)
+      : interviewSubCategories.find((s) => s.id === tagToInterviewSub(item.tags));
+
+    return (
+      <TouchableOpacity
+        style={styles.wordCard}
+        onPress={() => { setSelectedWord(item); setShowDetailModal(true); }}
+        activeOpacity={0.85}
       >
-        <View style={styles.wordHeader}>
-          <View style={styles.wordTitleContainer}>
-            <Text style={styles.word}>{item.word}</Text>
-            <Text style={styles.pronunciation}>{item.pronunciation}</Text>
-          </View>
-          <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(item.difficulty) }]}>
-            <Text style={styles.difficultyText}>{item.difficulty}</Text>
+        <View style={styles.wordCardInner}>
+          {/* Barra lateral de color */}
+          <View style={[styles.wordAccent, { backgroundColor: subCat?.color || '#1E40AF' }]} />
+          <View style={styles.wordBody}>
+            <View style={styles.wordHeader}>
+              <View style={styles.wordTitleContainer}>
+                <Text style={styles.word} numberOfLines={2}>{item.word}</Text>
+                <Text style={styles.wordEs} numberOfLines={1}>{item.wordEs}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.audioButtonCard}
+                onPress={() => handlePlayTerm(item.id)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="volume-high" size={18} color="#1E40AF" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.definition} numberOfLines={3}>{item.definitionEs}</Text>
+            {subCat && (
+              <View style={[styles.tagChip, { backgroundColor: `${subCat.color}15` }]}>
+                <MaterialCommunityIcons name={subCat.icon as any} size={12} color={subCat.color} />
+                <Text style={[styles.tagChipText, { color: subCat.color }]}>{subCat.name}</Text>
+              </View>
+            )}
           </View>
         </View>
-        <Text style={styles.definition}>{item.definition}</Text>
-        <View style={styles.exampleContainer}>
-          <MaterialCommunityIcons name="format-quote-open" size={16} color="#1E40AF" />
-          <Text style={styles.example}>{item.example}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.audioButtonCard}
-          onPress={(e) => {
-            e.stopPropagation();
-            handleSpeakWord(item.word);
-          }}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="volume-high" size={18} color="#1E40AF" />
-        </TouchableOpacity>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const content = (
-    <>
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       {!isWeb && (
-        <View style={styles.header}>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Vocabulario</Text>
-            <Text style={styles.headerSubtitle}>Palabras clave del examen</Text>
-          </View>
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+                accessibilityLabel="Volver atrás"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Vocabulario</Text>
+                <Text style={styles.headerSubtitle}>
+                  {mainTab === 'civics' ? 'Palabras clave del examen' : 'Preparación para la entrevista'}
+                </Text>
+              </View>
+              <View style={{ width: 44 }} />
+            </View>
+
+            {/* Tabs principales dentro del header */}
+            <View style={styles.mainTabs}>
+              <TouchableOpacity
+                style={[styles.mainTab, mainTab === 'civics' && styles.mainTabActive]}
+                onPress={() => handleTabChange('civics')}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="school"
+                  size={16}
+                  color={mainTab === 'civics' ? '#1E40AF' : 'rgba(255,255,255,0.7)'}
+                />
+                <Text style={[styles.mainTabText, mainTab === 'civics' && styles.mainTabTextActive]}>
+                  Examen Cívico
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.mainTab, mainTab === 'interview' && styles.mainTabActive]}
+                onPress={() => handleTabChange('interview')}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="account-tie"
+                  size={16}
+                  color={mainTab === 'interview' ? '#1E40AF' : 'rgba(255,255,255,0.7)'}
+                />
+                <Text style={[styles.mainTabText, mainTab === 'interview' && styles.mainTabTextActive]}>
+                  Entrevista N-400
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
       )}
 
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Search Bar */}
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Barra de búsqueda */}
         <View style={styles.searchContainer}>
-          <BlurView intensity={10} tint="light" style={styles.searchBlur}>
-            <MaterialCommunityIcons name="magnify" size={20} color="#1E40AF" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar en español (ej: enmienda, ciudadanía)..."
-              placeholderTextColor="#9CA3AF"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
-                <MaterialCommunityIcons name="close-circle" size={20} color="#9CA3AF" />
-              </TouchableOpacity>
-            )}
-          </BlurView>
-        </View>
-
-        {/* Categories */}
-        <View style={styles.categoriesContainer}>
-          <View style={styles.categoriesContent}>
-            {categories.map((category) => (
-              <React.Fragment key={category.id}>
-                {renderCategory({ item: category })}
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
-
-        {/* Alphabet Filter */}
-        <View style={styles.alphabetContainer}>
-          <Text style={styles.alphabetTitle}>Buscar por letra</Text>
-          <View style={styles.alphabetGrid}>
-            {alphabet.map((letter) => {
-              const isActive = selectedLetter === letter;
-              const hasWords = vocabularyWords.some(
-                (w) => w.category === selectedCategory && w.word.toUpperCase().startsWith(letter)
-              );
-              return (
-                <TouchableOpacity
-                  key={letter}
-                  style={[
-                    styles.alphabetButton,
-                    isActive && styles.alphabetButtonActive,
-                    !hasWords && styles.alphabetButtonDisabled,
-                  ]}
-                  onPress={() => setSelectedLetter(isActive ? null : letter)}
-                  disabled={!hasWords}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.alphabetText, isActive && styles.alphabetTextActive, !hasWords && styles.alphabetTextDisabled]}>
-                    {letter}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {selectedLetter && (
-            <TouchableOpacity
-              style={styles.clearLetterButton}
-              onPress={() => setSelectedLetter(null)}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="close-circle" size={16} color="#1E40AF" />
-              <Text style={styles.clearLetterText}>Limpiar filtro</Text>
+          <MaterialCommunityIcons name="magnify" size={20} color="#1E40AF" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder={
+              mainTab === 'civics'
+                ? 'Buscar vocabulario (ej: enmienda, Congress)...'
+                : 'Buscar vocabulario de entrevista...'
+            }
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="close-circle" size={20} color="#9CA3AF" />
             </TouchableOpacity>
           )}
         </View>
 
-        {/* Results Count */}
+        {/* Subcategorías temáticas */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subCatScroll}
+          style={styles.subCatContainer}
+        >
+          {subCategories.map(renderSubCategory)}
+        </ScrollView>
+
+        {/* Conteo de resultados */}
         <View style={styles.resultsContainer}>
           <Text style={styles.resultText}>
-            {filteredWords.length} palabra{filteredWords.length === 1 ? '' : 's'} encontrada
-            {filteredWords.length === 1 ? '' : 's'}
+            {filteredWords.length} {filteredWords.length === 1 ? 'término' : 'términos'}
           </Text>
+          {selectedSub !== 'all' && (
+            <TouchableOpacity
+              onPress={() => setSelectedSub('all')}
+              style={styles.clearFilterBtn}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="close-circle" size={14} color="#1E40AF" />
+              <Text style={styles.clearFilterText}>Ver todos</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* Words List */}
+        {/* Lista de palabras */}
         <FlatList
           data={filteredWords}
           renderItem={renderWord}
@@ -1066,8 +415,8 @@ const VocabularioScreenModernoV2 = () => {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons name="text-search" size={48} color="#D1D5DB" />
-              <Text style={styles.emptyText}>No se encontraron palabras</Text>
-              <Text style={styles.emptySubtext}>Intenta con otra búsqueda</Text>
+              <Text style={styles.emptyText}>No se encontraron términos</Text>
+              <Text style={styles.emptySubtext}>Intenta con otra búsqueda o categoría</Text>
             </View>
           }
           removeClippedSubviews={true}
@@ -1078,153 +427,205 @@ const VocabularioScreenModernoV2 = () => {
         />
       </ScrollView>
 
-      {/* Detail Modal */}
-      <Modal visible={showDetailModal} transparent animationType="slide" onRequestClose={() => setShowDetailModal(false)}>
-        <SafeAreaView style={styles.modalSafeArea}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowDetailModal(false)} style={styles.modalCloseButton}>
-              <MaterialCommunityIcons name="close" size={24} color="#1f2937" />
-            </TouchableOpacity>
-            <Text style={styles.modalHeaderTitle}>Detalle de palabra</Text>
-            <View style={{ width: 40 }} />
-          </View>
-
-          {selectedWord && (
-            <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <LinearGradient
-                colors={['#3B82F6', '#1E40AF', '#1E3A8A']} // Gradiente azul profesional
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.modalWordCard}
+      {/* Modal de detalle */}
+      <Modal
+        visible={showDetailModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowDetailModal(false)}
+                style={styles.modalCloseButton}
               >
-                <View style={styles.modalWordHeader}>
-                  <View style={styles.modalWordTitleContainer}>
-                    <Text style={styles.modalWord}>{selectedWord.word}</Text>
-                    <Text style={styles.modalPronunciation}>{selectedWord.pronunciation}</Text>
+                <MaterialCommunityIcons name="close" size={24} color="#1f2937" />
+              </TouchableOpacity>
+              <Text style={styles.modalHeaderTitle}>Detalle</Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            {selectedWord && (
+              <ScrollView
+                style={styles.modalBody}
+                contentContainerStyle={styles.modalContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <LinearGradient
+                  colors={['#3B82F6', '#1E40AF', '#1E3A8A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.modalWordCard}
+                >
+                  <View style={styles.modalWordHeader}>
+                    <View style={styles.modalWordTitleContainer}>
+                      <Text style={styles.modalWord}>{selectedWord.word}</Text>
+                      <Text style={styles.modalWordEs}>{selectedWord.wordEs}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.modalSpeakButton}
+                      onPress={() => handlePlayTerm(selectedWord.id)}
+                      disabled={isSpeaking}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialCommunityIcons name="volume-high" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
                   </View>
+                </LinearGradient>
+
+                <View style={styles.infoCard}>
+                  <View style={styles.sectionHeaderCard}>
+                    <MaterialCommunityIcons name="translate" size={20} color="#1E40AF" />
+                    <Text style={styles.sectionTitle}>Definición en Español</Text>
+                  </View>
+                  <Text style={styles.sectionText}>{selectedWord.definitionEs}</Text>
+                </View>
+
+                <View style={styles.infoCard}>
+                  <View style={styles.sectionHeaderCard}>
+                    <MaterialCommunityIcons name="book-open-page-variant" size={20} color="#1E40AF" />
+                    <Text style={styles.sectionTitle}>Definition in English</Text>
+                  </View>
+                  <Text style={styles.sectionText}>{selectedWord.definitionEn}</Text>
                   <TouchableOpacity
-                    style={styles.modalSpeakButton}
-                    onPress={() => handleSpeakWord(selectedWord.word)}
+                    style={styles.playDefButton}
+                    onPress={() => handlePlayDefinition(selectedWord.id)}
                     disabled={isSpeaking}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <MaterialCommunityIcons name="volume-high" size={24} color="#FFFFFF" />
+                    <MaterialCommunityIcons name="volume-high" size={16} color="#1E40AF" />
+                    <Text style={styles.playDefText}>Escuchar definición</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={[styles.modalDifficultyBadge, { backgroundColor: getDifficultyColor(selectedWord.difficulty) }]}>
-                  <Text style={styles.modalDifficultyText}>Dificultad: {selectedWord.difficulty}</Text>
-                </View>
-              </LinearGradient>
 
-              <View style={styles.infoCard}>
-                <View style={styles.sectionHeaderCard}>
-                  <MaterialCommunityIcons name="book-open-page-variant" size={20} color="#1E40AF" />
-                  <Text style={styles.sectionTitle}>Definición</Text>
-                </View>
-                <Text style={styles.sectionText}>{selectedWord.definition}</Text>
-              </View>
-
-              <View style={styles.infoCard}>
-                <View style={styles.sectionHeaderCard}>
-                  <MaterialCommunityIcons name="format-quote-open" size={20} color="#1E40AF" />
-                  <Text style={styles.sectionTitle}>Ejemplo</Text>
-                </View>
-                <View style={styles.exampleDetail}>
-                  <Text style={styles.sectionText}>{selectedWord.example}</Text>
-                </View>
-              </View>
-
-              <View style={styles.infoCard}>
-                <View style={styles.sectionHeaderCard}>
-                  <MaterialCommunityIcons name="tag" size={20} color="#1E40AF" />
-                  <Text style={styles.sectionTitle}>Categoría</Text>
-                </View>
-                <Text style={styles.sectionText}>
-                  {categories.find((c) => c.id === selectedWord.category)?.name || selectedWord.category}
-                </Text>
-              </View>
-            </ScrollView>
-          )}
-        </SafeAreaView>
+                {selectedWord.tags.length > 0 && (
+                  <View style={styles.infoCard}>
+                    <View style={styles.sectionHeaderCard}>
+                      <MaterialCommunityIcons name="tag-multiple" size={20} color="#1E40AF" />
+                      <Text style={styles.sectionTitle}>Temas Relacionados</Text>
+                    </View>
+                    <View style={styles.tagsRow}>
+                      {selectedWord.tags.map((tag) => (
+                        <View key={tag} style={styles.modalTag}>
+                          <Text style={styles.modalTagText}>{tag}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+          </View>
+        </View>
       </Modal>
-    </>
+    </View>
   );
 
-  // Web de escritorio: usar WebLayout con sidebar
   if (isWeb && isWebDesktop) {
-    return (
-      <WebLayout headerTitle="Vocabulario">
-        {content}
-      </WebLayout>
-    );
+    return <WebLayout headerTitle="Vocabulario">{content}</WebLayout>;
   }
 
-  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {content}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: designSystem.colors.background.secondary,
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#ffffff',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 12,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
   },
   headerTitleContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 2,
-    letterSpacing: 0.1,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 1,
   },
+  // Tabs principales
+  mainTabs: {
+    flexDirection: 'row',
+    marginTop: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 12,
+    padding: 3,
+  },
+  mainTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+  },
+  mainTabActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  mainTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)',
+  },
+  mainTabTextActive: {
+    color: '#1E40AF',
+  },
+  // Contenido
   container: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+    paddingBottom: 32,
   },
+  // Búsqueda
   searchContainer: {
-    marginBottom: 16,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  searchBlur: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    marginBottom: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(124, 58, 237, 0.2)',
-    gap: 12,
+    borderColor: '#E5E7EB',
+    gap: 10,
   },
   searchInput: {
     flex: 1,
@@ -1232,50 +633,47 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
-  categoriesContainer: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-    paddingVertical: 8,
-    marginBottom: 16,
+  // Subcategorías
+  subCatContainer: {
+    marginBottom: 14,
+    maxHeight: 44,
   },
-  categoriesContent: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
+  subCatScroll: {
     gap: 8,
-    justifyContent: 'space-evenly',
+    paddingRight: 16,
   },
-  categoryButton: {
-    flex: 1,
-    flexDirection: 'column',
+  subCatChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 4,
-    minHeight: 70,
-    justifyContent: 'center',
-    maxWidth: (width - 48) / 3,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
   },
-  categoryButtonTextContainer: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  categoryButtonText: {
-    fontSize: 11,
+  subCatChipText: {
+    fontSize: 12,
     fontWeight: '600',
-    textAlign: 'center',
-    lineHeight: 14,
+    color: '#4B5563',
   },
-  categoryButtonIndicator: {
-    position: 'absolute',
-    bottom: -9,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderRadius: 2,
+  subCatBadge: {
+    backgroundColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    minWidth: 22,
+    alignItems: 'center',
   },
+  subCatBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7280',
+  },
+  // Resultados
   resultsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
   },
   resultText: {
@@ -1283,104 +681,95 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '600',
   },
+  clearFilterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 10,
+  },
+  clearFilterText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1E40AF',
+  },
+  // Tarjetas de palabras
   wordCard: {
-    marginBottom: 12,
-    borderRadius: 20,
+    marginBottom: 10,
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
     ...Platform.select({
       web: {
         flex: 1,
         marginHorizontal: 8,
-        width: '48%',
         marginBottom: 16,
       },
     }),
   },
-  wordCardGradient: {
-    padding: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
+  wordCardInner: {
+    flexDirection: 'row',
+  },
+  wordAccent: {
+    width: 5,
+  },
+  wordBody: {
+    flex: 1,
+    padding: 14,
+    gap: 8,
   },
   wordHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
   },
   wordTitleContainer: {
     flex: 1,
+    marginRight: 8,
   },
   word: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '700',
     color: '#111827',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  pronunciation: {
+  wordEs: {
     fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 4,
-    fontStyle: 'italic',
-  },
-  difficultyBadge: {
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginLeft: 8,
-  },
-  difficultyText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 11,
-    textTransform: 'capitalize',
+    color: '#6B7280',
+    marginTop: 2,
   },
   definition: {
-    fontSize: 15,
-    color: '#4B5563',
-    marginBottom: 12,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  exampleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    padding: 12,
-    gap: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1E40AF',
-    marginBottom: 8,
-  },
-  example: {
-    flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     color: '#4B5563',
     lineHeight: 20,
-    fontStyle: 'italic',
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    gap: 4,
+  },
+  tagChipText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   audioButtonCard: {
-    position: 'absolute',
-    bottom: 18,
-    right: 18,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EEF2FF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1.5,
-    borderColor: 'rgba(30, 64, 175, 0.15)', // Azul profesional con transparencia
   },
   emptyContainer: {
     alignItems: 'center',
@@ -1397,32 +786,46 @@ const styles = StyleSheet.create({
     color: '#D1D5DB',
     fontWeight: '500',
   },
-  modalSafeArea: {
+  // Modal
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
     backgroundColor: '#F8FAFC',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    minHeight: '60%',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D1D5DB',
+    alignSelf: 'center',
+    marginTop: 10,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
   },
   modalCloseButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#E5E7EB',
   },
   modalHeaderTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     color: '#111827',
   },
@@ -1432,16 +835,17 @@ const styles = StyleSheet.create({
   modalContent: {
     paddingHorizontal: 16,
     paddingVertical: 20,
-    gap: 16,
+    gap: 14,
+    paddingBottom: 40,
   },
   modalWordCard: {
-    borderRadius: 24,
-    padding: 24,
-    gap: 16,
-    shadowColor: '#1E40AF', // Azul profesional
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    borderRadius: 20,
+    padding: 22,
+    gap: 10,
+    shadowColor: '#1E40AF',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 8,
   },
   modalWordHeader: {
@@ -1453,48 +857,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalWord: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  modalPronunciation: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 6,
-    fontStyle: 'italic',
+  modalWordEs: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.85)',
+    marginTop: 4,
   },
   modalSpeakButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.4)',
   },
-  modalDifficultyBadge: {
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    alignSelf: 'flex-start',
-  },
-  modalDifficultyText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-    textTransform: 'capitalize',
-  },
   infoCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 16,
+    padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
@@ -1502,79 +893,50 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     color: '#111827',
   },
   sectionText: {
     fontSize: 15,
     color: '#4B5563',
-    lineHeight: 24,
+    lineHeight: 23,
     fontWeight: '500',
   },
-  exampleDetail: {
-    gap: 8,
+  playDefButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  alphabetContainer: {
-    marginBottom: 16,
+  playDefText: {
+    fontSize: 13,
+    color: '#1E40AF',
+    fontWeight: '600',
   },
-  alphabetTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  alphabetGrid: {
+  tagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  alphabetButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alphabetButtonActive: {
-    backgroundColor: '#1E40AF', // Azul profesional
-    borderColor: '#1E40AF',
-  },
-  alphabetButtonDisabled: {
-    opacity: 0.3,
-  },
-  alphabetText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#6B7280',
-  },
-  alphabetTextActive: {
-    color: '#FFFFFF',
-  },
-  alphabetTextDisabled: {
-    color: '#D1D5DB',
-  },
-  clearLetterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  modalTag: {
     backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    gap: 6,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  clearLetterText: {
+  modalTagText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1E40AF', // Azul profesional
+    color: '#1E40AF',
   },
   wordRow: {
     ...Platform.select({

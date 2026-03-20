@@ -11,6 +11,7 @@ import { useFeedbackSound } from '../../hooks/useFeedbackSound';
 interface AnswerResultCardProps {
   isCorrect: boolean;
   correctAnswer: string;
+  userAnswer?: string;
   onRepeat: () => void;
   onNext: () => void;
 }
@@ -18,6 +19,7 @@ interface AnswerResultCardProps {
 export const AnswerResultCard: React.FC<AnswerResultCardProps> = ({
   isCorrect,
   correctAnswer,
+  userAnswer,
   onRepeat,
   onNext,
 }) => {
@@ -41,10 +43,29 @@ export const AnswerResultCard: React.FC<AnswerResultCardProps> = ({
         />
         <Text style={styles.headerText}>{isCorrect ? '¡Correcto!' : 'Incorrecto'}</Text>
       </View>
-      <View style={styles.correctAnswerContainer}>
-        <Text style={styles.correctAnswerLabel}>Respuesta correcta</Text>
-        <Text style={styles.correctAnswerValue}>{correctAnswer}</Text>
-      </View>
+      {!isCorrect && userAnswer ? (
+        <View style={styles.comparisonContainer}>
+          <View style={styles.userAnswerBox}>
+            <View style={styles.answerLabelRow}>
+              <MaterialCommunityIcons name="close-circle" size={16} color="#EF4444" />
+              <Text style={styles.userAnswerLabel}>Tu respuesta</Text>
+            </View>
+            <Text style={styles.userAnswerValue}>{userAnswer}</Text>
+          </View>
+          <View style={styles.correctAnswerBox}>
+            <View style={styles.answerLabelRow}>
+              <MaterialCommunityIcons name="check-circle" size={16} color="#22C55E" />
+              <Text style={styles.correctAnswerLabelGreen}>Respuesta correcta</Text>
+            </View>
+            <Text style={styles.correctAnswerValue}>{correctAnswer}</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.correctAnswerContainer}>
+          <Text style={styles.correctAnswerLabel}>Respuesta correcta</Text>
+          <Text style={styles.correctAnswerValue}>{correctAnswer}</Text>
+        </View>
+      )}
       <View style={styles.actions}>
         <TouchableOpacity style={styles.secondaryButton} onPress={onRepeat}>
           <MaterialCommunityIcons name="replay" size={20} color={colors.primary.main} />
@@ -98,25 +119,69 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5, // Mejor legibilidad
   },
   correctAnswerContainer: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f0fdf4',
     padding: 12,
     borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
   },
   correctAnswerLabel: {
-    fontSize: 14, // Accesibilidad: mínimo 14pt (idealmente 16pt)
+    fontSize: 14,
     fontWeight: '700',
-    color: '#4B5563', // Mejor contraste
+    color: '#15803d',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8, // Más espaciado
+    marginBottom: 8,
   },
   correctAnswerValue: {
-    fontSize: 18, // Accesibilidad: texto más grande para respuestas importantes
+    fontSize: 18,
     color: '#111827',
     fontWeight: '600',
-    lineHeight: 26, // Mejor legibilidad
+    lineHeight: 26,
+  },
+  comparisonContainer: {
+    gap: 8,
+  },
+  userAnswerBox: {
+    backgroundColor: '#fef2f2',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  answerLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  userAnswerLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#DC2626',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  userAnswerValue: {
+    fontSize: 16,
+    color: '#991B1B',
+    fontWeight: '500',
+    lineHeight: 24,
+    textDecorationLine: 'line-through',
+  },
+  correctAnswerBox: {
+    backgroundColor: '#f0fdf4',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  correctAnswerLabelGreen: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#15803d',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   actions: {
     flexDirection: 'row',

@@ -7,7 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
   Alert,
   Animated,
   ActivityIndicator,
@@ -18,6 +18,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationProps } from '../../types/navigation';
 import { colors } from '../../constants/colors';
 import { QuestionLoaderService, LocalPracticeQuestion, QuestionMode } from '../../services/QuestionLoaderService';
@@ -72,6 +73,7 @@ const CategoryPracticeScreen = () => {
   const route = useRoute();
   const routeParams = route.params as { questionType?: string };
   const initializedFromParams = useRef(false);
+  const insets = useSafeAreaInsets();
 
   // Estado principal
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
@@ -417,14 +419,15 @@ const CategoryPracticeScreen = () => {
     // Cargar preguntas de la siguiente sección
     // Mapear subcategoría a categoría si es necesario
     const categoryMap: Record<string, string> = {
-      'A: Principles of American Government': 'government',
-      'B: System of Government': 'government',
-      'C: Rights and Responsibilities': 'government',
-      'A: Colonial Period and Independence': 'history',
-      'B: 1800s': 'history',
-      'C: Recent American History and Other Important Historical Information': 'history',
-      'A: Symbols': 'symbols_holidays',
-      'B: Holidays': 'symbols_holidays',
+      'A: Principios de la Democracia Americana': 'government',
+      'B: Sistema de Gobierno': 'government',
+      'C: Derechos y Responsabilidades': 'government',
+      'A: Período Colonial e Independencia': 'history',
+      'B: Siglo XIX (1800s)': 'history',
+      'C: Historia Reciente': 'history',
+      'A: Geografía': 'civics',
+      'B: Símbolos': 'civics',
+      'C: Días Festivos': 'civics',
     };
     
     // Obtener preguntas de la siguiente sección
@@ -495,31 +498,40 @@ const CategoryPracticeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => navigation.goBack()}
-            accessibilityLabel="Volver atrás"
-            accessibilityRole="button"
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
           >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Práctica</Text>
-            <Text style={styles.headerSubtitle}>Por Categoría</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('Home')}
-            accessibilityLabel="Ir al inicio"
-            accessibilityRole="button"
-          >
-            <MaterialCommunityIcons name="home" size={20} color="#1f2937" />
-          </TouchableOpacity>
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+                accessibilityLabel="Volver atrás"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Práctica</Text>
+                <Text style={styles.headerSubtitle}>Por Categoría</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.navigate('Home')}
+                accessibilityLabel="Ir al inicio"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="home" size={22} color="white" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-      </View>
 
       {!selectedCategory && (
         <View style={styles.categoriesContainer}>
@@ -749,59 +761,52 @@ const CategoryPracticeScreen = () => {
           </View>
         )}
       </Modal>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 16,
   },
-  iconButton: {
-    width: 44, // Accesibilidad: mínimo 44x44 dp
-    height: 44, // Accesibilidad: mínimo 44x44 dp
-    borderRadius: 10,
-    backgroundColor: '#f9fafb',
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
   },
   headerTitleContainer: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
   },
   headerSubtitle: {
-    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 1,
-    letterSpacing: 0.1,
+    marginTop: 2,
   },
   categoriesContainer: {
     flexDirection: 'row',

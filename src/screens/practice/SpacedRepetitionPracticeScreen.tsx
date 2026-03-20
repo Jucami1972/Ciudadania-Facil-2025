@@ -10,7 +10,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
   ActivityIndicator,
   Alert,
   Animated,
@@ -18,9 +18,10 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProps } from '../../types/navigation';
-import { colors } from '../../constants/colors';
 import { questions } from '../../data/questions';
 import { usePracticeSession } from '../../hooks/usePracticeSession';
 import { isAnswerCorrect } from '../../utils/answerValidation';
@@ -33,8 +34,11 @@ import { useQuestionAudio } from '../../hooks/useQuestionAudio';
 
 const SpacedRepetitionPracticeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
+  const insets = useSafeAreaInsets();
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [answeredQuestion, setAnsweredQuestion] = useState<{ id: number; text: string; answer: string } | null>(null);
+  const [pendingAnswer, setPendingAnswer] = useState<{ answer: string; correct: boolean } | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
 
   // Convertir questions a formato compatible con usePracticeSession
@@ -103,7 +107,7 @@ const SpacedRepetitionPracticeScreen = () => {
     }
   }, [isComplete, stats]);
 
-  const handleAnswerSubmit = async () => {
+  const handleAnswerSubmit = () => {
     if (!currentQuestion || !userAnswer.trim()) return;
 
     const correct = isAnswerCorrect(
@@ -111,17 +115,26 @@ const SpacedRepetitionPracticeScreen = () => {
       currentQuestion.answer,
       currentQuestion.question.text
     );
+
+    // Guardar datos de la pregunta y diferir handleAnswer hasta "Siguiente"
+    setAnsweredQuestion({
+      id: currentQuestion.id,
+      text: currentQuestion.question.text,
+      answer: currentQuestion.answer,
+    });
     setIsCorrect(correct);
-
-    // Calcular tiempo (simulado, en producción usar timer real)
-    const timeSpent = 5000; // 5 segundos por defecto
-
-    await handleAnswer(userAnswer, correct);
+    setPendingAnswer({ answer: userAnswer, correct });
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Avanzar al siguiente AHORA que el usuario ya vio el resultado
+    if (pendingAnswer) {
+      await handleAnswer(pendingAnswer.answer, pendingAnswer.correct);
+    }
     setUserAnswer('');
     setIsCorrect(null);
+    setAnsweredQuestion(null);
+    setPendingAnswer(null);
     Animated.sequence([
       Animated.timing(fadeAnim, {
         toValue: 0,
@@ -139,16 +152,21 @@ const SpacedRepetitionPracticeScreen = () => {
   const handleRepeat = () => {
     setUserAnswer('');
     setIsCorrect(null);
+    setAnsweredQuestion(null);
+    setPendingAnswer(null);
   };
 
   if (!currentQuestion) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.main} />
-          <Text style={styles.loadingText}>Cargando preguntas para repaso...</Text>
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#1E40AF" />
+            <Text style={styles.loadingText}>Cargando preguntas para repaso...</Text>
+          </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -157,33 +175,42 @@ const SpacedRepetitionPracticeScreen = () => {
     : 'Nueva pregunta';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => navigation.goBack()}
-            accessibilityLabel="Volver atrás"
-            accessibilityRole="button"
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
           >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Repaso Inteligente</Text>
-            <Text style={styles.headerSubtitle}>Memorización optimizada</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('Home')}
-            accessibilityLabel="Ir al inicio"
-            accessibilityRole="button"
-          >
-            <MaterialCommunityIcons name="home" size={20} color="#1f2937" />
-          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Volver atrás"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+            </TouchableOpacity>
+            <View style={styles.headerTitleContainer}>
+              <Text style={styles.headerTitle}>Repaso Inteligente</Text>
+              <Text style={styles.headerSubtitle}>Memorización optimizada</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Home')}
+              accessibilityLabel="Ir al inicio"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="home" size={22} color="white" />
+            </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-      </View>
 
-      <KeyboardAvoidingView
+        <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
@@ -206,21 +233,23 @@ const SpacedRepetitionPracticeScreen = () => {
 
               {srsStatus && (
                 <View style={styles.srsStatusCard}>
-                  <MaterialCommunityIcons name="brain" size={18} color={colors.primary.main} />
+                  <MaterialCommunityIcons name="brain" size={18} color="#1E40AF" />
                   <Text style={styles.srsStatusText}>{srsStatus}</Text>
                 </View>
               )}
 
               <PracticeQuestionCard
-                question={currentQuestion.question.text}
+                question={answeredQuestion ? answeredQuestion.text : currentQuestion.question.text}
+                questionNumber={answeredQuestion ? answeredQuestion.id : currentQuestion.id}
                 mode="text-text"
                 onPlayAudio={playAudio}
               />
 
-              {isCorrect !== null && (
+              {isCorrect !== null && answeredQuestion && (
                 <AnswerResultCard
                   isCorrect={isCorrect}
-                  correctAnswer={currentQuestion.answer}
+                  correctAnswer={answeredQuestion.answer}
+                  userAnswer={pendingAnswer?.answer}
                   onRepeat={handleRepeat}
                   onNext={handleNext}
                 />
@@ -237,61 +266,55 @@ const SpacedRepetitionPracticeScreen = () => {
               onSubmit={handleAnswerSubmit}
             />
           )}
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerContainer: {},
+
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
   },
   iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f9fafb',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
   },
   headerTitleContainer: {
     alignItems: 'center',
     flex: 1,
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 1,
-    letterSpacing: 0.1,
   },
   loadingContainer: {
     flex: 1,
@@ -302,21 +325,18 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 15,
-    color: colors.text.light,
+    color: '#6B7280',
     textAlign: 'center',
   },
   practiceArea: {
     flex: 1,
-    backgroundColor: 'transparent',
     position: 'relative',
   },
   practiceContent: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   keyboardAvoidingView: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   practiceScroll: {
     flex: 1,
@@ -328,24 +348,24 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   srsStatusCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.2)',
+    borderColor: 'rgba(30, 64, 175, 0.15)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
   },
   srsStatusText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: colors.primary.main,
+    color: '#1E40AF',
     flex: 1,
   },
   bottomSpacer: {

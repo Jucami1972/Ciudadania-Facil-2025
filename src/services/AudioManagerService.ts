@@ -12,7 +12,7 @@ class AudioManagerService {
   /**
    * Reproduce un audio, deteniendo cualquier audio anterior
    */
-  async playAudio(audioSource: any): Promise<void> {
+  async playAudio(audioSource: any, onFinish?: () => void): Promise<void> {
     try {
       // Detener y limpiar audio anterior si existe
       await this.stopCurrentAudio();
@@ -36,6 +36,7 @@ class AudioManagerService {
             this.isPlaying = false;
             this.currentSound = null;
             sound.unloadAsync().catch(console.error);
+            onFinish?.();
           } else if (!status.isPlaying) {
             this.isPlaying = false;
           }

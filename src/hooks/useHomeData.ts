@@ -45,7 +45,7 @@ interface StudyModule {
  */
 const calculateStreak = (lastStudyDate: string | null, currentStreak: number): number => {
   if (!lastStudyDate) {
-    return 1;
+    return 0; // Nunca ha estudiado
   }
 
   try {
@@ -63,15 +63,15 @@ const calculateStreak = (lastStudyDate: string | null, currentStreak: number): n
       // Ya estudió hoy, mantener la racha actual
       return currentStreak;
     } else if (diffDays === 1) {
-      // Estudió ayer, incrementar racha
-      return currentStreak + 1;
+      // Estudió ayer, la racha sigue viva (pero no incrementar aquí, eso lo hace StudyCards)
+      return currentStreak;
     } else {
-      // Más de un día sin estudiar, resetear racha
-      return 1;
+      // Más de un día sin estudiar, racha perdida
+      return 0;
     }
   } catch (error) {
-    console.error('Error calculating streak:', error);
-    return 1;
+    if (__DEV__) console.error('Error calculating streak:', error);
+    return 0;
   }
 };
 
@@ -176,16 +176,13 @@ export const useHomeData = () => {
       const completedQuestions = viewed.size;
       const progress = Math.max(0, Math.min(100, Math.round((completedQuestions / TOTAL_QUESTIONS) * 100)));
 
-      // Calcular racha
-      const currentStreak = parseInt(streakCount || '1', 10);
+      // Calcular racha (solo lectura, no modificar storage)
+      const currentStreak = parseInt(streakCount || '0', 10);
       const newStreak = calculateStreak(lastStudyDate, currentStreak);
 
-      // Actualizar racha si cambió
-      if (newStreak !== currentStreak) {
-        await Promise.all([
-          AsyncStorage.setItem(STORAGE_KEYS.STREAK, newStreak.toString()),
-          AsyncStorage.setItem(STORAGE_KEYS.LAST_STUDY_DATE, new Date().toISOString()),
-        ]);
+      // Solo actualizar storage si la racha se perdió (> 1 día sin estudiar)
+      if (newStreak === 0 && currentStreak > 0) {
+        await AsyncStorage.setItem(STORAGE_KEYS.STREAK, '0');
       }
 
       // Cargar meta diaria
@@ -209,7 +206,7 @@ export const useHomeData = () => {
         prev.map(m => (m.id === 'cards' ? { ...m, progress } : m))
       );
     } catch (error: any) {
-      console.error('Error loading home data:', error);
+      if (__DEV__) console.error('Error loading home data:', error);
       setData(prev => ({
         ...prev,
         isLoading: false,
@@ -233,7 +230,7 @@ export const useHomeData = () => {
         ...prev,
         progress: 0,
         completedQuestions: 0,
-        streak: 1,
+        streak: 0,
       }));
 
       setStudyModules(prev =>
@@ -242,7 +239,7 @@ export const useHomeData = () => {
 
       return true;
     } catch (error) {
-      console.error('Error resetting progress:', error);
+      if (__DEV__) console.error('Error resetting progress:', error);
       return false;
     }
   }, []);
@@ -255,7 +252,7 @@ export const useHomeData = () => {
       await AsyncStorage.setItem(STORAGE_KEYS.DAILY_GOAL, goal.toString());
       setData(prev => ({ ...prev, dailyGoal: goal }));
     } catch (error) {
-      console.error('Error updating daily goal:', error);
+      if (__DEV__) console.error('Error updating daily goal:', error);
     }
   }, []);
 

@@ -15,6 +15,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { questions } from '../data/questions';
 import { StudyCardsRouteProp, NavigationProps } from '../types/navigation';
 import FlipCard from '../components/FlipCard';
@@ -116,7 +117,7 @@ const StudyCardsScreenModerno = () => {
   const current = filteredQuestions.length > 0 ? filteredQuestions[currentIndex] : null;
   const isMarked = current ? markedQuestions.has(current.id) : false;
 
-  // Marcar pregunta vista para progreso global
+  // Marcar pregunta vista para progreso global + actualizar racha y conteo diario
   useEffect(() => {
     const markViewed = async () => {
       try {
@@ -127,6 +128,44 @@ const StudyCardsScreenModerno = () => {
         if (!set.has(current.id)) {
           set.add(current.id);
           await AsyncStorage.setItem(key, JSON.stringify(Array.from(set)));
+
+          // Actualizar conteo diario
+          const todayStr = new Date().toDateString();
+          const dailyKey = `@study:dailyQuestions_${todayStr}`;
+          const dailyRaw = await AsyncStorage.getItem(dailyKey);
+          const dailyStats = dailyRaw ? JSON.parse(dailyRaw) : { questions: 0, time: 0 };
+          dailyStats.questions += 1;
+          dailyStats.date = todayStr;
+          await AsyncStorage.setItem(dailyKey, JSON.stringify(dailyStats));
+
+          // Actualizar racha
+          const lastDate = await AsyncStorage.getItem('@study:lastDate');
+          const streakRaw = await AsyncStorage.getItem('@study:streak');
+          const currentStreak = parseInt(streakRaw || '0', 10);
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          let newStreak = currentStreak;
+          if (lastDate) {
+            const last = new Date(lastDate);
+            last.setHours(0, 0, 0, 0);
+            const diffDays = Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) {
+              newStreak = currentStreak; // Ya estudió hoy
+            } else if (diffDays === 1) {
+              newStreak = currentStreak + 1; // Día consecutivo
+            } else {
+              newStreak = 1; // Gap, reiniciar
+            }
+          } else {
+            newStreak = 1; // Primera vez
+          }
+
+          await Promise.all([
+            AsyncStorage.setItem('@study:streak', newStreak.toString()),
+            AsyncStorage.setItem('@study:lastDate', new Date().toISOString()),
+          ]);
         }
       } catch (e) {
         // no-op: progreso es best-effort
@@ -138,18 +177,31 @@ const StudyCardsScreenModerno = () => {
   // Early return después de todos los hooks
   if (filteredQuestions.length === 0 || !current) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
-          <View style={{ width: 24 }} />
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, { paddingTop: insets.top + 8 }]}
+            >
+              <View style={styles.headerContent}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+                </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
+                </View>
+                <View style={{ width: 44 }} />
+              </View>
+            </LinearGradient>
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>No hay preguntas disponibles</Text>
+          </View>
         </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No hay preguntas disponibles</Text>
-        </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -289,31 +341,38 @@ const StudyCardsScreenModerno = () => {
   const content = (
     <>
       {!isWeb && (
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()}
-            style={styles.headerButton}
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
           >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
-          </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
-            {subtitle}
-          </Text>
-          <Text style={styles.headerSubtitle}>Tarjetas de Estudio</Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity 
-            onPress={handleMarkCard}
-            style={styles.headerButton}
-          >
-            <MaterialCommunityIcons
-              name={isMarked ? 'bookmark' : 'bookmark-outline'}
-              size={20}
-              color={isMarked ? '#f59e0b' : '#6b7280'}
-            />
-          </TouchableOpacity>
-        </View>
+            <View style={styles.headerContent}>
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle} numberOfLines={2}>
+                  {subtitle}
+                </Text>
+                <Text style={styles.headerSubtitle}>Tarjetas de Estudio</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={handleMarkCard}
+                style={styles.bookmarkButton}
+              >
+                <MaterialCommunityIcons
+                  name={isMarked ? 'bookmark' : 'bookmark-outline'}
+                  size={20}
+                  color={isMarked ? '#FCD34D' : 'rgba(255,255,255,0.7)'}
+                />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
       )}
 
@@ -488,89 +547,73 @@ const StudyCardsScreenModerno = () => {
     );
   }
 
-  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
+  // Web móvil o app móvil
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {content}
-    </SafeAreaView>
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        {content}
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E3A8A',
     ...Platform.select({
       web: {
         alignItems: 'center',
       },
     }),
   },
-  header: {
+  mainContainer: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 3,
-    ...Platform.select({
-      web: {
-        width: '100%',
-        maxWidth: 1200,
-        paddingHorizontal: 32,
-        paddingVertical: 20,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-      },
-    }),
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8FAFC',
+  headerContainer: {},
+  header: {
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
-    zIndex: 1,
   },
-  headerRight: {
-    flexDirection: 'row',
+  bookmarkButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
-    gap: 8,
-    zIndex: 1,
+    justifyContent: 'center',
   },
   headerTitleContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 0,
   },
   headerTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.1,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
-    letterSpacing: 0.1,
   },
   progressContainer: {
     paddingHorizontal: 20,

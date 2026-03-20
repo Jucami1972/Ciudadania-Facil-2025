@@ -6,13 +6,14 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  SafeAreaView,
+  StatusBar,
   Dimensions,
   Alert,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import { questions, Question } from '../data/questions';
 import { NavigationProps } from '../types/navigation';
@@ -112,18 +113,35 @@ const StudyCardsByTypeScreen = () => {
 
   if (filteredQuestions.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Estudio por Tipo</Text>
-          <View style={{ width: 24 }} />
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, { paddingTop: insets.top + 8 }]}
+            >
+              <View style={styles.headerContent}>
+                <TouchableOpacity
+                  onPress={() => navigation.goBack()}
+                  style={styles.backButton}
+                >
+                  <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+                </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.headerTitle}>Estudio por Tipo</Text>
+                </View>
+                <View style={{ width: 44 }} />
+              </View>
+            </LinearGradient>
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>No hay preguntas disponibles</Text>
+          </View>
         </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>No hay preguntas disponibles</Text>
-        </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -155,7 +173,7 @@ const StudyCardsByTypeScreen = () => {
       await newSound.playAsync();
       
       newSound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && !status.isPlaying && !status.isBuffering) {
+        if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
           setSound(null);
         }
@@ -239,19 +257,33 @@ const StudyCardsByTypeScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{typeName}</Text>
-          <Text style={styles.headerSubtitle}>{typeNameEn}</Text>
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>{typeName}</Text>
+                <Text style={styles.headerSubtitle}>{typeNameEn}</Text>
+              </View>
+              <TouchableOpacity onPress={handleLanguageToggle} style={styles.languageButton}>
+                <Text style={styles.languageText}>{language.toUpperCase()}</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-        <TouchableOpacity onPress={handleLanguageToggle} style={styles.languageButton}>
-          <Text style={styles.languageText}>{language.toUpperCase()}</Text>
-        </TouchableOpacity>
-      </View>
 
       <View style={styles.progressContainer}>
         <View style={styles.progressHeader}>
@@ -331,27 +363,37 @@ const StudyCardsByTypeScreen = () => {
           />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#1E40AF', // Azul profesional
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitleContainer: {
     flex: 1,
@@ -360,12 +402,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: '#FFFFFF',
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255,255,255,0.8)',
     marginTop: 2,
   },
   languageButton: {
@@ -454,7 +496,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderWidth: 1,
-    borderColor: 'rgba(124, 77, 255, 0.15)',
+    borderColor: 'rgba(30, 64, 175, 0.15)',
   },
   errorContainer: {
     flex: 1,

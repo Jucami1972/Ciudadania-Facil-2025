@@ -162,12 +162,16 @@ import CategoryPracticeScreenModerno from '../screens/practice/CategoryPracticeS
 import RandomPracticeScreen from '../screens/practice/RandomPracticeScreen';
 import IncorrectPracticeScreen from '../screens/IncorrectPracticeScreen';
 import MarkedPracticeScreen from '../screens/MarkedPracticeScreen';
+import MisPreguntasScreen from '../screens/MisPreguntasScreen';
 import QuestionTypePracticeScreenModerno from '../screens/practice/QuestionTypePracticeScreenModerno';
 import Random20PracticeScreenModerno from '../screens/practice/Random20PracticeScreenModerno';
 import AIInterviewN400ScreenModerno from '../screens/practice/AIInterviewN400ScreenModerno';
 import ReadingWritingScreenModerno from '../screens/practice/ReadingWritingScreenModerno';
 import VocabularioScreenModernoV2 from '../screens/VocabularioScreenModernoV2';
 import SpacedRepetitionPracticeScreen from '../screens/practice/SpacedRepetitionPracticeScreen';
+import N400PracticeHomeScreen from '../screens/practice/N400PracticeHomeScreen';
+import N400SectionPracticeScreen from '../screens/practice/N400SectionPracticeScreen';
+import EstadisticasScreen from '../screens/EstadisticasScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
@@ -239,12 +243,14 @@ const PracticeStack = () => (
     />
     <PracticeStackNavigator.Screen name="CategoryPractice" component={CategoryPracticeScreen} />
     <PracticeStackNavigator.Screen name="RandomPractice" component={RandomPracticeScreen} />
+    <PracticeStackNavigator.Screen name="MisPreguntas" component={MisPreguntasScreen} />
     <PracticeStackNavigator.Screen name="IncorrectPractice" component={IncorrectPracticeScreen} />
     <PracticeStackNavigator.Screen name="MarkedPractice" component={MarkedPracticeScreen} />
     <PracticeStackNavigator.Screen
       name="QuestionTypePracticeHome"
       component={QuestionTypePracticeScreenModerno}
     />
+    <PracticeStackNavigator.Screen name="StudyCardsByType" component={StudyCardsByTypeScreen} />
     <PracticeStackNavigator.Screen
       name="Random20PracticeHome"
       component={Random20PracticeScreenModerno}
@@ -265,6 +271,14 @@ const PracticeStack = () => (
     <PracticeStackNavigator.Screen
       name="SpacedRepetitionPractice"
       component={SpacedRepetitionPracticeScreen}
+    />
+    <PracticeStackNavigator.Screen
+      name="N400PracticeHome"
+      component={N400PracticeHomeScreen}
+    />
+    <PracticeStackNavigator.Screen
+      name="N400SectionPractice"
+      component={N400SectionPracticeScreen}
     />
   </PracticeStackNavigator.Navigator>
   </Suspense>
@@ -529,6 +543,10 @@ export default function AppNavigator() {
                 </Suspense>
               )}
               options={{ presentation: 'modal' }}
+            />
+            <RootStack.Screen
+              name="ResultsScreen"
+              component={EstadisticasScreen}
             />
           </>
         )}

@@ -1,24 +1,27 @@
 /**
- * HomeScreen - Revolutionary Version
- * 
- * FIXED VERSION:
- * - Fixed header that does not move with scroll
- * - Progress card with correct overlap over the header
- * - Smooth and perfect SVG wave
- * - All components working correctly
+ * HomeScreen - Redesigned Version
+ *
+ * Matches approved proposal:
+ * - 3-color gradient header (same pattern as Practice screen)
+ * - Clean stats bar below header
+ * - Horizontal progress bar with brand colors
+ * - Brand blue CTA
+ * - White cards on neutral background (#F8FAFC)
+ * - Correct question counts (57/30/13)
  */
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   Platform,
   Animated,
   Alert,
+  StatusBar,
+  Image,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,6 +29,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 import { RootStackParamList } from '../types/navigation';
 import { CategoryType } from '../constants/categories';
@@ -54,14 +58,6 @@ interface HomeData {
   userName: string;
 }
 
-const MOTIVATIONAL_QUOTES = [
-  { minProgress: 0, quote: 'Cada pregunta te acerca más a tu meta' },
-  { minProgress: 25, quote: '¡Vas por buen camino! Sigue adelante' },
-  { minProgress: 50, quote: '¡Ya casi llegas! No te detengas ahora' },
-  { minProgress: 75, quote: '¡Excelente trabajo! Estás muy cerca' },
-  { minProgress: 90, quote: '¡Increíble! Ya casi dominas todo el material' },
-];
-
 interface Achievement {
   id: string;
   icon: string;
@@ -79,19 +75,73 @@ const HomeScreenRevolutionary = () => {
   const [homeData, setHomeData] = useState<HomeData>({
     progress: 0,
     completedQuestions: 0,
-    totalQuestions: questions.length || 100,
+    totalQuestions: 100,
     todayCount: 0,
-    remainingQuestions: questions.length || 100,
+    remainingQuestions: 100,
     streak: 0,
     governmentProgress: 0,
     historyProgress: 0,
     civicsProgress: 0,
-    lastStudiedSubcategory: 'A: Principles of American Government',
+    lastStudiedSubcategory: 'A: Principios de la Democracia Americana',
     userName: user?.email?.split('@')[0] || 'Estudiante',
   });
 
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  // Cargar foto de perfil guardada
+  useEffect(() => {
+    AsyncStorage.getItem('@user:profilePhoto').then((uri) => {
+      if (uri) setProfilePhoto(uri);
+    });
+  }, []);
+
+  const handlePickProfilePhoto = useCallback(async () => {
+    Alert.alert('Foto de Perfil', '¿Cómo deseas actualizar tu foto?', [
+      {
+        text: 'Tomar Foto',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara para tomar tu foto.');
+            return;
+          }
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const uri = result.assets[0].uri;
+            setProfilePhoto(uri);
+            await AsyncStorage.setItem('@user:profilePhoto', uri);
+          }
+        },
+      },
+      {
+        text: 'Elegir de Galería',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') {
+            Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería de fotos.');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.7,
+          });
+          if (!result.canceled && result.assets[0]) {
+            const uri = result.assets[0].uri;
+            setProfilePhoto(uri);
+            await AsyncStorage.setItem('@user:profilePhoto', uri);
+          }
+        },
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }, []);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -116,59 +166,89 @@ const HomeScreenRevolutionary = () => {
     try {
       setIsLoading(true);
 
-      const [viewedData, streakData, todayData, userName] = await Promise.all([
+      const todayDateStr = new Date().toDateString();
+      const [viewedData, streakData, lastDateData, dailyData] = await Promise.all([
         AsyncStorage.getItem('@study:viewed'),
         AsyncStorage.getItem('@study:streak'),
-        AsyncStorage.getItem('@study:todayCount'),
-        AsyncStorage.getItem('@user:name'),
+        AsyncStorage.getItem('@study:lastDate'),
+        AsyncStorage.getItem(`@study:dailyQuestions_${todayDateStr}`),
       ]);
 
       const viewedIds = viewedData ? new Set<number>(JSON.parse(viewedData)) : new Set();
       const completedCount = viewedIds.size;
-      const progress = questions.length > 0 ? Math.round((completedCount / questions.length) * 100) : 0;
-      const remaining = questions.length > 0 ? questions.length - completedCount : 100;
-      const streak = streakData ? parseInt(streakData, 10) : 0;
-      const today = todayData ? parseInt(todayData, 10) : 0;
+      const progress = Math.round((completedCount / 100) * 100);
+      const remaining = 100 - completedCount;
+
+      // Calcular racha correctamente
+      const currentStreak = parseInt(streakData || '0', 10);
+      let streak = currentStreak;
+      if (lastDateData) {
+        const lastDate = new Date(lastDateData);
+        const todayDate = new Date();
+        lastDate.setHours(0, 0, 0, 0);
+        todayDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays > 1) {
+          // Gap mayor a 1 día, racha se perdió
+          streak = 0;
+        }
+      }
+
+      // Obtener conteo de preguntas estudiadas hoy
+      const dailyStats = dailyData ? JSON.parse(dailyData) : null;
+      const today = dailyStats?.questions || 0;
 
       const govQuestions = questions.filter((q) => q.category === 'government');
       const govCompleted = govQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const govProgress = govQuestions.length > 0 ? Math.round((govCompleted / govQuestions.length) * 100) : 0;
+      const govProgress = Math.round((govCompleted / govQuestions.length) * 100);
 
       const histQuestions = questions.filter((q) => q.category === 'history');
       const histCompleted = histQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const histProgress = histQuestions.length > 0 ? Math.round((histCompleted / histQuestions.length) * 100) : 0;
+      const histProgress = Math.round((histCompleted / histQuestions.length) * 100);
 
-      const civQuestions = questions.filter((q) => q.category === 'symbols_holidays');
+      const civQuestions = questions.filter((q) => q.category === 'civics');
       const civCompleted = civQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const civProgress = civQuestions.length > 0 ? Math.round((civCompleted / civQuestions.length) * 100) : 0;
+      const civProgress = Math.round((civCompleted / civQuestions.length) * 100);
 
-      // Encontrar la última pregunta estudiada para deducir subcategoría
-      const maxViewedId = viewedIds.size > 0 ? Math.max(...viewedIds) : 0;
-      let lastQuestion = questions.find((q) => q.id === maxViewedId);
-
-      // Si no hay preguntas vistas, tomar la primera
-      if (!lastQuestion && questions.length > 0) {
-        lastQuestion = questions[0];
-      }
+      // Mapeo de questionRange a subcategoría correcta
+      const getSubcategoryFromRange = (range: string, cat: string): string => {
+        const rangeMap: Record<string, Record<string, string>> = {
+          GobiernoAmericano: {
+            '1-12': 'A: Principios de la Democracia Americana',
+            '13-47': 'B: Sistema de Gobierno',
+            '48-57': 'C: Derechos y Responsabilidades',
+          },
+          HistoriaAmericana: {
+            '58-70': 'A: Período Colonial e Independencia',
+            '71-77': 'B: Siglo XIX (1800s)',
+            '78-87': 'C: Historia Reciente',
+          },
+          EducacionCivica: {
+            '88-95': 'A: Geografía',
+            '96-98': 'B: Símbolos',
+            '99-100': 'C: Días Festivos',
+          },
+        };
+        return rangeMap[cat]?.[range] || rangeMap.GobiernoAmericano['1-12'];
+      };
 
       let lastCategory = 'GobiernoAmericano';
-      if (lastQuestion?.category === 'history') lastCategory = 'HistoriaAmericana';
-      if (lastQuestion?.category === 'symbols_holidays') lastCategory = 'EducacionCivica';
+      let lastRange = '1-12';
+      if (govProgress === 100) {
+        lastCategory = 'HistoriaAmericana';
+        lastRange = '58-70';
+      }
+      if (histProgress === 100) {
+        lastCategory = 'EducacionCivica';
+        lastRange = '88-95';
+      }
 
-      const lastSubcategory = lastQuestion?.subcategory || 'A: Principles of American Government';
-      
-      // Encontrar el rango de IDs para esta subcategoría para usar en navegación
-      const questionsInSubcat = questions.filter(
-        (q) => q.category === lastQuestion?.category && q.subcategory === lastSubcategory
-      );
-      const minId = questionsInSubcat.length > 0 ? Math.min(...questionsInSubcat.map(q => q.id)) : 1;
-      const maxId = questionsInSubcat.length > 0 ? Math.max(...questionsInSubcat.map(q => q.id)) : 15;
-      const lastRange = `${minId}-${maxId}`;
+      const lastSubcategory = getSubcategoryFromRange(lastRange, lastCategory);
 
       setHomeData({
         progress,
         completedQuestions: completedCount,
-        totalQuestions: questions.length,
+        totalQuestions: 100,
         todayCount: today,
         remainingQuestions: remaining,
         streak,
@@ -178,17 +258,18 @@ const HomeScreenRevolutionary = () => {
         lastStudiedCategory: lastCategory,
         lastStudiedRange: lastRange,
         lastStudiedSubcategory: lastSubcategory,
-        userName: userName || user?.email?.split('@')[0] || 'Estudiante',
+        userName: user?.email?.split('@')[0] || 'Estudiante',
       });
 
       const newAchievements: Achievement[] = [];
 
-      if (streak >= 7) {
+      // Logros basados en datos reales
+      if (completedCount >= 10) {
         newAchievements.push({
-          id: 'streak_7',
-          icon: '🔥',
-          name: 'Racha de 7 días',
-          date: 'Desbloqueado hoy',
+          id: 'questions_10',
+          icon: '📝',
+          name: '10 preguntas estudiadas',
+          date: `${completedCount} de 100 completadas`,
           unlocked: true,
         });
       }
@@ -198,17 +279,75 @@ const HomeScreenRevolutionary = () => {
           id: 'questions_50',
           icon: '⭐',
           name: '50 preguntas completadas',
-          date: 'Hace 2 días',
+          date: `${completedCount} de 100 completadas`,
           unlocked: true,
         });
       }
 
-      if (govProgress >= 75 || histProgress >= 75 || civProgress >= 75) {
+      if (completedCount >= 100) {
         newAchievements.push({
-          id: 'category_75',
+          id: 'questions_100',
+          icon: '🏆',
+          name: '¡Las 100 preguntas!',
+          date: '100% completado',
+          unlocked: true,
+        });
+      }
+
+      if (streak >= 3) {
+        newAchievements.push({
+          id: 'streak_3',
+          icon: '🔥',
+          name: `Racha de ${streak} días`,
+          date: `${streak} días consecutivos`,
+          unlocked: true,
+        });
+      }
+
+      if (govProgress >= 100) {
+        newAchievements.push({
+          id: 'gov_complete',
+          icon: '🏛️',
+          name: 'Gobierno Americano completo',
+          date: `${govCompleted}/${govQuestions.length} preguntas`,
+          unlocked: true,
+        });
+      } else if (govProgress >= 50) {
+        newAchievements.push({
+          id: 'gov_50',
           icon: '🎯',
-          name: 'Primera categoría al 75%',
-          date: 'Hace 3 días',
+          name: 'Gobierno al 50%',
+          date: `${govCompleted}/${govQuestions.length} preguntas`,
+          unlocked: true,
+        });
+      }
+
+      if (histProgress >= 100) {
+        newAchievements.push({
+          id: 'hist_complete',
+          icon: '📚',
+          name: 'Historia Americana completa',
+          date: `${histCompleted}/${histQuestions.length} preguntas`,
+          unlocked: true,
+        });
+      }
+
+      if (civProgress >= 100) {
+        newAchievements.push({
+          id: 'civ_complete',
+          icon: '🗽',
+          name: 'Educación Cívica completa',
+          date: `${civCompleted}/${civQuestions.length} preguntas`,
+          unlocked: true,
+        });
+      }
+
+      if (today >= 5) {
+        newAchievements.push({
+          id: 'daily_5',
+          icon: '💪',
+          name: `${today} preguntas hoy`,
+          date: 'Sesión de estudio productiva',
           unlocked: true,
         });
       }
@@ -216,7 +355,7 @@ const HomeScreenRevolutionary = () => {
       setAchievements(newAchievements);
       setIsLoading(false);
     } catch (error) {
-      console.error('Error loading data:', error);
+      if (__DEV__) console.error('Error loading data:', error);
       setIsLoading(false);
     }
   }, [user]);
@@ -231,25 +370,23 @@ const HomeScreenRevolutionary = () => {
     const categoryMap: Record<string, CategoryType> = {
       GobiernoAmericano: 'government',
       HistoriaAmericana: 'history',
-      EducacionCivica: 'symbols_holidays',
+      EducacionCivica: 'civics',
     };
 
     const category = categoryMap[homeData.lastStudiedCategory || 'GobiernoAmericano'] || 'government';
-    
-    // Usar la subcategoría correcta en lugar de texto genérico
-    const subtitle = homeData.lastStudiedSubcategory || 'A: Principles of American Government';
-    const title = homeData.lastStudiedCategory === 'GobiernoAmericano' 
+
+    const subtitle = homeData.lastStudiedSubcategory || 'A: Principios de la Democracia Americana';
+    const title = homeData.lastStudiedCategory === 'GobiernoAmericano'
       ? 'Gobierno Americano'
       : homeData.lastStudiedCategory === 'HistoriaAmericana'
       ? 'Historia Americana'
       : 'Educación Cívica';
 
-    // Navegar al StudyStack con la pantalla StudyCards
     (navigation as any).navigate('Study', {
       screen: 'StudyCards',
       params: {
         category,
-        questionRange: homeData.lastStudiedRange || '1-15',
+        questionRange: homeData.lastStudiedRange || '1-12',
         title,
         subtitle,
       },
@@ -281,11 +418,7 @@ const HomeScreenRevolutionary = () => {
   }, [navigation]);
 
   const handleStatsPress = useCallback(() => {
-    try {
-      navigation.navigate('ResultsScreen' as any);
-    } catch {
-      Alert.alert('Estadísticas', 'Pantalla de estadísticas próximamente');
-    }
+    navigation.navigate('ResultsScreen' as any);
   }, [navigation]);
 
   const handleLogoutPress = useCallback(() => {
@@ -295,50 +428,86 @@ const HomeScreenRevolutionary = () => {
     ]);
   }, [logout]);
 
-  const motivationalQuote = useMemo(() => {
-    const quote = MOTIVATIONAL_QUOTES.slice().reverse().find((q) => homeData.progress >= q.minProgress);
-    return quote?.quote || MOTIVATIONAL_QUOTES[0].quote;
-  }, [homeData.progress]);
-
   // =============== COMPONENTES ===============
 
-  const FixedHeader = () => (
-    <View style={styles.fixedHeaderContainer}>
+  const Header = () => (
+    <View style={styles.headerContainer}>
       <LinearGradient
-        colors={['#4F46E5', '#6366F1'] as [string, string]}
+        colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.heroHeader, { paddingTop: Math.max(insets.top - 15, 0) }]}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <View style={styles.headerTop}>
-          <View style={styles.greetingContainer}>
-            <Text style={styles.greeting}>Bienvenido de nuevo</Text>
-            <Text style={styles.username}>¡Sigue así, {homeData.userName}! 🎯</Text>
+        <View style={styles.headerContent}>
+          {/* Logo + Título a la izquierda */}
+          <View style={styles.headerLeft}>
+            <Image
+              source={require('../assets/imagenonboarding/logoapp1.png')}
+              style={styles.headerLogo}
+            />
+            <View style={styles.headerTextGroup}>
+              <Text style={styles.headerTitle}>Ciudadanía Fácil</Text>
+              <Text style={styles.headerGreeting}>
+                ¡Hola, {homeData.userName}!
+              </Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.profileIcon} onPress={handleLogoutPress}>
-            <MaterialCommunityIcons name="account-circle" size={24} color="white" />
+          {/* Foto de perfil a la derecha */}
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={handlePickProfilePhoto}
+            onLongPress={handleLogoutPress}
+            accessibilityLabel="Foto de perfil. Mantén presionado para cerrar sesión."
+          >
+            {profilePhoto ? (
+              <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
+            ) : (
+              <MaterialCommunityIcons name="account-circle" size={28} color="white" />
+            )}
+            {homeData.completedQuestions > 0 && (
+              <View style={styles.profileBadge}>
+                <MaterialCommunityIcons name="check" size={8} color="white" />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
-
-        <Text style={styles.motivationalQuote}>"{motivationalQuote}"</Text>
       </LinearGradient>
     </View>
   );
 
-  const ProgressHeroCard = () => (
+  const StatsBar = () => (
+    <View style={styles.statsBar}>
+      <View style={styles.statsBarItem}>
+        <Text style={styles.statsBarValue}>{homeData.completedQuestions}</Text>
+        <Text style={styles.statsBarLabel}>Completadas</Text>
+      </View>
+      <View style={styles.statsBarDivider} />
+      <View style={styles.statsBarItem}>
+        <Text style={styles.statsBarValue}>{homeData.todayCount}</Text>
+        <Text style={styles.statsBarLabel}>Hoy</Text>
+      </View>
+      <View style={styles.statsBarDivider} />
+      <View style={styles.statsBarItem}>
+        <Text style={styles.statsBarValue}>{homeData.remainingQuestions}</Text>
+        <Text style={styles.statsBarLabel}>Restantes</Text>
+      </View>
+    </View>
+  );
+
+  const ProgressCard = () => (
     <Animated.View
       style={[
-        styles.progressHero,
+        styles.progressCard,
         {
           opacity: fadeAnim,
           transform: [{ scale: scaleAnim }],
         },
       ]}
     >
-      <View style={styles.progressHeader}>
-        <Text style={styles.progressTitle}>Tu Progreso</Text>
+      <View style={styles.progressCardHeader}>
+        <Text style={styles.progressCardTitle}>Tu Progreso</Text>
         <LinearGradient
-          colors={['#f1833b', '#F58A64'] as [string, string]}
+          colors={['#F59E0B', '#FBBF24'] as [string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.streakBadge}
@@ -348,48 +517,20 @@ const HomeScreenRevolutionary = () => {
         </LinearGradient>
       </View>
 
-      <View style={styles.progressStats}>
-        <View style={styles.statItemCompleted}>
-          <Text style={styles.statValueCompleted} numberOfLines={1}>{homeData.completedQuestions}</Text>
-          <Text style={styles.statLabelCompleted} numberOfLines={1}>Logrado</Text>
-        </View>
-        <View style={styles.statItemToday}>
-          <Text style={styles.statValueToday} numberOfLines={1}>{homeData.todayCount}</Text>
-          <Text style={styles.statLabelToday} numberOfLines={1}>Hoy</Text>
-        </View>
-        <View style={styles.statItemRemaining}>
-          <Text style={styles.statValueRemaining} numberOfLines={1}>{homeData.remainingQuestions}</Text>
-          <Text style={styles.statLabelRemaining} numberOfLines={1}>Falta</Text>
-        </View>
+      <View style={styles.progressInfo}>
+        <Text style={styles.progressCount}>
+          {homeData.completedQuestions} de 100 preguntas
+        </Text>
+        <Text style={styles.progressPercent}>{homeData.progress}%</Text>
       </View>
 
-      <View style={styles.progressRingContainer}>
-        <View style={styles.progressRing}>
-          {/* Círculo de fondo */}
-          <View style={styles.progressRingBase} />
-          {/* Primer semicírculo (siempre visible cuando hay progreso) */}
-          {homeData.progress > 0 && (
-            <View style={[
-              styles.progressRingHalf1,
-              {
-                transform: [{ rotate: `${Math.min(homeData.progress, 50) / 50 * 180 - 90}deg` }],
-              }
-            ]} />
-          )}
-          {/* Segundo semicírculo (visible cuando progreso > 50%) */}
-          {homeData.progress > 50 && (
-            <View style={[
-              styles.progressRingHalf2,
-              {
-                transform: [{ rotate: `${((homeData.progress - 50) / 50) * 180 - 90}deg` }],
-              }
-            ]} />
-          )}
-          <View style={styles.progressRingInner}>
-            <Text style={styles.progressPercentage}>{homeData.progress}%</Text>
-            <Text style={styles.progressLabel}>Total</Text>
-          </View>
-        </View>
+      <View style={styles.progressBarTrack}>
+        <LinearGradient
+          colors={['#1E40AF', '#3B82F6'] as [string, string]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.progressBarFill, { width: `${Math.max(homeData.progress, 2)}%` }]}
+        />
       </View>
     </Animated.View>
   );
@@ -402,15 +543,28 @@ const HomeScreenRevolutionary = () => {
         ? 'Repaso Final'
         : 'Continuar Estudiando';
 
+    const ctaGradient: [string, string] =
+      homeData.completedQuestions === 0
+        ? ['#047857', '#10B981']   // Verde — invita a comenzar
+        : homeData.progress >= 90
+        ? ['#7C3AED', '#A78BFA']   // Púrpura — repaso final especial
+        : ['#B45309', '#F59E0B'];  // Naranja — continuar con urgencia
+
+    const categoryDisplayName: Record<string, string> = {
+      GobiernoAmericano: 'Gobierno',
+      HistoriaAmericana: 'Historia',
+      EducacionCivica: 'Cívica',
+    };
+
     const ctaSubtitle =
       homeData.lastStudiedCategory && homeData.lastStudiedRange
-        ? `${homeData.lastStudiedCategory} • Preguntas ${homeData.lastStudiedRange}`
+        ? `${categoryDisplayName[homeData.lastStudiedCategory] || homeData.lastStudiedCategory} • Preguntas ${homeData.lastStudiedRange}`
         : 'Comienza tu preparación';
 
     return (
       <TouchableOpacity onPress={handleContinuePress} activeOpacity={0.85}>
         <LinearGradient
-          colors={['#f1833b', '#F58A64'] as [string, string]}
+          colors={ctaGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.smartCTA}
@@ -431,27 +585,36 @@ const HomeScreenRevolutionary = () => {
     const pathSteps = [
       {
         id: 'government',
-        icon: homeData.governmentProgress >= 100 ? 'check' : 'lock-open',
+        icon: 'bank' as const,
         title: 'Gobierno Americano',
-        subtitle: '72 preguntas',
+        subtitle: '57 preguntas',
         progress: homeData.governmentProgress,
+        completed: homeData.governmentProgress >= 100,
         unlocked: true,
+        gradient: ['#B45309', '#F59E0B'] as [string, string],
+        lockedGradient: ['#CBD5E1', '#CBD5E1'] as [string, string],
       },
       {
         id: 'history',
-        icon: homeData.historyProgress >= 100 ? 'check' : homeData.governmentProgress >= 50 ? 'lock-open' : 'lock',
+        icon: 'book-open-page-variant' as const,
         title: 'Historia Americana',
-        subtitle: '46 preguntas',
+        subtitle: '30 preguntas',
         progress: homeData.historyProgress,
+        completed: homeData.historyProgress >= 100,
         unlocked: homeData.governmentProgress >= 50,
+        gradient: ['#047857', '#10B981'] as [string, string],
+        lockedGradient: ['#CBD5E1', '#CBD5E1'] as [string, string],
       },
       {
         id: 'civics',
-        icon: homeData.civicsProgress >= 100 ? 'check' : homeData.historyProgress >= 50 ? 'lock-open' : 'lock',
+        icon: 'account-group' as const,
         title: 'Educación Cívica',
-        subtitle: '10 preguntas',
+        subtitle: '13 preguntas',
         progress: homeData.civicsProgress,
+        completed: homeData.civicsProgress >= 100,
         unlocked: homeData.historyProgress >= 50,
+        gradient: ['#1E40AF', '#3B82F6'] as [string, string],
+        lockedGradient: ['#CBD5E1', '#CBD5E1'] as [string, string],
       },
     ];
 
@@ -470,19 +633,26 @@ const HomeScreenRevolutionary = () => {
                 disabled={!step.unlocked}
                 activeOpacity={0.7}
               >
-                <LinearGradient
-                  colors={step.unlocked ? (['#6366F1', '#4F46E5'] as [string, string]) : (['#E5E7EB', '#E5E7EB'] as [string, string])}
-                  style={styles.stepIconContainer}
-                >
-                  <MaterialCommunityIcons name={step.icon as any} size={24} color="white" />
-                </LinearGradient>
+                <View style={{ position: 'relative' }}>
+                  <LinearGradient
+                    colors={step.unlocked ? step.gradient : step.lockedGradient}
+                    style={styles.stepIconContainer}
+                  >
+                    <MaterialCommunityIcons name={step.icon as any} size={22} color="white" />
+                  </LinearGradient>
+                  {step.completed && (
+                    <View style={styles.completedBadge}>
+                      <MaterialCommunityIcons name="check-bold" size={10} color="white" />
+                    </View>
+                  )}
+                </View>
 
                 <View style={styles.stepContent}>
                   <Text style={styles.stepTitle}>{step.title}</Text>
                   <Text style={styles.stepSubtitle}>{step.subtitle}</Text>
                   <View style={styles.stepProgressBar}>
                     <LinearGradient
-                      colors={['#4F46E5', '#6366F1'] as [string, string]}
+                      colors={step.gradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={[styles.stepProgressFill, { width: `${step.progress}%` }]}
@@ -506,7 +676,7 @@ const HomeScreenRevolutionary = () => {
         icon: 'text-box-outline',
         label: 'Quiz 20',
         sublabel: 'Práctica rápida',
-        gradient: ['#60A5FA', '#3B82F6'] as [string, string],  // Azul vibrante
+        gradient: ['#1E40AF', '#3B82F6'] as [string, string],
         onPress: handleQuiz20Press,
       },
       {
@@ -514,7 +684,7 @@ const HomeScreenRevolutionary = () => {
         icon: 'refresh',
         label: 'Repaso',
         sublabel: 'Revisar marcadas',
-        gradient: ['#A78BFA', '#7C3AED'] as [string, string],  // Púrpura vibrante
+        gradient: ['#6D28D9', '#8B5CF6'] as [string, string],
         onPress: handleReviewPress,
       },
       {
@@ -522,7 +692,7 @@ const HomeScreenRevolutionary = () => {
         icon: 'microphone',
         label: 'Voz AI',
         sublabel: 'Práctica oral',
-        gradient: ['#F87171', '#DC2626'] as [string, string],  // Rojo vibrante
+        gradient: ['#3730A3', '#6366F1'] as [string, string],
         onPress: handleVoicePress,
       },
       {
@@ -530,7 +700,7 @@ const HomeScreenRevolutionary = () => {
         icon: 'chart-line',
         label: 'Estadísticas',
         sublabel: 'Ver progreso',
-        gradient: ['#34D399', '#059669'] as [string, string],  // Verde vibrante
+        gradient: ['#047857', '#10B981'] as [string, string],
         onPress: handleStatsPress,
       },
     ];
@@ -543,10 +713,10 @@ const HomeScreenRevolutionary = () => {
         </View>
         <View style={styles.actionsGrid}>
           {actions.map((action) => (
-            <TouchableOpacity 
-              key={action.id} 
-              style={styles.actionCard} 
-              onPress={action.onPress} 
+            <TouchableOpacity
+              key={action.id}
+              style={styles.actionCard}
+              onPress={action.onPress}
               activeOpacity={0.85}
             >
               <LinearGradient
@@ -573,10 +743,13 @@ const HomeScreenRevolutionary = () => {
           <MaterialCommunityIcons name="trophy" size={18} color="#4F46E5" />
           <Text style={styles.sectionTitle}>Logros Recientes</Text>
         </View>
-        <LinearGradient colors={['#FEF9C3', '#FEF3C7'] as [string, string]} style={styles.achievementCard}>
+        <View style={styles.achievementCard}>
           {achievements.map((achievement) => (
             <View key={achievement.id} style={styles.achievementItem}>
-              <LinearGradient colors={['#FBBF24', '#F59E0B'] as [string, string]} style={styles.achievementBadge}>
+              <LinearGradient
+                colors={['#FBBF24', '#F59E0B'] as [string, string]}
+                style={styles.achievementBadge}
+              >
                 <Text style={styles.achievementIcon}>{achievement.icon}</Text>
               </LinearGradient>
               <View style={styles.achievementText}>
@@ -585,7 +758,7 @@ const HomeScreenRevolutionary = () => {
               </View>
             </View>
           ))}
-        </LinearGradient>
+        </View>
       </View>
     );
   };
@@ -594,17 +767,15 @@ const HomeScreenRevolutionary = () => {
 
   const content = (
     <View style={styles.mainContainer}>
-      <FixedHeader />
-      
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <Header />
+      <StatsBar />
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Spacer para compensar el header fijo */}
-        <View style={[styles.headerSpacer, { height: 120 + insets.top }]} />
-        
-        <ProgressHeroCard />
+        <ProgressCard />
         <SmartCTA />
         <LearningPath />
         <QuickActions />
@@ -618,20 +789,21 @@ const HomeScreenRevolutionary = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       {content}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  // =============== LAYOUT ===============
   safeArea: {
     flex: 1,
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#1E3A8A',
   },
   mainContainer: {
     flex: 1,
-    backgroundColor: '#f2f2f2',
+    backgroundColor: '#F8FAFC',
   },
   scrollView: {
     flex: 1,
@@ -639,274 +811,175 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  headerSpacer: {
-    height: 160,
-  },
 
-  // =============== FIXED HEADER ===============
-  fixedHeaderContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
-  },
-  heroHeader: {
-    paddingTop: 24,
+  // =============== HEADER ===============
+  headerContainer: {},
+  header: {
     paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingBottom: 16,
   },
-  headerTop: {
+  headerContent: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
   },
-  greetingContainer: {
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
-  greeting: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  username: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 2,
-  },
-  profileIcon: {
+  headerLogo: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  headerTextGroup: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  headerGreeting: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  profileButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 12,
   },
-  motivationalQuote: {
-    color: 'rgba(255,255,255,0.95)',
-    fontSize: 15,
-    fontWeight: '600',
-    fontStyle: 'italic',
-    marginTop: 4,
+  profilePhoto: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  profileBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1E40AF',
   },
 
-  // =============== PROGRESS HERO ===============
-  progressHero: {
-    backgroundColor: '#fffaf0',
-    borderRadius: 28,
-    padding: 28,
+  // =============== STATS BAR ===============
+  statsBar: {
+    flexDirection: 'row',
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  statsBarItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  statsBarDivider: {
+    width: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 8,
+  },
+  statsBarValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1E40AF',
+  },
+  statsBarLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 2,
+  },
+
+  // =============== PROGRESS CARD ===============
+  progressCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     marginHorizontal: 16,
-    marginTop: 20,
+    marginTop: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#E5EDFF',
-        shadowOffset: { width: 0, height: 20 },
-        shadowOpacity: 0.15,
-        shadowRadius: 40,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 12,
+        elevation: 4,
       },
     }),
   },
-  progressHeader: {
+  progressCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  progressTitle: {
-    fontSize: 18,
+  progressCardTitle: {
+    fontSize: 17,
     fontWeight: '700',
     color: '#111827',
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#FDBA74',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
   },
   streakIcon: {
-    fontSize: 16,
+    fontSize: 14,
   },
   streakText: {
     color: 'white',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
-  progressStats: {
+  progressInfo: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10,
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#E0F2FE',
-    borderRadius: 16,
-    minWidth: 0,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#2563EB',
-  },
-  statLabel: {
-    fontSize: 9,
-    color: '#6B7280',
+  progressCount: {
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: 4,
-    textAlign: 'center',
+    color: '#334155',
   },
-  statItemCompleted: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    aspectRatio: 1,
-    padding: 12,
-    backgroundColor: '#D4EEC4',
-    borderRadius: 16,
-    minWidth: 0,
-  },
-  statValueCompleted: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#91be50',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  statLabelCompleted: {
-    fontSize: 11,
-    color: '#91be50',
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  statItemToday: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    aspectRatio: 1,
-    padding: 12,
-    backgroundColor: '#96eee4',
-    borderRadius: 16,
-    minWidth: 0,
-  },
-  statValueToday: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#42c1b2',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  statLabelToday: {
-    fontSize: 11,
-    color: '#42c1b2',
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  statItemRemaining: {
-    flex: 1,
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    aspectRatio: 1,
-    padding: 12,
-    backgroundColor: '#71f7c3',
-    borderRadius: 16,
-    minWidth: 0,
-  },
-  statValueRemaining: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#47a581',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  statLabelRemaining: {
-    fontSize: 11,
-    color: '#47a581',
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  progressRingContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  progressRing: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  progressRingBase: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#59a4fc',
-  },
-  progressRingHalf1: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 8,
-    borderTopColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#3066a5',
-    borderLeftColor: '#3066a5',
-  },
-  progressRingHalf2: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 8,
-    borderTopColor: '#3066a5',
-    borderRightColor: '#3066a5',
-    borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent',
-  },
-  progressRingInner: {
-    width: 85,
-    height: 85,
-    borderRadius: 42.5,
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1,
-  },
-  progressPercentage: {
-    fontSize: 28,
+  progressPercent: {
+    fontSize: 24,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#1E40AF',
   },
-  progressLabel: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontWeight: '600',
-    textTransform: 'uppercase',
+  progressBarTrack: {
+    height: 10,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 5,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 5,
   },
 
   // =============== SMART CTA ===============
@@ -914,20 +987,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: 20,
-    marginTop: 20,
+    marginHorizontal: 16,
+    marginTop: 16,
     paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 8 },
+        shadowColor: '#1E40AF',
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 24,
+        shadowRadius: 16,
       },
       android: {
-        elevation: 8,
+        elevation: 6,
       },
     }),
   },
@@ -936,34 +1009,34 @@ const styles = StyleSheet.create({
   },
   ctaTitle: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   ctaSubtitle: {
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 13,
     fontWeight: '500',
   },
   ctaIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
   // =============== LEARNING PATH ===============
   learningPath: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginTop: 24,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 16,
@@ -971,69 +1044,82 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   pathContainer: {
-    backgroundColor: '#fffaf0',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
-        shadowRadius: 20,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 3,
       },
     }),
   },
   pathStep: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
   },
   pathConnector: {
     width: 2,
-    height: 20,
-    backgroundColor: '#E5E7EB',
-    marginLeft: 27,
-    marginVertical: 8,
+    height: 16,
+    backgroundColor: '#E2E8F0',
+    marginLeft: 23,
+    marginVertical: 6,
   },
   stepIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#16A34A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   stepContent: {
     flex: 1,
   },
   stepTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   stepSubtitle: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#64748B',
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   stepProgressBar: {
-    height: 6,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
+    height: 5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2.5,
     overflow: 'hidden',
   },
   stepProgressFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 2.5,
   },
 
   // =============== QUICK ACTIONS ===============
   quickActions: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginTop: 24,
   },
   actionsGrid: {
@@ -1043,31 +1129,31 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     width: '48%',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
     alignItems: 'center',
     minHeight: 120,
     justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
-        shadowRadius: 16,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 3,
       },
     }),
   },
   actionIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   actionLabel: {
     fontSize: 14,
@@ -1077,31 +1163,32 @@ const styles = StyleSheet.create({
   },
   actionSublabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: '#64748B',
     fontWeight: '500',
-    marginTop: 4,
+    marginTop: 3,
     textAlign: 'center',
   },
 
   // =============== ACHIEVEMENTS ===============
   achievements: {
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginTop: 24,
   },
   achievementCard: {
-    borderRadius: 20,
-    padding: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
     borderLeftWidth: 4,
     borderLeftColor: '#F59E0B',
     ...Platform.select({
       ios: {
-        shadowColor: '#F59E0B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 3,
       },
     }),
   },
@@ -1109,10 +1196,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: '#F8FAFC',
     padding: 12,
     borderRadius: 12,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   achievementBadge: {
     width: 40,
@@ -1130,11 +1217,11 @@ const styles = StyleSheet.create({
   achievementName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#92400E',
+    color: '#111827',
   },
   achievementDate: {
     fontSize: 11,
-    color: '#B45309',
+    color: '#64748B',
     marginTop: 2,
   },
 });

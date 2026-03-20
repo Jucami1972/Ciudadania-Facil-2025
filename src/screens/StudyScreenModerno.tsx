@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { RootStackParamList, SubCategory } from '../types/navigation';
@@ -47,55 +48,61 @@ const sections: Record<MainCategoryKey, SubCategory[]> = {
   GobiernoAmericano: [
     { 
       title: 'Gobierno Americano', 
-      subtitle: 'A: Principles of American Government', 
-      questionRange: '1-15', 
+      subtitle: 'A: Principios de la Democracia Americana', 
+      questionRange: '1-12', 
       category: 'government' 
     },
     { 
       title: 'Gobierno Americano', 
-      subtitle: 'B: System of Government', 
-      questionRange: '16-62', 
+      subtitle: 'B: Sistema de Gobierno', 
+      questionRange: '13-47', 
       category: 'government' 
     },
     { 
       title: 'Gobierno Americano', 
-      subtitle: 'C: Rights and Responsibilities', 
-      questionRange: '63-72', 
+      subtitle: 'C: Derechos y Responsabilidades', 
+      questionRange: '48-57', 
       category: 'government' 
     },
   ],
   HistoriaAmericana: [
     { 
       title: 'Historia Americana', 
-      subtitle: 'A: Colonial Period and Independence', 
-      questionRange: '73-89', 
+      subtitle: 'A: Período Colonial e Independencia', 
+      questionRange: '58-70', 
       category: 'history' 
     },
     { 
       title: 'Historia Americana', 
-      subtitle: 'B: 1800s', 
-      questionRange: '90-99', 
+      subtitle: 'B: Siglo XIX (1800s)', 
+      questionRange: '71-77', 
       category: 'history' 
     },
     { 
       title: 'Historia Americana', 
-      subtitle: 'C: Recent American History and Other Important Historical Information', 
-      questionRange: '100-118', 
+      subtitle: 'C: Historia Reciente', 
+      questionRange: '78-87', 
       category: 'history' 
     },
   ],
   EducacionCivica: [
     { 
-      title: 'Símbolos y Días Festivos', 
-      subtitle: 'A: Symbols', 
-      questionRange: '119-124', 
-      category: 'symbols_holidays' 
+      title: 'Educación Cívica', 
+      subtitle: 'A: Geografía', 
+      questionRange: '88-95', 
+      category: 'civics' 
     },
     { 
-      title: 'Símbolos y Días Festivos', 
-      subtitle: 'B: Holidays', 
-      questionRange: '95-100', 
-      category: 'symbols_holidays' 
+      title: 'Educación Cívica', 
+      subtitle: 'B: Símbolos', 
+      questionRange: '96-98', 
+      category: 'civics' 
+    },
+    { 
+      title: 'Educación Cívica', 
+      subtitle: 'C: Días Festivos', 
+      questionRange: '99-100', 
+      category: 'civics' 
     },
   ],
 };
@@ -135,7 +142,7 @@ const StudyScreenModerno = () => {
           const categoryMap = {
             GobiernoAmericano: 'government',
             HistoriaAmericana: 'history',
-            EducacionCivica: 'symbols_holidays',
+            EducacionCivica: 'civics',
           } as const;
 
           const newProgress: Record<string, number> = {};
@@ -182,7 +189,7 @@ const StudyScreenModerno = () => {
       const categoryMap = {
         GobiernoAmericano: 'government',
         HistoriaAmericana: 'history',
-        EducacionCivica: 'symbols_holidays',
+        EducacionCivica: 'civics',
       } as const;
 
       const categoryType = categoryMap[key];
@@ -297,26 +304,34 @@ const StudyScreenModerno = () => {
   const content = (
     <>
       {!isWeb && (
-        <View style={[styles.header, { paddingTop: insets.top }]}>
-          <View style={styles.headerContent}>
-            <TouchableOpacity 
-              onPress={() => navigation.goBack()} 
-              style={styles.backButton}
-              accessibilityLabel="Volver atrás"
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Text 
-                style={styles.headerTitle}
-                accessibilityRole="header"
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()} 
+                style={styles.backButton}
+                accessibilityLabel="Volver atrás"
+                accessibilityRole="button"
               >
-                Estudio por Categoría
-              </Text>
+                <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text 
+                  style={styles.headerTitle}
+                  accessibilityRole="header"
+                >
+                  Estudio por Categoría
+                </Text>
+                <Text style={styles.headerSubtitle}>100 preguntas oficiales</Text>
+              </View>
+              <View style={{ width: 44 }} />
             </View>
-            <View style={{ width: 40 }} />
-          </View>
+          </LinearGradient>
         </View>
       )}
 
@@ -465,46 +480,42 @@ const StudyScreenModerno = () => {
     );
   }
 
-  // Web móvil o app móvil: usar SafeAreaView (diseño idéntico)
+  // Web móvil o app móvil
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {content}
-    </SafeAreaView>
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        {content}
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: Platform.select({ web: 56, ios: 60, android: 70 }) as number,
-    paddingHorizontal: 16,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: '#f9fafb',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
   },
   headerTitleContainer: {
     alignItems: 'center',
@@ -514,16 +525,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 1,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
     letterSpacing: 0.1,
   },
   container: {

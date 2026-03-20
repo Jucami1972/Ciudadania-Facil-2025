@@ -11,12 +11,14 @@ export type QuestionMode = 'text-text' | 'voice-text';
 
 interface PracticeQuestionCardProps {
   question: string;
+  questionNumber?: number;
   mode?: QuestionMode;
   onPlayAudio?: () => void;
 }
 
 export const PracticeQuestionCard: React.FC<PracticeQuestionCardProps> = ({
   question,
+  questionNumber,
   mode = 'text-text',
   onPlayAudio,
 }) => {
@@ -52,7 +54,9 @@ export const PracticeQuestionCard: React.FC<PracticeQuestionCardProps> = ({
         </View>
       ) : (
         <>
-          <Text style={styles.questionLabel}>Pregunta</Text>
+          <Text style={styles.questionLabel}>
+            {questionNumber ? `Pregunta No. ${questionNumber}` : 'Pregunta'}
+          </Text>
           <Text style={styles.questionText}>{question}</Text>
         </>
       )}

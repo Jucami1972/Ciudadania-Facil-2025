@@ -7,12 +7,15 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
   FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProps } from '../../types/navigation';
+import { designSystem, withOpacity } from '../../config/designSystem';
 import { questions } from '../../data/questions';
 import { CATEGORY_LABELS } from '../../constants/categories';
 
@@ -26,6 +29,7 @@ interface Category {
 
 const CategoryPracticeScreenModerno = () => {
   const navigation = useNavigation<NavigationProps>();
+  const insets = useSafeAreaInsets();
 
   const categories: Category[] = useMemo(() => {
     return [
@@ -44,11 +48,11 @@ const CategoryPracticeScreenModerno = () => {
         questionCount: questions.filter(q => q.category === 'history').length,
       },
       {
-        id: 'symbols_holidays',
-        name: CATEGORY_LABELS.symbols_holidays,
+        id: 'civics',
+        name: CATEGORY_LABELS.civics,
         icon: 'school',
         color: '#10b981',
-        questionCount: questions.filter(q => q.category === 'symbols_holidays').length,
+        questionCount: questions.filter(q => q.category === 'civics').length,
       },
     ];
   }, []);
@@ -72,36 +76,45 @@ const CategoryPracticeScreenModerno = () => {
         <Text style={styles.categoryName}>{item.name}</Text>
         <Text style={styles.questionCount}>{item.questionCount} preguntas</Text>
       </View>
-      <MaterialCommunityIcons name="chevron-right" size={18} color="#d1d5db" />
+      <MaterialCommunityIcons name="chevron-right" size={18} color={designSystem.colors.neutral[300]} />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
           >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Práctica</Text>
-            <Text style={styles.headerSubtitle}>Por Categoría</Text>
-          </View>
-          <View style={{ width: 36 }} />
+            <View style={styles.headerContent}>
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Práctica</Text>
+                <Text style={styles.headerSubtitle}>Por Categoría</Text>
+              </View>
+              <View style={{ width: 44 }} />
+            </View>
+          </LinearGradient>
         </View>
-      </View>
 
-      <ScrollView 
-        style={styles.container} 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView 
+          style={styles.container} 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.introCard}>
           <View style={styles.introIconContainer}>
-            <MaterialCommunityIcons name="target" size={24} color="#1E40AF" />
+            <MaterialCommunityIcons name="target" size={24} color={designSystem.colors.brand.primary} />
           </View>
           <Text style={styles.introTitle}>Domina por Tema</Text>
           <Text style={styles.introSubtitle}>
@@ -115,125 +128,111 @@ const CategoryPracticeScreenModerno = () => {
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
         />
-      </ScrollView>
-    </SafeAreaView>
+        </ScrollView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f9fafb',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
   },
   headerTitleContainer: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 15,
+    color: '#FFFFFF',
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
   },
   headerSubtitle: {
-    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 1,
-    letterSpacing: 0.1,
+    marginTop: 2,
   },
   container: {
     flex: 1,
+    backgroundColor: designSystem.colors.background.secondary,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+    paddingHorizontal: designSystem.spacing.md,
+    paddingTop: designSystem.spacing.md,
+    paddingBottom: designSystem.spacing.lg,
   },
   introCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: designSystem.colors.background.primary,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: designSystem.spacing.md,
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    ...designSystem.shadows.sm,
     borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    borderColor: designSystem.colors.border.light,
   },
   introIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+    borderRadius: designSystem.borderRadius.md,
+    backgroundColor: withOpacity(designSystem.colors.brand.secondary, 0.1),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
   },
   introTitle: {
-    fontSize: 16,
+    fontSize: designSystem.typography.bodyBold.fontSize,
     fontWeight: '700',
-    color: '#111827',
+    color: designSystem.colors.text.primary,
     marginBottom: 6,
     textAlign: 'center',
   },
   introSubtitle: {
-    fontSize: 12,
-    color: '#6b7280',
+    fontSize: designSystem.typography.small.fontSize,
+    color: designSystem.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 18,
     fontWeight: '500',
   },
   categoryCard: {
-    backgroundColor: '#fff',
+    backgroundColor: designSystem.colors.background.primary,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
+    ...designSystem.shadows.sm,
     borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    borderColor: designSystem.colors.border.light,
   },
   iconWrapper: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: designSystem.borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -242,14 +241,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: designSystem.typography.caption.fontSize,
     fontWeight: '700',
-    color: '#111827',
+    color: designSystem.colors.text.primary,
     marginBottom: 3,
   },
   questionCount: {
     fontSize: 11,
-    color: '#6b7280',
+    color: designSystem.colors.text.secondary,
     fontWeight: '500',
   },
 });

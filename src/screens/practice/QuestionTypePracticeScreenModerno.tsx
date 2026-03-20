@@ -7,12 +7,13 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
+  StatusBar,
   Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProps } from '../../types/navigation';
 import { getQuestionTypeStats, QuestionType } from '../../services/questionTypesService';
 
@@ -40,14 +41,33 @@ const QuestionTypePracticeScreenModerno = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Estudio por Tipo</Text>
-          <Text style={styles.headerSubtitle}>Clasifica y domina cada tipo de pregunta</Text>
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
+          >
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Estudio por Tipo</Text>
+                <Text style={styles.headerSubtitle}>Clasifica y domina</Text>
+                <Text style={styles.headerSubtitle}>cada tipo de pregunta</Text>
+              </View>
+              <View style={{ width: 44 }} />
+            </View>
+          </LinearGradient>
         </View>
-      </View>
 
       <ScrollView 
         style={styles.container} 
@@ -78,48 +98,58 @@ const QuestionTypePracticeScreenModerno = () => {
           ))}
         </View>
       </ScrollView>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 14,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#E5E7EB',
   },
   headerTitleContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
-    marginBottom: 2,
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
-    letterSpacing: 0.1,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 1,
+    textAlign: 'center',
   },
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   scrollContent: {
     paddingHorizontal: 16,

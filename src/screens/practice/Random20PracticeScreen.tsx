@@ -24,8 +24,8 @@ import { NavigationProps } from '../../types/navigation';
 import {
   getRandomQuestionsByCategory,
   PracticeQuestion,
-  detectRequiredQuantity,
 } from '../../data/practiceQuestions';
+import { detectRequiredQuantity } from '../../data/conciliacionPreguntas';
 import { questionAudioMap } from '../../assets/audio/questions/questionsMap';
 import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 

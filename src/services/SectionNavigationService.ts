@@ -69,7 +69,7 @@ export class SectionNavigationService {
     }
 
     // Si no hay más subcategorías en la categoría actual, buscar la siguiente categoría
-    const allCategories: string[] = ['government', 'history', 'symbols_holidays'];
+    const allCategories: string[] = ['government', 'history', 'civics'];
     const currentCategoryIndex = allCategories.indexOf(category);
 
     if (currentCategoryIndex < allCategories.length - 1) {
@@ -123,7 +123,7 @@ export class SectionNavigationService {
     const titles: Record<string, string> = {
       government: 'Gobierno Americano',
       history: 'Historia Americana',
-      symbols_holidays: 'Símbolos y Días Festivos',
+      civics: 'Educación Cívica',
     };
     return titles[category] || category;
   }

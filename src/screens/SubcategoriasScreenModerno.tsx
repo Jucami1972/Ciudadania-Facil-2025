@@ -118,7 +118,7 @@ const SubcategoriasScreenModerno = () => {
     >
       <View style={styles.cardContent}>
         <View style={styles.iconWrapper}>
-          <MaterialCommunityIcons name="folder-open" size={20} color="#4F46E5" />
+          <MaterialCommunityIcons name="folder-open" size={20} color="#1E40AF" />
         </View>
         <View style={styles.textContainer}>
           <Text style={styles.subcategoryName} numberOfLines={2}>{item.subtitle}</Text>
@@ -149,9 +149,10 @@ const SubcategoriasScreenModerno = () => {
   return (
     <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={styles.mainContainer}>
       <View style={styles.headerContainer}>
         <LinearGradient
-          colors={['#3730A3', '#4F46E5', '#6366F1'] as [string, string, string]}
+          colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.header, { paddingTop: insets.top + 8 }]}
@@ -181,7 +182,7 @@ const SubcategoriasScreenModerno = () => {
       >
         <View style={styles.introCard}>
           <View style={styles.introIconContainer}>
-            <MaterialCommunityIcons name="book-open-variant" size={24} color="#4F46E5" />
+            <MaterialCommunityIcons name="book-open-variant" size={24} color="#1E40AF" />
           </View>
           <Text style={styles.introTitle}>Elige un Tema de Estudio</Text>
           <Text style={styles.introSubtitle}>
@@ -245,7 +246,7 @@ const SubcategoriasScreenModerno = () => {
                       onPress={() => handleBlockSelect([start, end], `Bloque ${i + 1} (${start + 1}-${end})`)}
                     >
                       <View style={styles.blockIconCont}>
-                        <MaterialCommunityIcons name="layers-outline" size={24} color="#4F46E5" />
+                        <MaterialCommunityIcons name="layers-outline" size={24} color="#1E40AF" />
                       </View>
                       <View style={styles.blockTextCont}>
                         <Text style={styles.blockTitle}>Bloque {i + 1}</Text>
@@ -277,6 +278,7 @@ const SubcategoriasScreenModerno = () => {
           </View>
         </Modal>
       )}
+      </View>
     </View>
   );
 };
@@ -284,11 +286,13 @@ const SubcategoriasScreenModerno = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: '#1E3A8A',
+  },
+  mainContainer: {
+    flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  headerContainer: {
-    backgroundColor: '#3730A3',
-  },
+  headerContainer: {},
   header: {
     paddingHorizontal: 20,
     paddingBottom: 14,
@@ -299,10 +303,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -319,7 +323,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.8)',
-    marginTop: 1,
+    marginTop: 2,
   },
   container: {
     flex: 1,
@@ -501,7 +505,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,

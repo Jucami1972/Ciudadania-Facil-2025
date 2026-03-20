@@ -49,10 +49,10 @@ const DashboardScreen = () => {
         // Calcular progreso por categoría
         // Gobierno Americano: preguntas 1-57
         // Historia Americana: preguntas 58-87
-        // Símbolos y Feriados: preguntas 88-128
+        // Educación Cívica: preguntas 88-100
         const govViewed = Array.from(viewed).filter((id) => id >= 1 && id <= 57).length;
         const histViewed = Array.from(viewed).filter((id) => id >= 58 && id <= 87).length;
-        const symbolsViewed = Array.from(viewed).filter((id) => id >= 88 && id <= 100).length;
+        const civicsViewed = Array.from(viewed).filter((id) => id >= 88 && id <= 100).length;
 
         setCategoryProgress([
           {
@@ -70,10 +70,10 @@ const DashboardScreen = () => {
             gradient: ['#470a56', '#ce32b1'],
           },
           {
-            name: 'Símbolos y Feriados',
-            completed: symbolsViewed,
-            total: 41,
-            percentage: Math.round((symbolsViewed / 41) * 100),
+            name: 'Educación Cívica',
+            completed: civicsViewed,
+            total: 13,
+            percentage: Math.round((civicsViewed / 13) * 100),
             gradient: ['#270483', '#8146cc'],
           },
         ]);

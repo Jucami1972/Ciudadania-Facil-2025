@@ -4,17 +4,20 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
+  StatusBar,
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProps } from '../types/navigation';
 import { practiceQuestions, PracticeQuestion } from '../data/practiceQuestions';
+import { designSystem } from '../config/designSystem';
 
 interface IncorrectQuestion extends PracticeQuestion {
   attempts?: number;
@@ -23,6 +26,7 @@ interface IncorrectQuestion extends PracticeQuestion {
 
 const IncorrectPracticeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProps>();
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [incorrectQuestions, setIncorrectQuestions] = useState<IncorrectQuestion[]>([]);
 
@@ -77,7 +81,7 @@ const IncorrectPracticeScreen: React.FC = () => {
     const labels: Record<string, string> = {
       government: 'Gobierno Americano',
       history: 'Historia Americana',
-      symbols_holidays: 'Educación Cívica',
+      civics: 'Educación Cívica',
     };
     return labels[category] || category;
   };
@@ -128,26 +132,44 @@ const IncorrectPracticeScreen: React.FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
+    <View style={styles.safeArea}>
+      <View style={styles.mainContainer}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#1E3A8A', '#1E40AF', '#3B82F6']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[styles.header, { paddingTop: insets.top + 8 }]}
           >
-            <MaterialCommunityIcons name="arrow-left" size={20} color="#1f2937" />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Preguntas</Text>
-            <Text style={styles.headerSubtitle}>Incorrectas</Text>
-          </View>
-          <View style={{ width: 36 }} />
+            <View style={styles.headerContent}>
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+                accessibilityLabel="Volver atrás"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color="white" />
+              </TouchableOpacity>
+              <View style={styles.headerTitleContainer}>
+                <Text style={styles.headerTitle}>Preguntas Incorrectas</Text>
+                <Text style={styles.headerSubtitle}>Repasa para mejorar</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Home')}
+                style={styles.backButton}
+                accessibilityLabel="Ir al inicio"
+                accessibilityRole="button"
+              >
+                <MaterialCommunityIcons name="home" size={22} color="white" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </View>
-      </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1e88e5" />
+          <ActivityIndicator size="large" color={designSystem.colors.brand.primary} />
           <Text style={styles.loadingText}>Cargando preguntas...</Text>
         </View>
       ) : (
@@ -160,7 +182,7 @@ const IncorrectPracticeScreen: React.FC = () => {
             {incorrectQuestions.length > 0 && (
               <View style={styles.introCard}>
                 <View style={styles.introIconContainer}>
-                  <MaterialCommunityIcons name="alert-circle" size={24} color="#ef4444" />
+                  <MaterialCommunityIcons name="alert-circle" size={24} color={designSystem.colors.functional.error} />
                 </View>
                 <Text style={styles.introTitle}>
                   {incorrectQuestions.length} {incorrectQuestions.length === 1 ? 'pregunta necesita' : 'preguntas necesitan'} práctica
@@ -199,149 +221,130 @@ const IncorrectPracticeScreen: React.FC = () => {
           )}
         </>
       )}
-    </SafeAreaView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#1E3A8A',
   },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: designSystem.colors.background.secondary,
+  },
+  headerContainer: {},
   header: {
-    backgroundColor: '#ffffff',
-    paddingBottom: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
   },
   headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    height: 56,
-    paddingHorizontal: 16,
+    justifyContent: 'space-between',
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#f9fafb',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
   },
   headerTitleContainer: {
     alignItems: 'center',
     flex: 1,
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
   },
   headerSubtitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
-    color: '#6b7280',
-    marginTop: 1,
-    letterSpacing: 0.1,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   container: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: designSystem.spacing.md,
+    paddingTop: designSystem.spacing.md,
     paddingBottom: 100,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: designSystem.spacing.lg,
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: designSystem.spacing.md,
     fontSize: 14,
-    color: '#6b7280',
+    color: designSystem.colors.text.secondary,
     textAlign: 'center',
   },
   introCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: designSystem.colors.background.primary,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: designSystem.spacing.md,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    marginBottom: designSystem.spacing.md,
+    ...designSystem.shadows.sm,
   },
   introIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: designSystem.borderRadius.md,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: designSystem.spacing.sm + 4,
   },
   introTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#111827',
+    color: designSystem.colors.text.primary,
     marginBottom: 6,
     textAlign: 'center',
   },
   introSubtitle: {
     fontSize: 12,
-    color: '#6b7280',
+    color: designSystem.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 18,
     fontWeight: '500',
   },
   questionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 2,
-    elevation: 1,
-    borderWidth: 0.5,
-    borderColor: '#e5e7eb',
+    backgroundColor: designSystem.colors.background.primary,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: designSystem.spacing.md,
+    marginBottom: designSystem.spacing.sm + 2,
+    ...designSystem.shadows.sm,
   },
   questionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: designSystem.spacing.sm + 2,
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(30, 136, 229, 0.1)',
+    backgroundColor: 'rgba(30, 64, 175, 0.08)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: designSystem.borderRadius.md,
     gap: 5,
   },
   categoryText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#1e88e5',
+    color: designSystem.colors.brand.primary,
   },
   attemptsBadge: {
     flexDirection: 'row',
@@ -349,39 +352,39 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: designSystem.borderRadius.sm,
     gap: 4,
   },
   attemptsText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#f59e0b',
+    color: designSystem.colors.functional.warning,
   },
   questionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 10,
+    color: designSystem.colors.text.primary,
+    marginBottom: designSystem.spacing.sm + 2,
     lineHeight: 20,
   },
   answerPreview: {
-    backgroundColor: '#f9fafb',
-    padding: 10,
-    borderRadius: 10,
+    backgroundColor: designSystem.colors.background.secondary,
+    padding: designSystem.spacing.sm + 2,
+    borderRadius: designSystem.borderRadius.sm + 2,
     borderLeftWidth: 3,
-    borderLeftColor: '#10b981',
+    borderLeftColor: designSystem.colors.functional.error,
   },
   answerLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#6b7280',
+    color: designSystem.colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   answerText: {
     fontSize: 12,
-    color: '#111827',
+    color: designSystem.colors.text.primary,
     fontWeight: '500',
     lineHeight: 16,
   },
@@ -389,20 +392,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: designSystem.spacing.xxl,
     minHeight: 300,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
-    marginTop: 16,
-    marginBottom: 8,
+    color: designSystem.colors.text.primary,
+    marginTop: designSystem.spacing.md,
+    marginBottom: designSystem.spacing.sm,
     textAlign: 'center',
   },
   emptyDescription: {
     fontSize: 14,
-    color: '#6b7280',
+    color: designSystem.colors.text.secondary,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -411,30 +414,19 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderTopWidth: 0.5,
-    borderTopColor: '#e5e7eb',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: designSystem.colors.background.primary,
+    paddingHorizontal: designSystem.spacing.md,
+    paddingVertical: designSystem.spacing.md,
+    ...designSystem.shadows.lg,
   },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1e88e5',
+    backgroundColor: designSystem.colors.functional.error,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: designSystem.borderRadius.md,
     gap: 8,
-    shadowColor: '#1e88e5',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
   },
   buttonText: {
     color: '#fff',
