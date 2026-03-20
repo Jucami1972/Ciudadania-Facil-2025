@@ -1,6 +1,6 @@
 // src/screens/practice/N400PracticeHomeScreen.tsx
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,32 +8,60 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Platform,
+  Dimensions,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationProps } from '../../types/navigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  n400Sections,
-  n400Questions,
-  N400SectionInfo,
+  n400Categories,
+  n400Protocol,
+  n400Definitions,
+  TOTAL_N400_QUESTIONS,
+  TOTAL_N400_VARIATIONS,
 } from '../../data/n400FormPractice';
 
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - 48 - 12) / 2;
+
 const N400PracticeHomeScreen = () => {
-  const navigation = useNavigation<NavigationProps>();
+  const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const [progress, setProgress] = useState<{ [catId: string]: number }>({});
 
-  const getQuestionCount = (section: N400SectionInfo) =>
-    n400Questions.filter((q) => q.section === section.id).length;
+  const loadProgress = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem('@n400:progress');
+      if (raw) setProgress(JSON.parse(raw));
+    } catch {
+      // silently ignore
+    }
+  }, []);
 
-  const handleSectionPress = (section: N400SectionInfo) => {
-    navigation.navigate('N400SectionPractice' as any, {
-      sectionId: section.id,
-      sectionKey: section.key,
-      sectionTitle: section.titleEs,
-    });
+  useFocusEffect(
+    useCallback(() => {
+      loadProgress();
+    }, [loadProgress])
+  );
+
+  const totalCompleted = Object.values(progress).reduce((s, v) => s + v, 0);
+
+  const handleCategoryPress = (categoryId: string) => {
+    navigation.navigate('N400SectionPractice', { categoryId, mode: 'study' });
+  };
+
+  const handleQuickRound = () => {
+    navigation.navigate('N400SectionPractice', { categoryId: 'all', mode: 'quick' });
+  };
+
+  const handleProtocol = () => {
+    navigation.navigate('N400SectionPractice', { categoryId: 'protocol', mode: 'study' });
+  };
+
+  const handleDefinitions = () => {
+    navigation.navigate('N400SectionPractice', { categoryId: 'definitions', mode: 'study' });
   };
 
   return (
@@ -41,147 +69,296 @@ const N400PracticeHomeScreen = () => {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
       {/* Header */}
-      <View style={styles.headerContainer}>
-        <LinearGradient
-          colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingTop: insets.top + 8 }]}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <MaterialCommunityIcons name="arrow-left" size={24} color="white" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>Formulario N-400</Text>
-              <Text style={styles.headerSubtitle}>Práctica por sección</Text>
-            </View>
-            <View style={{ width: 44 }} />
-          </View>
-        </LinearGradient>
-      </View>
-
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <LinearGradient
+        colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        {/* Info Card */}
-        <LinearGradient
-          colors={['#EFF6FF', '#DBEAFE'] as [string, string]}
-          style={styles.infoCard}
-        >
-          <MaterialCommunityIcons name="information" size={20} color="#1E40AF" />
-          <Text style={styles.infoText}>
-            Practica las preguntas que un oficial de USCIS te hará durante la entrevista
-            de ciudadanía, basadas en el formulario N-400.
-          </Text>
-        </LinearGradient>
-
-        {/* Section Header */}
-        <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="format-list-bulleted" size={18} color="#1E40AF" />
-          <Text style={styles.sectionTitle}>Secciones del N-400</Text>
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Práctica N-400</Text>
+            <Text style={styles.headerSubtitle}>Formulario de Naturalización</Text>
+          </View>
+          <View style={{ width: 36 }} />
         </View>
 
-        {/* Sections Grid */}
-        <View style={styles.sectionsGrid}>
-          {n400Sections.map((section) => {
-            const count = getQuestionCount(section);
+        {/* Progress summary */}
+        <View style={styles.headerStats}>
+          <View style={styles.statBadge}>
+            <Text style={styles.statValue}>{TOTAL_N400_QUESTIONS}</Text>
+            <Text style={styles.statLabel}>Preguntas</Text>
+          </View>
+          <View style={styles.statBadge}>
+            <Text style={styles.statValue}>{TOTAL_N400_VARIATIONS}</Text>
+            <Text style={styles.statLabel}>Variaciones</Text>
+          </View>
+          <View style={styles.statBadge}>
+            <Text style={styles.statValue}>{totalCompleted}</Text>
+            <Text style={styles.statLabel}>Completadas</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Intro card */}
+        <View style={styles.introCard}>
+          <MaterialCommunityIcons name="information-outline" size={22} color="#1E40AF" />
+          <Text style={styles.introText}>
+            El oficial de USCIS te hará preguntas sobre tu formulario N-400. Aquí practicarás 
+            entender y responder cada sección.
+          </Text>
+        </View>
+
+        {/* Quick Round button */}
+        <TouchableOpacity activeOpacity={0.8} onPress={handleQuickRound}>
+          <LinearGradient
+            colors={['#F59E0B', '#D97706'] as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.quickRoundCard}
+          >
+            <View style={styles.quickRoundLeft}>
+              <MaterialCommunityIcons name="lightning-bolt" size={28} color="#FFFFFF" />
+              <View style={{ marginLeft: 12 }}>
+                <Text style={styles.quickRoundTitle}>Ronda Rápida</Text>
+                <Text style={styles.quickRoundSub}>20 preguntas al azar de todas las categorías</Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
+
+        {/* Section title */}
+        <Text style={styles.sectionTitle}>Secciones del N-400</Text>
+
+        {/* Category grid */}
+        <View style={styles.grid}>
+          {n400Categories.map((cat) => {
+            const completed = progress[cat.id] || 0;
+            const total = cat.questions.length;
+            const pct = total > 0 ? (completed / total) * 100 : 0;
+
             return (
               <TouchableOpacity
-                key={section.id}
-                style={styles.sectionCard}
-                onPress={() => handleSectionPress(section)}
-                activeOpacity={0.85}
+                key={cat.id}
+                activeOpacity={0.8}
+                onPress={() => handleCategoryPress(cat.id)}
+                style={styles.gridItem}
               >
-                <View style={[styles.sectionIconContainer, { backgroundColor: section.color + '15' }]}>
-                  <MaterialCommunityIcons
-                    name={section.icon as any}
-                    size={28}
-                    color={section.color}
-                  />
-                </View>
-                <Text style={styles.cardTitle}>{section.titleEs}</Text>
-                <Text style={styles.cardSubtitle}>
-                  {count} {count === 1 ? 'pregunta' : 'preguntas'}
-                </Text>
+                <LinearGradient
+                  colors={cat.gradient as [string, string]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.categoryCard}
+                >
+                  <View style={styles.cardIconRow}>
+                    <View style={styles.iconCircle}>
+                      <MaterialCommunityIcons
+                        name={cat.icon as any}
+                        size={24}
+                        color="#FFFFFF"
+                      />
+                    </View>
+                    <View style={styles.variationsBadge}>
+                      <Text style={styles.variationsText}>
+                        {cat.questions.reduce((s, q) => s + q.variations.length, 0)} vars
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{cat.title}</Text>
+                  <Text style={styles.cardQuestions}>{total} preguntas</Text>
+
+                  {/* Progress bar */}
+                  <View style={styles.progressBar}>
+                    <View style={[styles.progressFill, { width: `${pct}%` }]} />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {completed}/{total}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* All Sections Button */}
-        <TouchableOpacity
-          style={styles.allSectionsButton}
-          onPress={() =>
-            navigation.navigate('N400SectionPractice' as any, {
-              sectionId: 'all',
-              sectionKey: 'all',
-              sectionTitle: 'Todas las secciones',
-            })
-          }
-          activeOpacity={0.85}
-        >
-          <LinearGradient
-            colors={['#1E40AF', '#3B82F6'] as [string, string]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.allSectionsGradient}
-          >
-            <MaterialCommunityIcons name="play-circle" size={24} color="white" />
-            <Text style={styles.allSectionsText}>
-              Practicar todas ({n400Questions.length} preguntas)
+        {/* Extra sections */}
+        <Text style={styles.sectionTitle}>Extras</Text>
+
+        <TouchableOpacity activeOpacity={0.8} onPress={handleProtocol} style={styles.extraCard}>
+          <View style={[styles.extraIcon, { backgroundColor: '#EEF2FF' }]}>
+            <MaterialCommunityIcons name="hand-wave" size={24} color="#1E40AF" />
+          </View>
+          <View style={styles.extraInfo}>
+            <Text style={styles.extraTitle}>Protocolo de Entrevista</Text>
+            <Text style={styles.extraSub}>
+              {n400Protocol.length} frases: juramento, documentos, transiciones
             </Text>
-          </LinearGradient>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
         </TouchableOpacity>
 
-        {/* Tips */}
-        <LinearGradient
-          colors={['#FEF3C7', '#FDE68A'] as [string, string]}
-          style={styles.tipsCard}
-        >
-          <Text style={styles.tipsTitle}>💡 Consejos</Text>
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>Escucha el audio y practica respondiendo en voz alta</Text>
+        <TouchableOpacity activeOpacity={0.8} onPress={handleDefinitions} style={styles.extraCard}>
+          <View style={[styles.extraIcon, { backgroundColor: '#FEF3C7' }]}>
+            <MaterialCommunityIcons name="book-open-variant" size={24} color="#D97706" />
           </View>
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>
-              Cada pregunta puede hacerse de diferentes maneras — practica las variaciones
+          <View style={styles.extraInfo}>
+            <Text style={styles.extraTitle}>Vocabulario Difícil</Text>
+            <Text style={styles.extraSub}>
+              {n400Definitions.length} términos clave del N-400
             </Text>
           </View>
-          <View style={styles.tipItem}>
-            <Text style={styles.tipBullet}>✓</Text>
-            <Text style={styles.tipText}>
-              Responde con oraciones completas y de manera clara
-            </Text>
-          </View>
-        </LinearGradient>
+          <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
+        </TouchableOpacity>
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 };
 
+export default N400PracticeHomeScreen;
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  headerContainer: {
-    backgroundColor: '#1E3A8A',
+    backgroundColor: '#F1F5F9',
   },
   header: {
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    paddingBottom: 14,
   },
-  headerContent: {
+  headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCenter: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  headerStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  statBadge: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: 2,
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
+  },
+  introCard: {
+    flexDirection: 'row',
+    backgroundColor: '#EEF2FF',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  introText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#1E40AF',
+    lineHeight: 19,
+  },
+  quickRoundCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+  },
+  quickRoundLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickRoundTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  quickRoundSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1E293B',
+    marginBottom: 14,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 24,
+  },
+  gridItem: {
+    width: CARD_WIDTH,
+  },
+  categoryCard: {
+    borderRadius: 16,
+    padding: 14,
+    minHeight: 160,
+    justifyContent: 'space-between',
+  },
+  cardIconRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  iconCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -189,153 +366,77 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitleContainer: {
-    alignItems: 'center',
-    flex: 1,
+  variationsBadge: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: 'white',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 1,
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 40,
-  },
-  infoCard: {
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'flex-start',
-    marginBottom: 24,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1E40AF',
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#1E3A8A',
-    lineHeight: 20,
-    fontWeight: '500',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A202C',
-  },
-  sectionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  sectionCard: {
-    width: '48%',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 16,
-    alignItems: 'center',
-    minHeight: 130,
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  sectionIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+  variationsText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#1A202C',
-    textAlign: 'center',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
-  cardSubtitle: {
-    fontSize: 11,
-    color: '#718096',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  allSectionsButton: {
-    marginBottom: 24,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  allSectionsGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-  },
-  allSectionsText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: 'white',
-  },
-  tipsCard: {
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#F59E0B',
-  },
-  tipsTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#92400E',
-    marginBottom: 12,
-  },
-  tipItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
+  cardQuestions: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
     marginBottom: 8,
   },
-  tipBullet: {
-    color: '#F59E0B',
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 20,
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  tipText: {
-    fontSize: 12,
-    color: '#78350F',
-    lineHeight: 18,
-    fontWeight: '500',
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  progressText: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+    textAlign: 'right',
+  },
+  extraCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  extraIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  extraInfo: {
     flex: 1,
+    marginLeft: 12,
+  },
+  extraTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  extraSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
 });
-
-export default N400PracticeHomeScreen;

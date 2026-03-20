@@ -1,968 +1,1188 @@
-// src/data/n400FormPractice.ts
-// Datos de práctica del formulario N-400 para la entrevista de ciudadanía
-// Estructura compatible con scripts/generate_n400_audio_eleven.mjs
+/**
+ * Datos de Práctica del Formulario N-400
+ * Adaptado de interviewTrainingData.ts para uso offline en el frontend
+ * 56 preguntas principales + variaciones + protocolo + definiciones
+ */
 
 export interface N400Question {
   id: string;
   question: string;
-  questionEs: string;
-  section: N400Section;
-  tip: string;
-  tipEs: string;
+  questionEs?: string;
   variations: string[];
+  expectedResponseType: string;
+  context: string;
+  contextEs: string;
+  answerGuide?: string;
+  ifYes?: string;
+  mustSayYes?: string;
+  risk?: 'low' | 'medium' | 'high';
+  naturalResponses: string[];
+  categoryId: string;
 }
 
-export interface N400Protocol {
+export type N400Section = 'identity' | 'address' | 'employment' | 'family' | 'travel' | 'legal' | 'taxes' | 'loyalty' | 'general';
+
+export interface N400Category {
+  id: string;
+  key: string;
+  title: string;
+  titleEn: string;
+  description: string;
+  icon: string;
+  gradient: [string, string];
+  questions: N400Question[];
+}
+
+export interface N400ProtocolPhrase {
   id: string;
   phrase: string;
-  phraseEs: string;
+  type: 'swearing' | 'document' | 'transition';
+  contextEs: string;
 }
 
 export interface N400Definition {
   id: string;
   term: string;
-  termEs: string;
   n400Question: string;
-  n400QuestionEs: string;
+  explanation: string;
+  explanationEs: string;
+  synonyms: string[];
 }
 
-export type N400Section =
-  | 'identity'
-  | 'address'
-  | 'employment'
-  | 'family'
-  | 'travel'
-  | 'legal'
-  | 'loyalty'
-  | 'tax'
-  | 'general';
+// ─── 9 CATEGORÍAS CON PREGUNTAS ────────────────────────────────
 
-export interface N400SectionInfo {
-  id: N400Section;
-  key: string; // key usado en audio files (id, addr, emp, etc.)
-  title: string;
-  titleEs: string;
-  icon: string;
-  color: string;
-  description: string;
-  descriptionEs: string;
-}
-
-// Mapeo de secciones con metadata
-export const n400Sections: N400SectionInfo[] = [
+export const n400Categories: N400Category[] = [
   {
     id: 'identity',
-    key: 'id',
-    title: 'Identity',
-    titleEs: 'Identidad',
+    key: 'identityVerification',
+    title: 'Verificación de Identidad',
+    titleEn: 'Identity Verification',
+    description: 'Nombre, fecha de nacimiento, estado civil',
     icon: 'card-account-details',
-    color: '#3B82F6',
-    description: 'Personal identification questions',
-    descriptionEs: 'Preguntas de identificación personal',
+    gradient: ['#3B82F6', '#1D4ED8'],
+    questions: [
+      {
+        id: 'id_1',
+        question: 'What is your full legal name?',
+        variations: [
+          'Can you tell me your first name?',
+          'What\'s your last name?',
+          'Please spell your first name',
+          'What is your name?',
+          'Can you please tell me your current legal name?',
+        ],
+        expectedResponseType: 'Full name matching identification documents',
+        context: 'First question after greeting, used to verify identity',
+        contextEs: 'Tu nombre legal completo tal como aparece en tus documentos',
+        questionEs: '¿Cuál es su nombre legal completo?',
+        answerGuide: 'Di tu nombre exactamente como aparece en tu Green Card y en el N-400. No uses apodos.',
+        risk: 'low',
+        naturalResponses: ['My name is [name]', 'I am [name]', '[Name]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_2',
+        question: 'What is your date of birth?',
+        variations: [
+          'Tell me your date of birth',
+          'When were you born?',
+          'Can you confirm your date of birth for me please?',
+        ],
+        expectedResponseType: 'Date in American format: Month, Day, Year',
+        context: 'Verification of birth date',
+        contextEs: 'Tu fecha de nacimiento en formato americano (mes, día, año)',
+        questionEs: '¿Cuál es su fecha de nacimiento?',
+        answerGuide: 'Di mes, día y año en inglés. Ejemplo: March 15, 1985. Debe coincidir con tu Green Card.',
+        risk: 'low',
+        naturalResponses: ['June 5th 1998', 'July 26, 1972', 'My birthday is [date]', 'I was born on [date]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_3',
+        question: 'What is your current marital status?',
+        variations: [
+          'Are you married?',
+          'Are you married, single, divorced, or widowed?',
+        ],
+        expectedResponseType: 'Marital status',
+        context: 'Current marital status verification',
+        contextEs: 'Tu estado civil actual (casado, soltero, divorciado, viudo)',
+        questionEs: '¿Cuál es su estado civil actual?',
+        answerGuide: 'Responde: Single, Married, Divorced, Widowed, o Separated. Debe coincidir con el N-400.',
+        risk: 'low',
+        naturalResponses: ['I am married', 'I\'m single', 'I am divorced', 'I am widowed', 'Married', 'Single'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_4',
+        question: 'Where were you born?',
+        variations: [
+          'In what city were you born?',
+          'What is your country of citizenship or nationality?',
+        ],
+        expectedResponseType: 'Country or city/country',
+        context: 'Place of birth verification',
+        contextEs: 'Tu país o ciudad de nacimiento',
+        questionEs: '¿Dónde nació usted?',
+        answerGuide: 'Di el nombre del país donde naciste. Si ese país ya no existe, di el nombre actual.',
+        risk: 'low',
+        naturalResponses: ['I was born in [country]', '[City], [Country]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_5',
+        question: 'What are the last four digits of your Social Security number?',
+        variations: [
+          'What is your social security number?',
+          'Can you tell me your Social Security number?',
+        ],
+        expectedResponseType: 'Four digits or full SSN',
+        context: 'Additional identity verification',
+        contextEs: 'Los últimos 4 dígitos de tu número de Seguro Social',
+        questionEs: '¿Cuáles son los últimos 4 dígitos de su Seguro Social?',
+        answerGuide: 'El oficial puede pedir los últimos 4 dígitos o el número completo para verificar tu identidad.',
+        risk: 'low',
+        naturalResponses: ['The last four digits are [number]', '[number]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_6',
+        question: 'How are you eligible for naturalization?',
+        variations: [
+          'Why are you eligible to become a U.S citizen?',
+          'How did you become a permanent resident?',
+        ],
+        expectedResponseType: 'Eligibility statement (e.g., LPR for 5+ years)',
+        context: 'General eligibility question, often at the beginning',
+        contextEs: 'Por qué eres elegible para la ciudadanía (residente permanente 5+ años)',
+        questionEs: '¿Cómo es usted elegible para la naturalización?',
+        answerGuide: 'Explica cómo calificas: residente permanente por 5+ años, cónyuge de ciudadano por 3+ años, o servicio militar.',
+        risk: 'low',
+        naturalResponses: ['I\'ve been a permanent resident for five years', 'LPR for more than 5 years', 'Through my job', 'My wife petitioned me'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_7',
+        question: 'Do you want to legally change your name?',
+        variations: [
+          'Would you like to change your name?',
+        ],
+        expectedResponseType: 'Yes/No',
+        context: 'Name change request during naturalization',
+        contextEs: 'Si deseas cambiar tu nombre legalmente al naturalizarte',
+        questionEs: '¿Desea cambiar su nombre legalmente?',
+        answerGuide: 'Si marcaste "Yes" en el N-400 con el nombre nuevo, di ese nombre. Si no quieres cambiar, di "No."',
+        ifYes: 'My new name will be [first name] [last name]. I marked it on my application.',
+        risk: 'low',
+        naturalResponses: ['No', 'No I do not', 'Yes, I would like to change my name to [name]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_8',
+        question: 'Have you used any other names since birth?',
+        variations: [
+          'Have you ever gone by any other name?',
+          'Do you have any aliases or other names?',
+        ],
+        expectedResponseType: 'Yes/No + names if yes',
+        context: 'Verification of name history',
+        contextEs: 'Si has usado otros nombres desde tu nacimiento (apellido de soltera, apodos legales)',
+        questionEs: '¿Ha usado otros nombres desde su nacimiento?',
+        answerGuide: 'Incluye nombres de soltera, nombres anteriores al matrimonio, apodos usados en documentos legales.',
+        ifYes: 'Yes, I also used the name [nombre]. I included it in my application.',
+        mustSayYes: 'Si alguna vez usaste un nombre diferente en documentos legales, de trabajo, o de gobierno — debes decir SÍ.',
+        risk: 'medium',
+        naturalResponses: ['No', 'Yes, I used to go by [name]', 'Yes, my maiden name was [name]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_9',
+        question: 'What is your country of nationality or citizenship?',
+        variations: [
+          'What country are you a citizen of?',
+          'What is your current nationality?',
+        ],
+        expectedResponseType: 'Country name',
+        context: 'Current nationality/citizenship verification',
+        contextEs: 'Tu país de ciudadanía o nacionalidad actual',
+        questionEs: '¿Cuál es su país de ciudadanía o nacionalidad?',
+        answerGuide: 'Di el país cuyo pasaporte tienes actualmente. Si tienes doble ciudadanía, menciona ambos.',
+        risk: 'low',
+        naturalResponses: ['I am a citizen of [country]', 'My nationality is [country]', '[Country]'],
+        categoryId: 'identity',
+      },
+      {
+        id: 'id_10',
+        question: 'When did you become a Lawful Permanent Resident?',
+        variations: [
+          'When did you get your green card?',
+          'What is the date you became a permanent resident?',
+        ],
+        expectedResponseType: 'Date',
+        context: 'LPR date verification',
+        contextEs: 'Cuándo te convertiste en residente permanente legal (fecha de tu Green Card)',
+        questionEs: '¿Cuándo se convirtió en Residente Permanente Legal?',
+        answerGuide: 'Di la fecha que aparece en tu Green Card. Ejemplo: I became a permanent resident on June 3, 2018.',
+        risk: 'low',
+        naturalResponses: ['I became a permanent resident on [date]', 'On [date]', '[Date]'],
+        categoryId: 'identity',
+      },
+    ],
   },
   {
     id: 'address',
-    key: 'addr',
-    title: 'Address & Residence',
-    titleEs: 'Dirección y Residencia',
+    key: 'n400Address',
+    title: 'Dirección',
+    titleEn: 'Address',
+    description: 'Dirección actual, historial de residencia',
     icon: 'home-map-marker',
-    color: '#10B981',
-    description: 'Where you live and have lived',
-    descriptionEs: 'Dónde vive y ha vivido',
+    gradient: ['#10B981', '#059669'],
+    questions: [
+      {
+        id: 'addr_1',
+        question: 'What is your current physical address?',
+        variations: [
+          'What is your current address?',
+          'Where do you currently live?',
+          'What is your current residential address?',
+        ],
+        expectedResponseType: 'Complete address (street, city, state, ZIP)',
+        context: 'After identity verification, reviewing N-400 form data',
+        contextEs: 'Tu dirección actual completa (calle, ciudad, estado, ZIP)',
+        questionEs: '¿Cuál es su dirección actual?',
+        answerGuide: 'Di tu dirección completa: número, calle, ciudad, estado y código postal. Debe coincidir con el N-400.',
+        risk: 'low',
+        naturalResponses: ['My address is [address]', 'I live at [address]'],
+        categoryId: 'address',
+      },
+      {
+        id: 'addr_2',
+        question: 'How long have you been living at this address?',
+        variations: [
+          'How long have you lived at this address?',
+          'How long have you lived at your current address?',
+        ],
+        expectedResponseType: 'Time period (e.g., 7 years, since Nov 2022)',
+        context: 'Duration of residence at current address',
+        contextEs: 'Cuánto tiempo llevas viviendo en tu dirección actual',
+        questionEs: '¿Cuánto tiempo lleva viviendo en su dirección actual?',
+        answerGuide: 'Da el número de meses o años. Ejemplo: I have lived there for three years.',
+        risk: 'low',
+        naturalResponses: ['7 years', 'Since November 2022', 'I\'ve been living there for [time]'],
+        categoryId: 'address',
+      },
+      {
+        id: 'addr_3',
+        question: 'Where did you live before?',
+        variations: [
+          'Where did you live before moving to your current address?',
+          'Where did you live prior to that address?',
+          'What is your previous address?',
+        ],
+        expectedResponseType: 'Previous address',
+        context: 'Residence history',
+        contextEs: 'Dónde vivías antes de tu dirección actual',
+        questionEs: '¿Dónde vivía usted antes?',
+        answerGuide: 'Menciona las direcciones de los últimos 5 años tal como las pusiste en el N-400.',
+        risk: 'low',
+        naturalResponses: ['I used to live at [address]', 'Before that I lived in [place]'],
+        categoryId: 'address',
+      },
+      {
+        id: 'addr_4',
+        question: 'Have you lived anywhere else during the last 5 years?',
+        variations: [],
+        expectedResponseType: 'Yes/No',
+        context: 'Comprehensive verification of residence history for last 5 years',
+        contextEs: 'Si has vivido en otros lugares en los últimos 5 años',
+        questionEs: '¿Ha vivido en otros lugares en los últimos 5 años?',
+        answerGuide: 'Repasa los últimos 5 años y menciona cualquier otra dirección donde hayas vivido.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'No', 'Yes I have', 'No I have not'],
+        categoryId: 'address',
+      },
+    ],
   },
   {
     id: 'employment',
-    key: 'emp',
-    title: 'Employment',
-    titleEs: 'Empleo',
+    key: 'n400Employment',
+    title: 'Empleo',
+    titleEn: 'Employment',
+    description: 'Trabajo actual, empleador, ocupación',
     icon: 'briefcase',
-    color: '#F59E0B',
-    description: 'Work history and current job',
-    descriptionEs: 'Historial laboral y trabajo actual',
+    gradient: ['#F59E0B', '#D97706'],
+    questions: [
+      {
+        id: 'emp_1',
+        question: 'Are you currently working?',
+        variations: [
+          'What is your current employment status?',
+          'Where do you work?',
+          'Are you currently employed?',
+        ],
+        expectedResponseType: 'Yes/No or Status (employed, unemployed, self-employed, retired)',
+        context: 'Current employment status',
+        contextEs: 'Si estás trabajando actualmente o tu situación laboral',
+        questionEs: '¿Está trabajando actualmente?',
+        answerGuide: 'Di tu situación. Si estás desempleado: I am currently unemployed. Si retirado: I am retired.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'No', 'Yes I am', 'I am employed', 'I\'m unemployed', 'I\'m retired'],
+        categoryId: 'employment',
+      },
+      {
+        id: 'emp_2',
+        question: 'What is your employer\'s name?',
+        variations: [
+          'Who is your employer?',
+          'What is the name of the place where you work?',
+          'Where do you work?',
+        ],
+        expectedResponseType: 'Company/employer name',
+        context: 'Identification of current employer',
+        contextEs: 'El nombre de tu empleador o empresa donde trabajas',
+        questionEs: '¿Cuál es el nombre de su empleador?',
+        answerGuide: 'Di el nombre completo de la empresa o persona para quien trabajas.',
+        risk: 'low',
+        naturalResponses: ['I work at [company]', 'My employer is [name]'],
+        categoryId: 'employment',
+      },
+      {
+        id: 'emp_3',
+        question: 'What do you do there?',
+        variations: [
+          'What is your occupation?',
+          'What is your job?',
+        ],
+        expectedResponseType: 'Job title (e.g., project manager, teacher)',
+        context: 'Job title or description of responsibilities',
+        contextEs: 'Qué haces en tu trabajo o cuál es tu puesto',
+        questionEs: '¿Qué hace usted en su trabajo?',
+        answerGuide: 'Describe tu puesto. Ejemplo: I am a project manager, I work as a teacher.',
+        risk: 'low',
+        naturalResponses: ['I am a [job]', 'I work as a [job]', 'I\'m a [job]'],
+        categoryId: 'employment',
+      },
+      {
+        id: 'emp_4',
+        question: 'How long have you been working there?',
+        variations: [
+          'How many years have you been at your current job?',
+          'When did you start working at your current job?',
+        ],
+        expectedResponseType: 'Time period (e.g., since March 2019, five years)',
+        context: 'Duration of current employment',
+        contextEs: 'Cuánto tiempo llevas en tu trabajo actual',
+        questionEs: '¿Cuánto tiempo lleva trabajando ahí?',
+        answerGuide: 'Da el tiempo o fecha de inicio. Ejemplo: Since March 2019 o Five years.',
+        risk: 'low',
+        naturalResponses: ['Since March 2019', 'Five years', 'I\'ve been working there for [time]'],
+        categoryId: 'employment',
+      },
+      {
+        id: 'emp_5',
+        question: 'Where have you worked in the last 5 years?',
+        variations: [
+          'What jobs have you had in the last five years?',
+          'Can you list your employment history for the past 5 years?',
+        ],
+        expectedResponseType: 'List of employers and dates',
+        context: 'Employment history over last 5 years',
+        contextEs: 'Dónde has trabajado en los últimos 5 años (historial laboral)',
+        questionEs: '¿Dónde ha trabajado en los últimos 5 años?',
+        answerGuide: 'Menciona todos los empleadores de los últimos 5 años como los pusiste en el N-400. Incluye períodos de desempleo.',
+        risk: 'low',
+        naturalResponses: ['I have worked at [company] since [date]', 'In the last 5 years I worked at [company1] and then [company2]'],
+        categoryId: 'employment',
+      },
+    ],
   },
   {
     id: 'family',
-    key: 'fam',
-    title: 'Family',
-    titleEs: 'Familia',
+    key: 'n400Family',
+    title: 'Familia',
+    titleEn: 'Family',
+    description: 'Esposo/a, hijos, estado civil',
     icon: 'account-group',
-    color: '#EC4899',
-    description: 'Marital status and family members',
-    descriptionEs: 'Estado civil y miembros de la familia',
+    gradient: ['#EC4899', '#DB2777'],
+    questions: [
+      {
+        id: 'fam_1',
+        question: 'Are you married?',
+        variations: [
+          'What is your current marital status?',
+          'Are you married, single, divorced, or widowed?',
+        ],
+        expectedResponseType: 'Yes/No or Status',
+        context: 'Current marital status',
+        contextEs: 'Si estás casado(a) actualmente',
+        questionEs: '¿Está casado(a)?',
+        answerGuide: 'Responde con tu estado civil actual. Debe coincidir con lo que pusiste en el N-400.',
+        risk: 'low',
+        naturalResponses: ['Yes I am', 'No I\'m not', 'I am married', 'I\'m single'],
+        categoryId: 'family',
+      },
+      {
+        id: 'fam_2',
+        question: 'What is the current legal name of your spouse?',
+        variations: [
+          'What is the full name of your spouse?',
+          'What is your spouse\'s full legal name?',
+          'What is your husband\'s full name?',
+          'What is your wife\'s full name?',
+        ],
+        expectedResponseType: 'Full name',
+        context: 'Identity of current spouse',
+        contextEs: 'El nombre legal completo de tu esposo(a)',
+        questionEs: '¿Cuál es el nombre de su cónyuge?',
+        answerGuide: 'Di el nombre completo de tu esposo(a) tal como aparece en sus documentos.',
+        risk: 'low',
+        naturalResponses: ['My spouse\'s name is [name]', 'Her/His name is [name]'],
+        categoryId: 'family',
+      },
+      {
+        id: 'fam_3',
+        question: 'What is the date of birth of your spouse?',
+        variations: [],
+        expectedResponseType: 'Date of birth',
+        context: 'Spouse information',
+        contextEs: 'La fecha de nacimiento de tu esposo(a)',
+        questionEs: '¿Cuál es la fecha de nacimiento de su cónyuge?',
+        answerGuide: 'Di la fecha de nacimiento de tu esposo(a) en formato americano: mes, día, año.',
+        risk: 'low',
+        naturalResponses: ['[date]', 'My spouse was born on [date]'],
+        categoryId: 'family',
+      },
+      {
+        id: 'fam_4',
+        question: 'How many children do you have?',
+        variations: [
+          'Do you have any children?',
+          'Do you and your spouse have any children?',
+        ],
+        expectedResponseType: 'Number (including biological, stepchildren, and adopted)',
+        context: 'Number of children',
+        contextEs: 'Cuántos hijos tienes (biológicos, adoptivos e hijastros)',
+        questionEs: '¿Cuántos hijos tiene?',
+        answerGuide: 'Incluye hijos biológicos, adoptivos y hijastros. Da el número total.',
+        risk: 'low',
+        naturalResponses: ['I have [number] children', '[number]', 'I have [number] kids'],
+        categoryId: 'family',
+      },
+      {
+        id: 'fam_5',
+        question: 'What are your children\'s names?',
+        variations: [
+          'What are the ages and the names of your children?',
+        ],
+        expectedResponseType: 'Names',
+        context: 'Identification of children',
+        contextEs: 'Los nombres y edades de tus hijos',
+        questionEs: '¿Cuáles son los nombres de sus hijos?',
+        answerGuide: 'Di los nombres completos. El oficial puede pedir también las edades.',
+        risk: 'low',
+        naturalResponses: ['Their names are [names]', '[Name] and [Name]'],
+        categoryId: 'family',
+      },
+      {
+        id: 'fam_6',
+        question: 'How many times have you been married?',
+        variations: [
+          'Have you been married before?',
+          'Is this your first marriage?',
+        ],
+        expectedResponseType: 'Number',
+        context: 'Total marriage history',
+        contextEs: 'Cuántas veces te has casado en total (incluye matrimonios anteriores)',
+        questionEs: '¿Cuántas veces ha estado casado(a)?',
+        answerGuide: 'Cuenta TODOS los matrimonios, incluyendo los divorciados o anulados. No omitas ninguno.',
+        mustSayYes: 'Muchas personas olvidan contar matrimonios anteriores. El USCIS puede verificar esto. Siempre menciona TODOS.',
+        risk: 'high',
+        naturalResponses: ['This is my first marriage', 'I have been married twice', 'Once', '[number] times'],
+        categoryId: 'family',
+      },
+      {
+        id: 'fam_7',
+        question: 'Is your spouse a U.S. citizen?',
+        variations: [
+          'Is your husband/wife a citizen?',
+          'What is the immigration status of your spouse?',
+        ],
+        expectedResponseType: 'Yes/No',
+        context: 'Spouse citizenship status',
+        contextEs: 'Si tu esposo(a) es ciudadano(a) de EE.UU.',
+        questionEs: '¿Es su cónyuge ciudadano(a) de EE.UU.?',
+        answerGuide: 'Si aplicas por la categoría de cónyuge de ciudadano (3 años), di Yes y la fecha en que se hizo ciudadano(a).',
+        risk: 'low',
+        naturalResponses: ['Yes', 'No', 'Yes, she/he became a citizen in [year]', 'No, she/he is a permanent resident'],
+        categoryId: 'family',
+      },
+    ],
   },
   {
     id: 'travel',
-    key: 'trav',
-    title: 'Travel',
-    titleEs: 'Viajes',
+    key: 'n400Travel',
+    title: 'Viajes',
+    titleEn: 'Travel',
+    description: 'Viajes fuera de EE.UU., presencia física',
     icon: 'airplane',
-    color: '#06B6D4',
-    description: 'Trips outside the United States',
-    descriptionEs: 'Viajes fuera de los Estados Unidos',
+    gradient: ['#06B6D4', '#0891B2'],
+    questions: [
+      {
+        id: 'trav_1',
+        question: 'How many total trips have you taken outside the US?',
+        variations: [
+          'How many times have you traveled outside of the United States in the last 5 years?',
+          'How many trips have you made outside of the United States in the last 5 years?',
+          'How many total trips did you take outside of the U.S during the last five years?',
+        ],
+        expectedResponseType: 'Number',
+        context: 'Frequency of trips outside US in last 5 years',
+        contextEs: 'Cuántos viajes has hecho fuera de EE.UU. en los últimos 5 años',
+        questionEs: '¿Cuántos viajes ha hecho fuera de EE.UU.?',
+        answerGuide: 'Debes reportar TODOS los viajes, incluyendo los cortos. Ten el número exacto memorizado.',
+        risk: 'medium',
+        naturalResponses: ['I took [number] trips', '[number] trips', '[number]'],
+        categoryId: 'travel',
+      },
+      {
+        id: 'trav_2',
+        question: 'How many total days have you spent outside the US in the past 5 years?',
+        variations: [
+          'What are the total amount of days you have spent outside of the United States in The Last 5 Years?',
+        ],
+        expectedResponseType: 'Number of days',
+        context: 'Physical Presence calculation',
+        contextEs: 'Total de días que pasaste fuera de EE.UU. en los últimos 5 años',
+        questionEs: '¿Cuántos días en total ha pasado fuera de EE.UU.?',
+        answerGuide: 'Ten el total de días calculado antes de la entrevista.',
+        risk: 'medium',
+        naturalResponses: ['[number] days', 'I spent [number] days', '[number]'],
+        categoryId: 'travel',
+      },
+      {
+        id: 'trav_3',
+        question: 'Tell me when and where your last trip was',
+        variations: [
+          'What is the last date that you traveled out of the United States?',
+          'What are the dates of your most recent trip and where was that?',
+        ],
+        expectedResponseType: 'Date and place',
+        context: 'Details of most recent trip',
+        contextEs: 'Cuándo y a dónde fue tu último viaje fuera de EE.UU.',
+        questionEs: '¿Cuándo y a dónde fue su último viaje?',
+        answerGuide: 'Di el país, la fecha de salida y la fecha de regreso de tu viaje más reciente.',
+        risk: 'low',
+        naturalResponses: ['I went to [country] in [date]', 'My last trip was to [place] on [date]'],
+        categoryId: 'travel',
+      },
+      {
+        id: 'trav_4',
+        question: 'What was the purpose of your last trip?',
+        variations: [
+          'What was the purpose of your trip?',
+          'Why did you travel to [Country]?',
+        ],
+        expectedResponseType: 'Explanation (e.g., vacation, business)',
+        context: 'Reason for traveling outside US',
+        contextEs: 'El propósito o motivo de tu viaje fuera de EE.UU.',
+        questionEs: '¿Cuál fue el propósito de su viaje?',
+        answerGuide: 'Sé honesto: vacaciones, visita familiar, trabajo, emergencia. No inventes razones.',
+        risk: 'low',
+        naturalResponses: ['To visit my family', 'For work', 'On vacation', 'Vacation', 'Business'],
+        categoryId: 'travel',
+      },
+      {
+        id: 'trav_5',
+        question: 'Did any of your trips last 6 months or longer?',
+        variations: [],
+        expectedResponseType: 'Yes/No',
+        context: 'Continuity of Residence check',
+        contextEs: 'Si alguno de tus viajes duró 6 meses o más',
+        questionEs: '¿Algún viaje duró 6 meses o más?',
+        answerGuide: 'Un viaje de 6+ meses puede afectar tu residencia continua. Si pasó, ten evidencia de lazos con EE.UU.',
+        risk: 'high',
+        naturalResponses: ['Yes', 'No', 'Yes they did', 'No they did not'],
+        categoryId: 'travel',
+      },
+    ],
   },
   {
     id: 'legal',
-    key: 'leg',
-    title: 'Legal & Criminal',
-    titleEs: 'Legal y Criminal',
-    icon: 'gavel',
-    color: '#EF4444',
-    description: 'Legal history and background',
-    descriptionEs: 'Historial legal y antecedentes',
+    key: 'n400Legal',
+    title: 'Legal / Carácter Moral',
+    titleEn: 'Legal / Good Moral Character',
+    description: 'Arrestos, antecedentes, organizaciones',
+    icon: 'scale-balance',
+    gradient: ['#EF4444', '#DC2626'],
+    questions: [
+      {
+        id: 'leg_1',
+        question: 'Have you ever been arrested, cited, detained or confined by any law enforcement officer?',
+        variations: [
+          'Have you ever been arrested by any law enforcement officer?',
+          'Have you ever been arrested, cited, or detained by any law enforcement officer for any reason?',
+        ],
+        expectedResponseType: 'No (if yes, must provide details)',
+        context: 'Law enforcement/detention history (Part 12)',
+        contextEs: 'Si alguna vez fuiste arrestado, citado o detenido por la policía',
+        questionEs: '¿Ha sido arrestado, citado o detenido alguna vez?',
+        answerGuide: 'Incluye TODO: multas de tráfico con citación a corte, arrestos sin condena, casos sellados. El USCIS puede verificar.',
+        ifYes: 'Yes, I was arrested/cited in [año] for [cargo]. The charges were dismissed / I paid a fine. I have documentation.',
+        mustSayYes: 'SIEMPRE di SÍ si tuviste cualquier contacto con la policía — aunque el caso fue desestimado o expungido.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No never', 'No sir'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_2',
+        question: 'Have you ever claimed to be a US citizen?',
+        variations: [
+          'Have you ever claimed to be a US citizen in writing or any other way?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Part 12 question',
+        contextEs: 'Si alguna vez dijiste o reclamaste ser ciudadano de EE.UU.',
+        questionEs: '¿Ha afirmado alguna vez ser ciudadano de EE.UU.?',
+        answerGuide: 'Incluye marcar "citizen" en formularios de empleo (I-9), registrarse para votar, o decirle a un oficial.',
+        ifYes: 'Yes, I mistakenly checked the wrong box on the I-9 form. I corrected it with my employer immediately.',
+        mustSayYes: 'Si alguna vez marcaste "U.S. Citizen" en un formulario I-9 o cualquier documento — DEBES decir SÍ.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'Never'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_3',
+        question: 'Have you ever been a member of a terrorist organization?',
+        variations: [],
+        expectedResponseType: 'No',
+        context: 'Part 12 question',
+        contextEs: 'Si has sido miembro de una organización terrorista',
+        questionEs: '¿Ha sido miembro de una organización terrorista?',
+        answerGuide: 'La mayoría responde No. Si fuiste miembro bajo presión, consulta con un abogado antes.',
+        risk: 'high',
+        naturalResponses: ['No', 'No never', 'Absolutely not'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_4',
+        question: 'Have you ever persecuted any person because of race, religion, national origin?',
+        variations: [],
+        expectedResponseType: 'No',
+        context: 'Part 12 question',
+        contextEs: 'Si has perseguido a alguien por su raza, religión u origen nacional',
+        questionEs: '¿Ha perseguido a alguien por raza, religión u origen?',
+        answerGuide: 'La respuesta esperada es No. Incluye cualquier forma de persecución o discriminación activa.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_5',
+        question: 'If the law requires it, are you willing to perform work of national importance under civilian direction?',
+        variations: [],
+        expectedResponseType: 'Yes (I am willing to)',
+        context: 'Oath/loyalty question (Part 12)',
+        contextEs: 'Si estás dispuesto a hacer trabajo civil de importancia nacional',
+        questionEs: '¿Está dispuesto a realizar trabajo de importancia nacional bajo dirección civil?',
+        answerGuide: 'La respuesta esperada es Yes. Se refiere a trabajo civil en caso de emergencia nacional.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I am willing to', 'Yes I am', 'I am willing'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_6',
+        question: 'Do you support the Constitution and form of government of the United States?',
+        variations: [
+          'Do you support the Constitution of the United States?',
+        ],
+        expectedResponseType: 'Yes (I do)',
+        context: 'Oath/loyalty question (Part 12)',
+        contextEs: 'Si apoyas la Constitución y el gobierno de EE.UU.',
+        questionEs: '¿Apoya la Constitución y forma de gobierno de EE.UU.?',
+        answerGuide: 'Responde Yes, I do. Esta es una pregunta de lealtad básica.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I do', 'I do', 'Absolutely yes'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_7',
+        question: 'Have you ever registered to vote or voted in a U.S. election?',
+        variations: [
+          'Have you ever voted in any US election?',
+          'Are you registered to vote?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Voting as non-citizen check (Part 9)',
+        contextEs: 'Si alguna vez te registraste para votar o votaste sin ser ciudadano',
+        questionEs: '¿Se registró para votar o votó en una elección de EE.UU.?',
+        answerGuide: 'Votar sin ser ciudadano es una violación grave. Si lo hiciste sin saber que estaba prohibido, explícalo.',
+        ifYes: 'Yes. I registered because I was incorrectly told I was eligible. I did not know it was prohibited. I have never actually voted.',
+        mustSayYes: 'Si te registraste o votaste, di SÍ. Mentir puede resultar en deportación. Si fue un error, explícalo.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No, I have never voted'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_8',
+        question: 'Have you ever been a member of the Communist Party or any totalitarian party?',
+        variations: [],
+        expectedResponseType: 'No',
+        context: 'Political party membership check (Part 9)',
+        contextEs: 'Si has sido miembro del Partido Comunista o de algún partido totalitario',
+        questionEs: '¿Ha sido miembro del Partido Comunista o algún partido totalitario?',
+        answerGuide: 'La mayoría responde No. Si fuiste miembro bajo presión o como requisito, hay excepciones. Consulta un abogado.',
+        ifYes: 'Yes, I was required to be a member in [país] to [razón]. It was not voluntary. I have not been a member since [año].',
+        mustSayYes: 'Si fuiste miembro — aunque sea por obligación — di SÍ. Existen excepciones para membresías involuntarias.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No never'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_9',
+        question: 'Have you ever been married to more than one person at the same time?',
+        variations: [],
+        expectedResponseType: 'No',
+        context: 'Bigamy check (Part 9)',
+        contextEs: 'Si has estado casado(a) con más de una persona al mismo tiempo (bigamia)',
+        questionEs: '¿Ha estado casado(a) con más de una persona al mismo tiempo?',
+        answerGuide: 'Bigamia es causa de negación. Verifica que las fechas de divorcio anterior y nuevo matrimonio no se traslapen.',
+        mustSayYes: 'Revisa que las fechas de tu divorcio y nuevo matrimonio no se traslapen. Si hay conflicto, consulta un abogado.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No never'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_10',
+        question: 'Have you ever married someone in order to obtain an immigration benefit?',
+        variations: [],
+        expectedResponseType: 'No',
+        context: 'Marriage fraud check (Part 9)',
+        contextEs: 'Si te casaste con alguien para obtener un beneficio de inmigración',
+        questionEs: '¿Se casó para obtener un beneficio de inmigración?',
+        answerGuide: 'El matrimonio fraudulento es causa de deportación. La respuesta correcta es No para casi todos.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No, my marriage is genuine'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_11',
+        question: 'Have you ever helped anyone enter the United States illegally?',
+        variations: [
+          'Have you ever smuggled anyone into the US?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Immigration smuggling check (Part 9)',
+        contextEs: 'Si alguna vez ayudaste a alguien a entrar ilegalmente a EE.UU.',
+        questionEs: '¿Alguna vez ayudó a alguien a entrar ilegalmente a EE.UU.?',
+        answerGuide: 'Incluye pagar a un coyote para otra persona, transportar personas o guiarlas para cruzar sin documentos.',
+        mustSayYes: 'Si ayudaste económicamente a alguien para cruzar sin documentos, aunque sea familiar, di SÍ.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No never'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_12',
+        question: 'Have you ever lied to a U.S. Government official to get an immigration benefit?',
+        variations: [],
+        expectedResponseType: 'No',
+        context: 'Misrepresentation check (Part 9)',
+        contextEs: 'Si alguna vez mentiste a un oficial del gobierno para obtener un beneficio migratorio',
+        questionEs: '¿Mintió a un oficial del gobierno para obtener un beneficio migratorio?',
+        answerGuide: 'Mentir al gobierno puede resultar en deportación. La respuesta correcta es No para casi todos.',
+        mustSayYes: 'Si diste información incorrecta — aunque fue un error — di SÍ y explica. Ocultar es más peligroso.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No never'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_13',
+        question: 'Have you ever been removed or deported from the United States?',
+        variations: [
+          'Have you ever been deported?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Deportation history check (Part 9)',
+        contextEs: 'Si alguna vez fuiste removido o deportado de los Estados Unidos',
+        questionEs: '¿Ha sido removido o deportado de los Estados Unidos?',
+        answerGuide: 'Si tienes una deportación previa y ahora tienes Green Card, tu caso fue resuelto. Explícalo con fecha y circunstancias.',
+        ifYes: 'Yes, I was deported in [año]. After that, I applied through my [cónyuge/empleador] and was approved. I have been a lawful resident since [fecha].',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not', 'No never'],
+        categoryId: 'legal',
+      },
+      {
+        id: 'leg_14',
+        question: 'Are you a male who lived in the United States between age 18 and 26? Did you register for Selective Service?',
+        variations: [
+          'Did you register for the Selective Service?',
+        ],
+        expectedResponseType: 'Yes (if applicable)',
+        context: 'Selective Service registration (Part 9)',
+        contextEs: 'Si eres varón que vivió en EE.UU. entre 18-26 años y te registraste en el Servicio Selectivo',
+        questionEs: '¿Se registró en el Servicio Selectivo (si es varón, 18-26 años)?',
+        answerGuide: 'Si eres hombre y viviste en EE.UU. entre 18-26 años, DEBES haberte registrado. Si no lo hiciste, puedes obtener carta de explicación.',
+        ifYes: 'Yes, I registered. My Selective Service number is [número].',
+        mustSayYes: 'Si no te registraste y tenías 18-26 cuando vivías en EE.UU., consulta un abogado. Puedes obtener carta del SSS.',
+        risk: 'high',
+        naturalResponses: ['Yes, I am registered', 'No, I am female', 'Yes, my number is [number]', 'I was not required to register'],
+        categoryId: 'legal',
+      },
+    ],
+  },
+  {
+    id: 'taxes',
+    key: 'n400Taxes',
+    title: 'Impuestos',
+    titleEn: 'Taxes',
+    description: 'Deudas fiscales, declaraciones',
+    icon: 'cash-multiple',
+    gradient: ['#8B5CF6', '#7C3AED'],
+    questions: [
+      {
+        id: 'tax_1',
+        question: 'Do you currently owe any overdue federal, state, or local taxes in the United States?',
+        variations: [
+          'Do you owe any overdue federal, state, or local taxes?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Tax debts (Part 12)',
+        contextEs: 'Si debes impuestos federales, estatales o locales atrasados',
+        questionEs: '¿Debe actualmente impuestos atrasados?',
+        answerGuide: 'Si debes taxes y tienes un plan de pago con el IRS, di Yes y explica. Estar al día con un plan de pago suele ser aceptable.',
+        ifYes: 'Yes, I have a payment plan with the IRS and I am current on my payments. I can provide documentation.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I do not', 'I don\'t owe any taxes'],
+        categoryId: 'taxes',
+      },
+      {
+        id: 'tax_2',
+        question: 'Have you ever failed to pay your taxes?',
+        variations: [
+          'Have you ever failed to pay your taxes?',
+          'Have you ever not filed a federal, state, or local tax return since you became a lawful permanent resident?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Tax payment compliance (Part 12)',
+        contextEs: 'Si alguna vez dejaste de pagar o presentar tus impuestos',
+        questionEs: '¿Alguna vez dejó de pagar o presentar sus impuestos?',
+        answerGuide: 'Como residente permanente, debes presentar taxes SIEMPRE. Si no presentaste, busca asesoría antes de la entrevista.',
+        risk: 'high',
+        naturalResponses: ['No', 'No never', 'I always pay my taxes'],
+        categoryId: 'taxes',
+      },
+      {
+        id: 'tax_3',
+        question: 'Since you became a lawful permanent resident, have you called yourself a non-resident alien on a federal, state, or local tax return?',
+        variations: [
+          'Have you called yourself a non-US resident on a federal, state, or local tax return since you became a lawful permanent resident?',
+        ],
+        expectedResponseType: 'No',
+        context: 'Non-resident status for tax purposes since becoming LPR',
+        contextEs: 'Si te declaraste no-residente en tus impuestos siendo residente permanente',
+        questionEs: '¿Se ha declarado no-residente en sus impuestos desde ser residente permanente?',
+        answerGuide: 'Como residente permanente (LPR), NUNCA debes declarar impuestos como no-residente. La respuesta debe ser No.',
+        risk: 'high',
+        naturalResponses: ['No', 'No I have not'],
+        categoryId: 'taxes',
+      },
+    ],
   },
   {
     id: 'loyalty',
-    key: 'loy',
-    title: 'Loyalty & Oath',
-    titleEs: 'Lealtad y Juramento',
-    icon: 'flag',
-    color: '#8B5CF6',
-    description: 'Allegiance to the United States',
-    descriptionEs: 'Lealtad a los Estados Unidos',
-  },
-  {
-    id: 'tax',
-    key: 'tax',
-    title: 'Taxes',
-    titleEs: 'Impuestos',
-    icon: 'currency-usd',
-    color: '#059669',
-    description: 'Tax filing history',
-    descriptionEs: 'Historial de declaración de impuestos',
+    key: 'loyaltyAndOath',
+    title: 'Lealtad y Juramento',
+    titleEn: 'Loyalty & Oath',
+    description: 'Constitución, juramento, servicio militar',
+    icon: 'shield-star',
+    gradient: ['#1E3A8A', '#1E40AF'],
+    questions: [
+      {
+        id: 'loy_1',
+        question: 'Do you support the Constitution and form of government of the United States?',
+        variations: [
+          'Do you support the Constitution of the United States?',
+        ],
+        expectedResponseType: 'Yes (I do)',
+        context: 'Oath/loyalty question',
+        contextEs: 'Si apoyas la Constitución de los Estados Unidos (pregunta de lealtad)',
+        questionEs: '¿Apoya la Constitución y forma de gobierno de EE.UU.?',
+        answerGuide: 'Responde Yes, I do. Es una pregunta de lealtad fundamental del juramento.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I do', 'I do support it', 'Absolutely yes'],
+        categoryId: 'loyalty',
+      },
+      {
+        id: 'loy_2',
+        question: 'Do you understand the full oath of allegiance to the United States?',
+        variations: [],
+        expectedResponseType: 'Yes (I do)',
+        context: 'Oath understanding question',
+        contextEs: 'Si entiendes el juramento completo de lealtad a EE.UU.',
+        questionEs: '¿Entiende el juramento de lealtad completo?',
+        answerGuide: 'Di Yes, I do. El oficial puede pedirte que expliques qué significa en tus propias palabras.',
+        ifYes: 'Yes. It means I give up my loyalty to any other country and promise to support and defend the United States and its Constitution.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I do', 'I understand'],
+        categoryId: 'loyalty',
+      },
+      {
+        id: 'loy_3',
+        question: 'Are you willing to take the full Oath of Allegiance to the United States?',
+        variations: [],
+        expectedResponseType: 'Yes',
+        context: 'Willingness to take oath',
+        contextEs: 'Si estás dispuesto a tomar el juramento de lealtad completo',
+        questionEs: '¿Está dispuesto a tomar el juramento de lealtad?',
+        answerGuide: 'Responde Yes, I am. Incluye renunciar a lealtades extranjeras y defender la Constitución.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I am willing', 'I am willing'],
+        categoryId: 'loyalty',
+      },
+      {
+        id: 'loy_4',
+        question: 'If the law requires it, are you willing to bear arms on behalf of the United States?',
+        variations: [],
+        expectedResponseType: 'Yes (I\'m willing to)',
+        context: 'Military service question',
+        contextEs: 'Si estás dispuesto a portar armas en nombre de EE.UU.',
+        questionEs: '¿Está dispuesto a portar armas por EE.UU. si la ley lo requiere?',
+        answerGuide: 'La respuesta esperada es Yes. Si tienes objeciones religiosas, puedes solicitar excepción con documentación.',
+        risk: 'medium',
+        naturalResponses: ['Yes', 'Yes I\'m willing to', 'I am willing'],
+        categoryId: 'loyalty',
+      },
+      {
+        id: 'loy_5',
+        question: 'If the law requires it, are you willing to perform non-combatant services in the U.S armed forces?',
+        variations: [],
+        expectedResponseType: 'Yes (I\'m willing to)',
+        context: 'Non-combatant service question',
+        contextEs: 'Si estás dispuesto a servir como no combatiente en las fuerzas armadas',
+        questionEs: '¿Está dispuesto a prestar servicios no combatientes en las fuerzas armadas?',
+        answerGuide: 'La respuesta esperada es Yes. Los servicios no combatientes incluyen trabajo médico, logística, etc.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I\'m willing', 'I am willing'],
+        categoryId: 'loyalty',
+      },
+      {
+        id: 'loy_6',
+        question: 'If the law requires it, are you willing to perform work of national importance under civilian direction?',
+        variations: [],
+        expectedResponseType: 'Yes (I\'m willing to)',
+        context: 'Civilian work question',
+        contextEs: 'Si harías trabajo civil de importancia nacional si la ley lo requiere',
+        questionEs: '¿Está dispuesto a realizar trabajo civil de importancia nacional?',
+        answerGuide: 'La respuesta esperada es Yes. Esto se refiere a trabajo civil en caso de emergencia nacional.',
+        risk: 'low',
+        naturalResponses: ['Yes', 'Yes I\'m willing to', 'I am willing'],
+        categoryId: 'loyalty',
+      },
+    ],
   },
   {
     id: 'general',
-    key: 'gen',
-    title: 'General',
-    titleEs: 'General',
-    icon: 'help-circle',
-    color: '#64748B',
-    description: 'General questions about your application',
-    descriptionEs: 'Preguntas generales sobre su solicitud',
-  },
-];
-
-// ─── PREGUNTAS PRINCIPALES DEL N-400 ─────────────────────────────────
-export const n400Questions: N400Question[] = [
-  // ═══ IDENTITY (id) ═══
-  {
-    id: 'id_1',
-    question: 'What is your full legal name?',
-    questionEs: '¿Cuál es su nombre legal completo?',
-    section: 'identity',
-    tip: 'Say your full name as it appears on your green card.',
-    tipEs: 'Diga su nombre completo tal como aparece en su tarjeta verde.',
-    variations: [
-      'Please state your complete legal name.',
-      'Can you tell me your full name?',
-      'What name appears on your permanent resident card?',
-      'Tell me your first, middle, and last name.',
-      'What is the name you currently go by legally?',
-    ],
-  },
-  {
-    id: 'id_2',
-    question: 'What is your date of birth?',
-    questionEs: '¿Cuál es su fecha de nacimiento?',
-    section: 'identity',
-    tip: 'State month, day, and year clearly.',
-    tipEs: 'Diga mes, día y año claramente.',
-    variations: [
-      'When were you born?',
-      'Can you tell me your birthday?',
-      'What is your birth date?',
-    ],
-  },
-  {
-    id: 'id_3',
-    question: 'What is your country of birth?',
-    questionEs: '¿Cuál es su país de nacimiento?',
-    section: 'identity',
-    tip: 'Name the country where you were born.',
-    tipEs: 'Diga el nombre del país donde nació.',
-    variations: [
-      'Where were you born?',
-      'In which country were you born?',
-    ],
-  },
-  {
-    id: 'id_4',
-    question: 'What is your country of nationality?',
-    questionEs: '¿Cuál es su país de nacionalidad?',
-    section: 'identity',
-    tip: 'This is the country of your current citizenship.',
-    tipEs: 'Este es el país de su ciudadanía actual.',
-    variations: [
-      'What country are you currently a citizen of?',
-      'What is your current nationality?',
-    ],
-  },
-  {
-    id: 'id_5',
-    question: 'What is your Social Security Number?',
-    questionEs: '¿Cuál es su número de Seguro Social?',
-    section: 'identity',
-    tip: 'State your 9-digit SSN clearly.',
-    tipEs: 'Diga su número de 9 dígitos claramente.',
-    variations: [
-      'Can you provide your Social Security Number?',
-      'What SSN do you have?',
-    ],
-  },
-  {
-    id: 'id_6',
-    question: 'What is your Alien Registration Number?',
-    questionEs: '¿Cuál es su número de registro de extranjero?',
-    section: 'identity',
-    tip: 'This is the A-Number on your green card.',
-    tipEs: 'Este es el número A en su tarjeta verde.',
-    variations: [
-      'What is your A-Number?',
-      'Can you tell me your alien number?',
-    ],
-  },
-  {
-    id: 'id_7',
-    question: 'Have you ever used any other names?',
-    questionEs: '¿Ha usado alguna vez otros nombres?',
-    section: 'identity',
-    tip: 'Include maiden names, nicknames used legally, etc.',
-    tipEs: 'Incluya nombres de soltera, apodos usados legalmente, etc.',
-    variations: [
-      'Have you gone by any other name?',
-    ],
-  },
-  {
-    id: 'id_8',
-    question: 'What is your gender?',
-    questionEs: '¿Cuál es su género?',
-    section: 'identity',
-    tip: 'Answer male or female as shown on your documents.',
-    tipEs: 'Responda masculino o femenino como aparece en sus documentos.',
-    variations: [
-      'Are you male or female?',
-      'What sex is listed on your identification?',
-    ],
-  },
-  {
-    id: 'id_9',
-    question: 'What is your height?',
-    questionEs: '¿Cuál es su estatura?',
-    section: 'identity',
-    tip: 'State your height in feet and inches.',
-    tipEs: 'Diga su estatura en pies y pulgadas.',
-    variations: [
-      'How tall are you?',
-      'Can you tell me your height?',
-    ],
-  },
-  {
-    id: 'id_10',
-    question: 'What is your weight?',
-    questionEs: '¿Cuál es su peso?',
-    section: 'identity',
-    tip: 'State your weight in pounds.',
-    tipEs: 'Diga su peso en libras.',
-    variations: [
-      'How much do you weigh?',
-      'What is your current weight?',
-    ],
-  },
-
-  // ═══ ADDRESS (addr) ═══
-  {
-    id: 'addr_1',
-    question: 'What is your current home address?',
-    questionEs: '¿Cuál es su dirección actual?',
-    section: 'address',
-    tip: 'Give your complete address including city, state, and zip code.',
-    tipEs: 'Dé su dirección completa incluyendo ciudad, estado y código postal.',
-    variations: [
-      'Where do you currently live?',
-      'What is your residential address?',
-      'Can you give me your home address?',
-    ],
-  },
-  {
-    id: 'addr_2',
-    question: 'How long have you lived at your current address?',
-    questionEs: '¿Cuánto tiempo ha vivido en su dirección actual?',
-    section: 'address',
-    tip: 'State the number of years and months.',
-    tipEs: 'Diga el número de años y meses.',
-    variations: [
-      'When did you move to your current address?',
-      'Since when have you been living there?',
-    ],
-  },
-  {
-    id: 'addr_3',
-    question: 'Where did you live before your current address?',
-    questionEs: '¿Dónde vivía antes de su dirección actual?',
-    section: 'address',
-    tip: 'List previous addresses for the last 5 years.',
-    tipEs: 'Mencione las direcciones anteriores de los últimos 5 años.',
-    variations: [
-      'What was your previous address?',
-      'Can you list your addresses for the past five years?',
-      'Where else have you lived recently?',
-    ],
-  },
-  {
-    id: 'addr_4',
-    question: 'Do you have a mailing address different from your home address?',
-    questionEs: '¿Tiene una dirección postal diferente a su dirección de casa?',
-    section: 'address',
-    tip: 'Only if your mailing address differs from your home address.',
-    tipEs: 'Solo si su dirección postal es diferente a la de su hogar.',
-    variations: [],
-  },
-
-  // ═══ EMPLOYMENT (emp) ═══
-  {
-    id: 'emp_1',
-    question: 'What is your current occupation?',
-    questionEs: '¿Cuál es su ocupación actual?',
-    section: 'employment',
-    tip: 'State your job title or describe what you do.',
-    tipEs: 'Diga el título de su trabajo o describa lo que hace.',
-    variations: [
-      'What do you do for a living?',
-      'Where do you work?',
-      'What is your job?',
-    ],
-  },
-  {
-    id: 'emp_2',
-    question: 'What is the name of your current employer?',
-    questionEs: '¿Cuál es el nombre de su empleador actual?',
-    section: 'employment',
-    tip: 'Give the full name of the company or business.',
-    tipEs: 'Dé el nombre completo de la compañía o negocio.',
-    variations: [
-      'Who do you work for?',
-      'What company do you work at?',
-      'What is your employer\'s name?',
-    ],
-  },
-  {
-    id: 'emp_3',
-    question: 'How long have you been working at your current job?',
-    questionEs: '¿Cuánto tiempo ha estado trabajando en su empleo actual?',
-    section: 'employment',
-    tip: 'State the duration in years and months.',
-    tipEs: 'Diga la duración en años y meses.',
-    variations: [
-      'When did you start your current position?',
-      'How many years have you been employed there?',
-    ],
-  },
-  {
-    id: 'emp_4',
-    question: 'Where did you work before your current job?',
-    questionEs: '¿Dónde trabajaba antes de su empleo actual?',
-    section: 'employment',
-    tip: 'List your previous employers for the past 5 years.',
-    tipEs: 'Mencione sus empleadores anteriores de los últimos 5 años.',
-    variations: [
-      'What was your previous job?',
-      'Can you tell me about your work history?',
-    ],
-  },
-  {
-    id: 'emp_5',
-    question: 'Have you ever been unemployed for more than 6 months?',
-    questionEs: '¿Ha estado desempleado por más de 6 meses?',
-    section: 'employment',
-    tip: 'Be honest about any gaps in employment.',
-    tipEs: 'Sea honesto sobre cualquier brecha en el empleo.',
-    variations: [
-      'Were there any gaps in your employment?',
-      'Have you had any periods without work?',
-    ],
-  },
-
-  // ═══ FAMILY (fam) ═══
-  {
-    id: 'fam_1',
-    question: 'What is your current marital status?',
-    questionEs: '¿Cuál es su estado civil actual?',
-    section: 'family',
-    tip: 'Answer single, married, divorced, widowed, etc.',
-    tipEs: 'Responda soltero, casado, divorciado, viudo, etc.',
-    variations: [
-      'Are you married?',
-      'What is your marital status?',
-    ],
-  },
-  {
-    id: 'fam_2',
-    question: 'What is your spouse\'s name?',
-    questionEs: '¿Cuál es el nombre de su cónyuge?',
-    section: 'family',
-    tip: 'Give your spouse\'s full legal name.',
-    tipEs: 'Dé el nombre legal completo de su cónyuge.',
-    variations: [
-      'Can you tell me your husband\'s or wife\'s full name?',
-      'What is the name of your spouse?',
-      'What is your wife\'s name?',
-      'What is your husband\'s name?',
-    ],
-  },
-  {
-    id: 'fam_3',
-    question: 'Is your spouse a U.S. citizen?',
-    questionEs: '¿Es su cónyuge ciudadano estadounidense?',
-    section: 'family',
-    tip: 'Answer yes or no, and explain if applicable.',
-    tipEs: 'Responda sí o no, y explique si es necesario.',
-    variations: [],
-  },
-  {
-    id: 'fam_4',
-    question: 'How many children do you have?',
-    questionEs: '¿Cuántos hijos tiene?',
-    section: 'family',
-    tip: 'Include all children, regardless of age or residence.',
-    tipEs: 'Incluya a todos los hijos, sin importar edad o residencia.',
-    variations: [
-      'Do you have any children?',
-      'Tell me about your children.',
-    ],
-  },
-  {
-    id: 'fam_5',
-    question: 'What are the names and dates of birth of your children?',
-    questionEs: '¿Cuáles son los nombres y fechas de nacimiento de sus hijos?',
-    section: 'family',
-    tip: 'List each child\'s full name and date of birth.',
-    tipEs: 'Mencione el nombre completo y la fecha de nacimiento de cada hijo.',
-    variations: [
-      'Can you list your children\'s names?',
-    ],
-  },
-  {
-    id: 'fam_6',
-    question: 'How many times have you been married?',
-    questionEs: '¿Cuántas veces ha estado casado?',
-    section: 'family',
-    tip: 'Include all marriages, past and present.',
-    tipEs: 'Incluya todos los matrimonios, pasados y presentes.',
-    variations: [
-      'Have you been married before?',
-      'Is this your first marriage?',
-    ],
-  },
-  {
-    id: 'fam_7',
-    question: 'When and where did you get married?',
-    questionEs: '¿Cuándo y dónde se casó?',
-    section: 'family',
-    tip: 'Give the date and city/country of marriage.',
-    tipEs: 'Dé la fecha y la ciudad/país del matrimonio.',
-    variations: [
-      'What was the date of your marriage?',
-      'Where did your wedding take place?',
-    ],
-  },
-
-  // ═══ TRAVEL (trav) ═══
-  {
-    id: 'trav_1',
-    question: 'Have you traveled outside the United States in the past 5 years?',
-    questionEs: '¿Ha viajado fuera de los Estados Unidos en los últimos 5 años?',
-    section: 'travel',
-    tip: 'List all trips, including short ones.',
-    tipEs: 'Mencione todos los viajes, incluyendo los cortos.',
-    variations: [
-      'Have you taken any trips outside the U.S.?',
-      'Did you leave the country at any time?',
-      'Have you been abroad recently?',
-    ],
-  },
-  {
-    id: 'trav_2',
-    question: 'What countries did you visit and for how long?',
-    questionEs: '¿Qué países visitó y por cuánto tiempo?',
-    section: 'travel',
-    tip: 'For each trip, state the country, dates, and duration.',
-    tipEs: 'Para cada viaje, diga el país, las fechas y la duración.',
-    variations: [
-      'Where did you go and how long were you there?',
-    ],
-  },
-  {
-    id: 'trav_3',
-    question: 'Have you ever been outside the United States for more than 6 months at a time?',
-    questionEs: '¿Ha estado fuera de los Estados Unidos por más de 6 meses seguidos?',
-    section: 'travel',
-    tip: 'Trips longer than 6 months may affect your eligibility.',
-    tipEs: 'Viajes de más de 6 meses pueden afectar su elegibilidad.',
-    variations: [
-      'Did you take any extended trips outside the country?',
-      'Have you been away from the U.S. for long periods?',
-    ],
-  },
-  {
-    id: 'trav_4',
-    question: 'What was the total time you spent outside the United States?',
-    questionEs: '¿Cuál fue el tiempo total que pasó fuera de los Estados Unidos?',
-    section: 'travel',
-    tip: 'Add up all the days from your trips.',
-    tipEs: 'Sume todos los días de sus viajes.',
-    variations: [
-      'How many total days were you outside the U.S.?',
-    ],
-  },
-  {
-    id: 'trav_5',
-    question: 'Since becoming a permanent resident, have you ever not filed taxes?',
-    questionEs: '¿Desde que se convirtió en residente permanente, ha dejado de declarar impuestos?',
-    section: 'travel',
-    tip: 'You must file taxes every year as a permanent resident.',
-    tipEs: 'Debe declarar impuestos cada año como residente permanente.',
-    variations: [],
-  },
-
-  // ═══ LEGAL (leg) ═══
-  {
-    id: 'leg_1',
-    question: 'Have you ever been arrested, cited, or detained by any law enforcement officer?',
-    questionEs: '¿Ha sido arrestado, citado o detenido por algún oficial de la ley?',
-    section: 'legal',
-    tip: 'Include all incidents, even if charges were dropped.',
-    tipEs: 'Incluya todos los incidentes, incluso si se retiraron los cargos.',
-    variations: [
-      'Have you had any encounters with the police?',
-      'Have you ever been stopped or detained?',
-    ],
-  },
-  {
-    id: 'leg_2',
-    question: 'Have you ever been charged with committing any crime?',
-    questionEs: '¿Alguna vez ha sido acusado de cometer algún crimen?',
-    section: 'legal',
-    tip: 'Include any criminal charges, regardless of outcome.',
-    tipEs: 'Incluya cualquier cargo criminal, sin importar el resultado.',
-    variations: [
-      'Have you been charged with a crime?',
-    ],
-  },
-  {
-    id: 'leg_3',
-    question: 'Have you ever been convicted of a crime?',
-    questionEs: '¿Alguna vez ha sido condenado por un crimen?',
-    section: 'legal',
-    tip: 'A conviction is when a court finds you guilty.',
-    tipEs: 'Una condena es cuando un tribunal lo declara culpable.',
-    variations: [],
-  },
-  {
-    id: 'leg_4',
-    question: 'Have you ever been placed in removal or deportation proceedings?',
-    questionEs: '¿Alguna vez ha sido puesto en procedimientos de remoción o deportación?',
-    section: 'legal',
-    tip: 'Include any immigration court proceedings.',
-    tipEs: 'Incluya cualquier procedimiento ante la corte de inmigración.',
-    variations: [],
-  },
-  {
-    id: 'leg_5',
-    question: 'Have you ever lied to get immigration benefits?',
-    questionEs: '¿Alguna vez mintió para obtener beneficios de inmigración?',
-    section: 'legal',
-    tip: 'Be truthful about your immigration history.',
-    tipEs: 'Sea sincero sobre su historial de inmigración.',
-    variations: [],
-  },
-  {
-    id: 'leg_6',
-    question: 'Have you ever been a member of any organization or group?',
-    questionEs: '¿Alguna vez ha sido miembro de alguna organización o grupo?',
-    section: 'legal',
-    tip: 'Include political parties, clubs, and organizations.',
-    tipEs: 'Incluya partidos políticos, clubes y organizaciones.',
-    variations: [
-      'Do you belong to any groups or organizations?',
-    ],
-  },
-  {
-    id: 'leg_7',
-    question: 'Have you ever been a member of the Communist Party?',
-    questionEs: '¿Alguna vez ha sido miembro del Partido Comunista?',
-    section: 'legal',
-    tip: 'Answer honestly.',
-    tipEs: 'Responda honestamente.',
-    variations: [
-      'Were you ever part of a communist organization?',
-      'Have you had any affiliation with the Communist Party?',
-    ],
-  },
-  {
-    id: 'leg_8',
-    question: 'Have you ever been a terrorist or involved in terrorist activities?',
-    questionEs: '¿Alguna vez ha sido terrorista o ha participado en actividades terroristas?',
-    section: 'legal',
-    tip: 'This includes any form of support for terrorism.',
-    tipEs: 'Esto incluye cualquier forma de apoyo al terrorismo.',
-    variations: [],
-  },
-  {
-    id: 'leg_9',
-    question: 'Have you ever persecuted anyone because of their race, religion, or nationality?',
-    questionEs: '¿Alguna vez ha perseguido a alguien por su raza, religión o nacionalidad?',
-    section: 'legal',
-    tip: 'This question is about genocide and persecution.',
-    tipEs: 'Esta pregunta trata sobre genocidio y persecución.',
-    variations: [],
-  },
-  {
-    id: 'leg_10',
-    question: 'Have you ever served in any military, police, or paramilitary unit?',
-    questionEs: '¿Alguna vez ha servido en alguna unidad militar, policial o paramilitar?',
-    section: 'legal',
-    tip: 'Include service in any country.',
-    tipEs: 'Incluya servicio en cualquier país.',
-    variations: [],
-  },
-  {
-    id: 'leg_11',
-    question: 'Have you ever been a habitual drunkard?',
-    questionEs: '¿Alguna vez ha sido un bebedor habitual?',
-    section: 'legal',
-    tip: 'This refers to chronic alcohol abuse.',
-    tipEs: 'Esto se refiere al abuso crónico de alcohol.',
-    variations: [
-      'Do you have any issues with alcohol?',
-    ],
-  },
-  {
-    id: 'leg_12',
-    question: 'Have you ever used illegal drugs?',
-    questionEs: '¿Alguna vez ha usado drogas ilegales?',
-    section: 'legal',
-    tip: 'Be honest about any drug use.',
-    tipEs: 'Sea honesto sobre cualquier uso de drogas.',
-    variations: [],
-  },
-  {
-    id: 'leg_13',
-    question: 'Have you ever gambled illegally?',
-    questionEs: '¿Alguna vez ha apostado ilegalmente?',
-    section: 'legal',
-    tip: 'This includes unlicensed gambling.',
-    tipEs: 'Esto incluye apuestas sin licencia.',
-    variations: [
-      'Have you participated in any illegal gambling?',
-    ],
-  },
-  {
-    id: 'leg_14',
-    question: 'Have you ever failed to support your dependents or pay alimony?',
-    questionEs: '¿Alguna vez ha dejado de mantener a sus dependientes o pagar pensión alimenticia?',
-    section: 'legal',
-    tip: 'You must support your dependents and pay any court-ordered support.',
-    tipEs: 'Debe mantener a sus dependientes y pagar cualquier manutención ordenada por el tribunal.',
-    variations: [
-      'Do you currently owe child support?',
-    ],
-  },
-
-  // ═══ LOYALTY (loy) ═══
-  {
-    id: 'loy_1',
-    question: 'Are you willing to take the full Oath of Allegiance to the United States?',
-    questionEs: '¿Está dispuesto a tomar el Juramento de Lealtad completo a los Estados Unidos?',
-    section: 'loyalty',
-    tip: 'You must be willing to pledge loyalty to the U.S.',
-    tipEs: 'Debe estar dispuesto a jurar lealtad a los EE.UU.',
-    variations: [
-      'Will you take the Oath of Allegiance?',
-    ],
-  },
-  {
-    id: 'loy_2',
-    question: 'Are you willing to bear arms on behalf of the United States if required by law?',
-    questionEs: '¿Está dispuesto a portar armas en nombre de los Estados Unidos si la ley lo requiere?',
-    section: 'loyalty',
-    tip: 'You can request an exemption for religious or moral reasons.',
-    tipEs: 'Puede solicitar una exención por razones religiosas o morales.',
-    variations: [],
-  },
-  {
-    id: 'loy_3',
-    question: 'Are you willing to perform noncombatant services for the United States if required by law?',
-    questionEs: '¿Está dispuesto a prestar servicios no combatientes para los Estados Unidos si la ley lo requiere?',
-    section: 'loyalty',
-    tip: 'This means serving in a non-fighting role.',
-    tipEs: 'Esto significa servir en un rol que no es de combate.',
-    variations: [],
-  },
-  {
-    id: 'loy_4',
-    question: 'Are you willing to perform work of national importance if required by law?',
-    questionEs: '¿Está dispuesto a realizar trabajo de importancia nacional si la ley lo requiere?',
-    section: 'loyalty',
-    tip: 'This refers to civilian service during national emergencies.',
-    tipEs: 'Esto se refiere al servicio civil durante emergencias nacionales.',
-    variations: [],
-  },
-  {
-    id: 'loy_5',
-    question: 'Do you support the Constitution and form of government of the United States?',
-    questionEs: '¿Apoya la Constitución y la forma de gobierno de los Estados Unidos?',
-    section: 'loyalty',
-    tip: 'You must demonstrate allegiance to the U.S. Constitution.',
-    tipEs: 'Debe demostrar lealtad a la Constitución de los EE.UU.',
-    variations: [],
-  },
-  {
-    id: 'loy_6',
-    question: 'Do you renounce all titles of nobility from any foreign country?',
-    questionEs: '¿Renuncia a todos los títulos de nobleza de cualquier país extranjero?',
-    section: 'loyalty',
-    tip: 'You must give up any foreign titles of nobility.',
-    tipEs: 'Debe renunciar a cualquier título de nobleza extranjero.',
-    variations: [],
-  },
-
-  // ═══ TAX (tax) ═══
-  {
-    id: 'tax_1',
-    question: 'Have you filed your income tax returns every year?',
-    questionEs: '¿Ha presentado sus declaraciones de impuestos cada año?',
-    section: 'tax',
-    tip: 'You must file taxes every year as a permanent resident.',
-    tipEs: 'Debe presentar impuestos cada año como residente permanente.',
-    variations: [
-      'Do you file your taxes every year?',
-    ],
-  },
-  {
-    id: 'tax_2',
-    question: 'Do you owe any overdue Federal, State, or local taxes?',
-    questionEs: '¿Debe impuestos atrasados federales, estatales o locales?',
-    section: 'tax',
-    tip: 'If you owe taxes, explain your payment plan.',
-    tipEs: 'Si debe impuestos, explique su plan de pago.',
-    variations: [
-      'Are your taxes up to date?',
-      'Do you have any unpaid taxes?',
-    ],
-  },
-  {
-    id: 'tax_3',
-    question: 'Have you ever claimed to be a U.S. citizen when you were not?',
-    questionEs: '¿Alguna vez ha afirmado ser ciudadano estadounidense cuando no lo era?',
-    section: 'tax',
-    tip: 'This includes on tax forms or any official documents.',
-    tipEs: 'Esto incluye en formularios de impuestos o documentos oficiales.',
-    variations: [
-      'Did you ever claim U.S. citizenship falsely?',
-    ],
-  },
-
-  // ═══ GENERAL (gen) ═══
-  {
-    id: 'gen_1',
-    question: 'Why do you want to become a U.S. citizen?',
-    questionEs: '¿Por qué quiere convertirse en ciudadano estadounidense?',
-    section: 'general',
-    tip: 'Speak from the heart about your motivations.',
-    tipEs: 'Hable de corazón sobre sus motivaciones.',
-    variations: [
-      'What is your reason for applying for citizenship?',
-      'Why are you seeking U.S. citizenship?',
-    ],
-  },
-  {
-    id: 'gen_2',
-    question: 'How did you become a permanent resident?',
-    questionEs: '¿Cómo se convirtió en residente permanente?',
-    section: 'general',
-    tip: 'Explain if through family, employment, lottery, etc.',
-    tipEs: 'Explique si fue a través de familia, empleo, lotería, etc.',
-    variations: [
-      'How did you get your green card?',
-      'What was the basis for your permanent residence?',
-    ],
-  },
-  {
-    id: 'gen_3',
-    question: 'When did you become a permanent resident?',
-    questionEs: '¿Cuándo se convirtió en residente permanente?',
-    section: 'general',
-    tip: 'State the date you received your green card.',
-    tipEs: 'Diga la fecha en que recibió su tarjeta verde.',
-    variations: [
-      'What date did you get your green card?',
+    key: 'n400General',
+    title: 'Preguntas Generales',
+    titleEn: 'General Questions',
+    description: 'Preguntas comunes al final de la entrevista',
+    icon: 'comment-question',
+    gradient: ['#64748B', '#475569'],
+    questions: [
+      {
+        id: 'gen_1',
+        question: 'Why do you want to become a U.S. citizen?',
+        variations: [
+          'What is the reason you want to become a citizen?',
+          'Why are you applying for citizenship?',
+        ],
+        expectedResponseType: 'Personal explanation',
+        context: 'Common interview question about motivation',
+        contextEs: 'Por qué quieres convertirte en ciudadano(a) de EE.UU.',
+        questionEs: '¿Por qué quiere convertirse en ciudadano(a) de EE.UU.?',
+        answerGuide: 'No hay respuesta incorrecta, pero sé sincero y específico. Evita respuestas muy genéricas.',
+        risk: 'low',
+        naturalResponses: ['I want to vote', 'I want to travel more freely', 'I want to be fully part of this country', 'I want to sponsor my family'],
+        categoryId: 'general',
+      },
+      {
+        id: 'gen_2',
+        question: 'Is all the information in your application true and correct?',
+        variations: [
+          'Is everything on your N-400 accurate?',
+          'Do you need to make any changes to your application?',
+        ],
+        expectedResponseType: 'Yes (or correction)',
+        context: 'Final verification of application accuracy',
+        contextEs: 'Si toda la información en tu solicitud N-400 es verdadera y correcta',
+        questionEs: '¿Es toda la información en su solicitud verdadera y correcta?',
+        answerGuide: 'Si hay algún error en tu N-400, INFÓRMALO AHORA. Di "Yes, it is correct" si todo está bien. Si hay un error: "I need to make a correction."',
+        risk: 'high',
+        naturalResponses: ['Yes, it is all true and correct', 'Yes', 'I need to make a small correction on [section]'],
+        categoryId: 'general',
+      },
+      {
+        id: 'gen_3',
+        question: 'Do you have any additional information you would like to add?',
+        variations: [
+          'Is there anything else you want to tell me?',
+        ],
+        expectedResponseType: 'No (or explanation)',
+        context: 'Final opportunity to add or clarify information',
+        contextEs: 'Si tienes información adicional que quieras agregar',
+        questionEs: '¿Tiene información adicional que desee agregar?',
+        answerGuide: 'Esta es tu oportunidad de aclarar algo del N-400. Si todo está correcto: "No, everything is covered in my application."',
+        risk: 'low',
+        naturalResponses: ['No, everything is covered', 'No, I believe my application is complete', 'Yes, I would like to mention [detail]'],
+        categoryId: 'general',
+      },
     ],
   },
 ];
 
-// ─── FRASES DE PROTOCOLO ─────────────────────────────────────────────
-export const n400Protocol: N400Protocol[] = [
-  {
-    id: 'proto_1',
-    phrase: 'Good morning. Please raise your right hand. Do you swear to tell the truth, the whole truth, and nothing but the truth?',
-    phraseEs: 'Buenos días. Por favor levante su mano derecha. ¿Jura decir la verdad, toda la verdad y nada más que la verdad?',
-  },
-  {
-    id: 'proto_2',
-    phrase: 'Please have a seat. May I see your green card, passport, and any travel documents?',
-    phraseEs: 'Por favor tome asiento. ¿Puedo ver su tarjeta verde, pasaporte y cualquier documento de viaje?',
-  },
-  {
-    id: 'proto_3',
-    phrase: 'I am going to review your N-400 application with you today.',
-    phraseEs: 'Voy a revisar su solicitud N-400 con usted hoy.',
-  },
-  {
-    id: 'proto_4',
-    phrase: 'Please answer all questions truthfully and completely.',
-    phraseEs: 'Por favor responda todas las preguntas con verdad y completamente.',
-  },
-  {
-    id: 'proto_5',
-    phrase: 'If you do not understand a question, please ask me to repeat it.',
-    phraseEs: 'Si no entiende una pregunta, por favor pídame que la repita.',
-  },
-  {
-    id: 'proto_6',
-    phrase: 'Have there been any changes since you submitted your application?',
-    phraseEs: '¿Ha habido algún cambio desde que presentó su solicitud?',
-  },
-  {
-    id: 'proto_7',
-    phrase: 'Is everything on your application true and correct?',
-    phraseEs: '¿Es todo en su solicitud verdadero y correcto?',
-  },
-  {
-    id: 'proto_8',
-    phrase: 'Now I will test your ability to read English. Please read this sentence out loud.',
-    phraseEs: 'Ahora voy a evaluar su capacidad para leer en inglés. Por favor lea esta oración en voz alta.',
-  },
-  {
-    id: 'proto_9',
-    phrase: 'Now I will test your ability to write English. Please write this sentence.',
-    phraseEs: 'Ahora voy a evaluar su capacidad para escribir en inglés. Por favor escriba esta oración.',
-  },
-  {
-    id: 'proto_10',
-    phrase: 'I am now going to ask you some questions about American history and government.',
-    phraseEs: 'Ahora le voy a hacer algunas preguntas sobre la historia y el gobierno estadounidense.',
-  },
-  {
-    id: 'proto_11',
-    phrase: 'Congratulations! You have passed the civics test.',
-    phraseEs: '¡Felicidades! Ha aprobado el examen de civismo.',
-  },
-  {
-    id: 'proto_12',
-    phrase: 'I am recommending your application for approval. You should receive your oath ceremony notice in the mail.',
-    phraseEs: 'Estoy recomendando su solicitud para aprobación. Recibirá el aviso de su ceremonia de juramento por correo.',
-  },
-  {
-    id: 'proto_13',
-    phrase: 'Thank you for your time today. Do you have any questions for me?',
-    phraseEs: 'Gracias por su tiempo hoy. ¿Tiene alguna pregunta para mí?',
-  },
+// ─── PROTOCOLO ──────────────────────────────────────────────────
+
+export const n400Protocol: N400ProtocolPhrase[] = [
+  // Juramento
+  { id: 'proto_1', phrase: 'Please remain standing', type: 'swearing', contextEs: 'Al inicio — el oficial te pide que permanezcas de pie' },
+  { id: 'proto_2', phrase: 'Please raise your right hand', type: 'swearing', contextEs: 'Antes de jurar decir la verdad' },
+  { id: 'proto_3', phrase: 'Do you swear to tell the truth, the whole truth, and nothing but the truth?', type: 'swearing', contextEs: 'Juramento de veracidad — debes responder "Yes, I do"' },
+  { id: 'proto_4', phrase: 'Please be seated', type: 'swearing', contextEs: 'Después de jurar, te pide sentarte' },
+  // Documentos
+  { id: 'proto_5', phrase: 'Can I have your green card and your appointment letter and your driver\'s license?', type: 'document', contextEs: 'Te pide documentos: green card, carta de cita y licencia' },
+  { id: 'proto_6', phrase: 'Can I see your passport?', type: 'document', contextEs: 'Te pide mostrar tu pasaporte' },
+  { id: 'proto_7', phrase: 'I need to see your identification', type: 'document', contextEs: 'Te pide una identificación' },
+  { id: 'proto_8', phrase: 'Can I see your travel documents?', type: 'document', contextEs: 'Te pide documentos de viaje' },
+  // Transiciones
+  { id: 'proto_9', phrase: 'Okay, let\'s talk about your background', type: 'transition', contextEs: 'Transición: ahora el oficial hablará sobre tu historial' },
+  { id: 'proto_10', phrase: 'Now let\'s move on to the reading and writing portions', type: 'transition', contextEs: 'Transición: pasaremos a la prueba de lectura y escritura' },
+  { id: 'proto_11', phrase: 'Let\'s go through the civics test to check your knowledge', type: 'transition', contextEs: 'Transición: pasaremos al examen de educación cívica' },
+  { id: 'proto_12', phrase: 'Let\'s talk about your travels outside the US', type: 'transition', contextEs: 'Transición: hablaremos de tus viajes fuera de EE.UU.' },
+  { id: 'proto_13', phrase: 'Congratulations, you passed your interview today!', type: 'transition', contextEs: '¡Felicidades! El oficial te informa que pasaste' },
 ];
 
-// ─── DEFINICIONES / VOCABULARIO N-400 ────────────────────────────────
+// ─── DEFINICIONES DE VOCABULARIO DIFÍCIL ────────────────────────
+
 export const n400Definitions: N400Definition[] = [
   {
     id: 'def_1',
     term: 'Oath of Allegiance',
-    termEs: 'Juramento de Lealtad',
-    n400Question: 'What is the Oath of Allegiance?',
-    n400QuestionEs: '¿Qué es el Juramento de Lealtad?',
+    n400Question: 'Do you understand the full oath of allegiance to the United States?',
+    explanation: 'A promise to be loyal to the United States',
+    explanationEs: 'Una promesa de ser leal a los Estados Unidos',
+    synonyms: ['oath', 'promise', 'loyalty', 'allegiance'],
   },
   {
     id: 'def_2',
-    term: 'Naturalization',
-    termEs: 'Naturalización',
-    n400Question: 'What is naturalization?',
-    n400QuestionEs: '¿Qué es la naturalización?',
+    term: 'Constitution',
+    n400Question: 'Do you support the Constitution of the United States?',
+    explanation: 'The Supreme Law of the Land',
+    explanationEs: 'La Ley Suprema del país',
+    synonyms: ['supreme law', 'fundamental law'],
   },
   {
     id: 'def_3',
-    term: 'Permanent Resident',
-    termEs: 'Residente Permanente',
-    n400Question: 'What is a permanent resident?',
-    n400QuestionEs: '¿Qué es un residente permanente?',
+    term: 'Bear Arms',
+    n400Question: 'Are you willing to bear arms on behalf of the United States?',
+    explanation: 'To carry guns or use weapons and defend the United States',
+    explanationEs: 'Portar armas o usar armas y defender a los Estados Unidos',
+    synonyms: ['carry weapons', 'use guns', 'defend'],
   },
   {
     id: 'def_4',
-    term: 'Green Card',
-    termEs: 'Tarjeta Verde',
-    n400Question: 'What is a green card?',
-    n400QuestionEs: '¿Qué es una tarjeta verde?',
+    term: 'Non-combatant Services',
+    n400Question: 'Are you willing to perform non-combatant services?',
+    explanation: 'Services that do not engage in fighting during a war (e.g., translators, doctors, nurses)',
+    explanationEs: 'Servicios que no implican pelear en una guerra (traductores, doctores, enfermeras)',
+    synonyms: ['non-fighting', 'medical services', 'support services'],
   },
   {
     id: 'def_5',
-    term: 'Continuous Residence',
-    termEs: 'Residencia Continua',
-    n400Question: 'What does continuous residence mean?',
-    n400QuestionEs: '¿Qué significa residencia continua?',
+    term: 'Work of National Importance',
+    n400Question: 'Are you willing to perform work of national importance under civilian direction?',
+    explanation: 'Tasks that are important to a nation during a crisis (e.g., helping the Red Cross)',
+    explanationEs: 'Tareas importantes para el país en una crisis (ej: ayudar a la Cruz Roja)',
+    synonyms: ['national service', 'civilian service', 'crisis work'],
   },
   {
     id: 'def_6',
-    term: 'Physical Presence',
-    termEs: 'Presencia Física',
-    n400Question: 'What does physical presence mean?',
-    n400QuestionEs: '¿Qué significa presencia física?',
+    term: 'Terrorist Organization',
+    n400Question: 'Have you ever been a member of a terrorist organization?',
+    explanation: 'An organization that uses violence for political or religious purposes',
+    explanationEs: 'Una organización que usa violencia con fines políticos o religiosos',
+    synonyms: ['terrorist group', 'violent organization'],
   },
   {
     id: 'def_7',
-    term: 'Good Moral Character',
-    termEs: 'Buen Carácter Moral',
-    n400Question: 'What is good moral character?',
-    n400QuestionEs: '¿Qué es buen carácter moral?',
+    term: 'Persecuted',
+    n400Question: 'Have you ever persecuted any person?',
+    explanation: 'To hurt people on purpose',
+    explanationEs: 'Lastimar a personas a propósito',
+    synonyms: ['torture', 'harm', 'hurt intentionally'],
   },
   {
     id: 'def_8',
-    term: 'Selective Service',
-    termEs: 'Servicio Selectivo',
-    n400Question: 'What is Selective Service?',
-    n400QuestionEs: '¿Qué es el Servicio Selectivo?',
+    term: 'Crime',
+    n400Question: 'Have you ever committed any crime?',
+    explanation: 'Against the law or illegal activities',
+    explanationEs: 'Actividades contra la ley o ilegales',
+    synonyms: ['illegal activity', 'offense', 'law violation'],
   },
   {
     id: 'def_9',
-    term: 'Deportation',
-    termEs: 'Deportación',
-    n400Question: 'What is deportation?',
-    n400QuestionEs: '¿Qué es la deportación?',
+    term: 'Habitual Drunkard',
+    n400Question: 'Have you ever been a habitual drunkard?',
+    explanation: 'A person who is always drunk or intoxicated',
+    explanationEs: 'Una persona que siempre está borracha o intoxicada',
+    synonyms: ['chronic alcoholic', 'always intoxicated'],
   },
   {
     id: 'def_10',
-    term: 'Removal Proceedings',
-    termEs: 'Procedimientos de Remoción',
-    n400Question: 'What are removal proceedings?',
-    n400QuestionEs: '¿Qué son los procedimientos de remoción?',
+    term: 'Overdue',
+    n400Question: 'Do you owe any overdue taxes?',
+    explanation: 'Being late or behind (related to money/debts)',
+    explanationEs: 'Estar atrasado o con deuda (relacionado con dinero)',
+    synonyms: ['late', 'past due', 'unpaid', 'in debt'],
   },
   {
     id: 'def_11',
-    term: 'Alien Registration Number',
-    termEs: 'Número de Registro de Extranjero',
-    n400Question: 'What is an Alien Registration Number?',
-    n400QuestionEs: '¿Qué es un número de registro de extranjero?',
+    term: 'Owe',
+    n400Question: 'Do you owe any taxes?',
+    explanation: 'Not paid or in debt',
+    explanationEs: 'No pagado o con deuda',
+    synonyms: ['in debt', 'must pay', 'unpaid'],
   },
 ];
 
-// ─── HELPERS ─────────────────────────────────────────────────────────
+// ─── HELPERS ────────────────────────────────────────────────────
 
-/** Obtener preguntas por sección */
-export const getQuestionsBySection = (section: N400Section): N400Question[] =>
-  n400Questions.filter((q) => q.section === section);
+/** Total de preguntas principales */
+export const TOTAL_N400_QUESTIONS = n400Categories.reduce(
+  (sum, cat) => sum + cat.questions.length, 0
+);
 
-/** Obtener info de una sección por su key de audio (id, addr, emp, etc.) */
-export const getSectionByAudioKey = (key: string): N400SectionInfo | undefined =>
-  n400Sections.find((s) => s.key === key);
+/** Total de variaciones */
+export const TOTAL_N400_VARIATIONS = n400Categories.reduce(
+  (sum, cat) => sum + cat.questions.reduce((s, q) => s + q.variations.length, 0), 0
+);
 
-/** Obtener el total de preguntas */
-export const getTotalQuestions = (): number => n400Questions.length;
+/** Obtener todas las preguntas como array plano */
+export function getAllN400Questions(): N400Question[] {
+  return n400Categories.flatMap(cat => cat.questions);
+}
 
-/** Obtener el total incluyendo variaciones */
-export const getTotalWithVariations = (): number =>
-  n400Questions.reduce((sum, q) => sum + 1 + q.variations.length, 0);
+/** Obtener preguntas de una categoría */
+export function getN400QuestionsByCategory(categoryId: string): N400Question[] {
+  return n400Categories.find(c => c.id === categoryId)?.questions ?? [];
+}
+
+/** Obtener una pregunta + todas sus variaciones como strings */
+export function getQuestionWithVariations(questionId: string): string[] {
+  for (const cat of n400Categories) {
+    for (const q of cat.questions) {
+      if (q.id === questionId) {
+        return [q.question, ...q.variations];
+      }
+    }
+  }
+  return [];
+}

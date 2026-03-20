@@ -95,6 +95,6 @@ export const sectionToStage: Record<N400Section, string> = {
   travel: 'N-400 Review',
   legal: 'N-400 Review',
   loyalty: 'Oath & Loyalty',
-  tax: 'N-400 Review',
+  taxes: 'N-400 Review',
   general: 'General Questions',
 };
