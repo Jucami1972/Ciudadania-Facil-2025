@@ -37,7 +37,7 @@ const SpacedRepetitionPracticeScreen = () => {
   const insets = useSafeAreaInsets();
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
-  const [answeredQuestion, setAnsweredQuestion] = useState<{ id: number; text: string; answer: string } | null>(null);
+  const [answeredQuestion, setAnsweredQuestion] = useState<{ text: string; answer: string } | null>(null);
   const [pendingAnswer, setPendingAnswer] = useState<{ answer: string; correct: boolean } | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -118,7 +118,6 @@ const SpacedRepetitionPracticeScreen = () => {
 
     // Guardar datos de la pregunta y diferir handleAnswer hasta "Siguiente"
     setAnsweredQuestion({
-      id: currentQuestion.id,
       text: currentQuestion.question.text,
       answer: currentQuestion.answer,
     });
@@ -240,7 +239,6 @@ const SpacedRepetitionPracticeScreen = () => {
 
               <PracticeQuestionCard
                 question={answeredQuestion ? answeredQuestion.text : currentQuestion.question.text}
-                questionNumber={answeredQuestion ? answeredQuestion.id : currentQuestion.id}
                 mode="text-text"
                 onPlayAudio={playAudio}
               />

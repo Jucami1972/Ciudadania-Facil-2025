@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
+  TextInput,
   Alert,
   Animated,
+  Dimensions,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -20,13 +22,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import { NavigationProps } from '../../types/navigation';
+import { colors } from '../../constants/colors';
 import { designSystem } from '../../config/designSystem';
 import { questionAudioMap } from '../../assets/audio/questions/questionsMap';
-import { questions, Question } from '../../data/questions';
-import { isAnswerCorrect } from '../../utils/answerValidation';
-import { PracticeQuestionCard } from '../../components/practice/PracticeQuestionCard';
-import { AnswerResultCard } from '../../components/practice/AnswerResultCard';
-import { FloatingAnswerInput } from '../../components/practice/FloatingAnswerInput';
+import { getQuestionsByCategory, PracticeQuestion } from '../../data/practiceQuestions';
+
+const { width } = Dimensions.get('window');
 
 // Constantes para almacenamiento
 const STORAGE_KEYS = {
@@ -36,15 +37,15 @@ const STORAGE_KEYS = {
 
 type QuestionMode = 'text-text' | 'voice-text';
 
-// Interfaz local que extiende Question para incluir el modo de práctica
-interface LocalQuestion extends Question {
+// Interfaz local que extiende PracticeQuestion para incluir el modo
+interface LocalPracticeQuestion extends PracticeQuestion {
   mode?: QuestionMode;
 }
 
 const RandomPracticeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
   const insets = useSafeAreaInsets();
-  const [currentQuestion, setCurrentQuestion] = useState<LocalQuestion | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<LocalPracticeQuestion | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [questionIndex, setQuestionIndex] = useState<number>(0);
@@ -55,7 +56,7 @@ const RandomPracticeScreen = () => {
   const [incorrectQuestions, setIncorrectQuestions] = useState<Set<number>>(new Set());
   const [markedQuestions, setMarkedQuestions] = useState<Set<number>>(new Set());
   const [showMarkQuestionDialog, setShowMarkQuestionDialog] = useState(false);
-  const [shuffledQuestions, setShuffledQuestions] = useState<LocalQuestion[]>([]);
+  const [shuffledQuestions, setShuffledQuestions] = useState<LocalPracticeQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
 
@@ -69,28 +70,55 @@ const RandomPracticeScreen = () => {
     return shuffled;
   };
 
-  // Obtener 20 preguntas aleatorias de TODAS las categorías
-  const getRandomQuestions = (): LocalQuestion[] => {
-    if (__DEV__) console.log('🔍 getRandomQuestions: Obteniendo 20 preguntas aleatorias');
+  // Función para obtener 20 preguntas aleatorias de TODAS las categorías
+  const getRandomQuestions = (): LocalPracticeQuestion[] => {
+    console.log('🔍 getRandomQuestions: Obteniendo 20 preguntas aleatorias de todas las categorías');
     
-    if (__DEV__) console.log('📚 Total de preguntas disponibles:', questions.length);
+    // Obtener preguntas de todas las categorías
+    const governmentQuestions = getQuestionsByCategory('government');
+    const historyQuestions = getQuestionsByCategory('history');
+    const civicsQuestions = getQuestionsByCategory('civics');
     
-    // 50% text-text, 50% voice-text
-    const modes: QuestionMode[] = [
-      ...Array(10).fill('text-text'),
-      ...Array(10).fill('voice-text'),
+    // Combinar todas las preguntas
+    const allQuestions = [
+      ...governmentQuestions,
+      ...historyQuestions,
+      ...civicsQuestions
     ];
+    
+    console.log('📚 Total de preguntas disponibles:', allQuestions.length);
+    
+    // Crear array de modos aleatorios (50% text-text, 50% voice-text)
+    const modes: QuestionMode[] = [];
+    const textCount = 10;
+    const voiceCount = 10;
+    
+    // Llenar array con modos balanceados
+    for (let i = 0; i < textCount; i++) {
+      modes.push('text-text');
+    }
+    for (let i = 0; i < voiceCount; i++) {
+      modes.push('voice-text');
+    }
+    
+    // Mezclar los modos aleatoriamente
     const shuffledModes = shuffleArray(modes);
     
     // Mezclar todas las preguntas y tomar 20
-    const selectedQuestions = shuffleArray([...questions]).slice(0, 20);
+    const shuffledAllQuestions = shuffleArray(allQuestions);
+    const selectedQuestions = shuffledAllQuestions.slice(0, 20);
     
+    // Agregar modo aleatorio a cada pregunta
     const questionsWithMode = selectedQuestions.map((q, index) => ({
       ...q,
-      mode: shuffledModes[index] as QuestionMode,
+      mode: shuffledModes[index] as QuestionMode
     }));
     
-    if (__DEV__) console.log('🎲 20 preguntas seleccionadas con modo asignado');
+    console.log('🎲 20 preguntas seleccionadas con modo asignado');
+    console.log('📊 Distribución de modos:', {
+      text: questionsWithMode.filter(q => q.mode === 'text-text').length,
+      voice: questionsWithMode.filter(q => q.mode === 'voice-text').length
+    });
     
     return questionsWithMode;
   };
@@ -163,10 +191,45 @@ const RandomPracticeScreen = () => {
     }
   };
 
+  // Función para limpiar texto removiendo símbolos, corchetes y asteriscos
+  const cleanText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[•·\-\*]/g, '')
+      .replace(/\[.*?\]/g, '')
+      .replace(/\(.*?\)/g, '')
+      .replace(/\*/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
+
+  // Función INTELIGENTE para comparar respuestas con limpieza de texto
+  const isAnswerCorrect = (userAnswer: string, correctAnswer: string, questionText: string): boolean => {
+    const cleanUserAnswer = cleanText(userAnswer);
+    const cleanCorrectAnswer = cleanText(correctAnswer);
+    
+    // Dividir la respuesta correcta en opciones (separadas por comas o saltos de línea)
+    const correctOptions = cleanCorrectAnswer
+      .split(/[,•\n]/)
+      .map(opt => opt.trim())
+      .filter(opt => opt.length > 0);
+    
+    // Verificar si la respuesta del usuario coincide con alguna opción
+    const isMatch = correctOptions.some(option => {
+      const normalizedOption = cleanText(option);
+      return cleanUserAnswer === normalizedOption || 
+             cleanUserAnswer.includes(normalizedOption) ||
+             normalizedOption.includes(cleanUserAnswer);
+    });
+    
+    return isMatch;
+  };
+
   const handleAnswerSubmit = async () => {
     if (!currentQuestion || !userAnswer.trim()) return;
     
-    const correct = isAnswerCorrect(userAnswer, currentQuestion.answerEn);
+    const correct = isAnswerCorrect(userAnswer, currentQuestion.answer, currentQuestion.question);
     setIsCorrect(correct);
     
     if (correct) {
@@ -292,6 +355,14 @@ const RandomPracticeScreen = () => {
     }
   };
 
+  const getQuestionModeText = (mode: QuestionMode): string => {
+    switch (mode) {
+      case 'text-text': return 'Pregunta de texto - Respuesta de texto';
+      case 'voice-text': return 'Pregunta de voz - Respuesta de texto';
+      default: return '';
+    }
+  };
+
   if (isLoading || !currentQuestion) {
     return (
       <View style={styles.safeArea}>
@@ -401,21 +472,59 @@ const RandomPracticeScreen = () => {
                   </TouchableOpacity>
                 </View>
 
-                <PracticeQuestionCard
-                  question={currentQuestion.questionEn}
-                  questionNumber={currentQuestion.id}
-                  mode={currentQuestion.mode}
-                  onPlayAudio={handlePlayAudioQuestion}
-                />
+                <View style={styles.questionCard}>
+                  <View style={styles.questionModeChip}>
+                    <MaterialCommunityIcons
+                      name={currentQuestion.mode?.includes('voice') ? 'microphone' : 'text'}
+                      size={14}
+                      color={designSystem.colors.brand.primary}
+                    />
+                    <Text style={styles.questionModeTextChip}>{getQuestionModeText(currentQuestion.mode || 'text-text')}</Text>
+                  </View>
+
+                  {currentQuestion.mode === 'voice-text' ? (
+                    <View style={styles.audioContainer}>
+                      <TouchableOpacity style={styles.audioButton} onPress={handlePlayAudioQuestion}>
+                        <MaterialCommunityIcons name="play-circle" size={20} color="#fff" />
+                        <Text style={styles.audioButtonText}>Escuchar pregunta</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.voiceInstruction}>Escribe tu respuesta después de escuchar</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.questionLabel}>Pregunta</Text>
+                      <Text style={styles.questionText}>{currentQuestion.question}</Text>
+                    </>
+                  )}
+                </View>
 
                 {isCorrect !== null && (
-                  <AnswerResultCard
-                    isCorrect={isCorrect}
-                    correctAnswer={currentQuestion.answerEn}
-                    userAnswer={userAnswer}
-                    onRepeat={handleRepeatQuestion}
-                    onNext={handleNextQuestion}
-                  />
+                  <View style={styles.resultCard}>
+                    <View style={[styles.resultHeader, { backgroundColor: isCorrect ? designSystem.colors.functional.success : designSystem.colors.functional.error }]}>
+                      <MaterialCommunityIcons
+                        name={isCorrect ? 'check-circle' : 'close-circle'}
+                        size={22}
+                        color="#fff"
+                      />
+                      <Text style={styles.resultHeaderText}>
+                        {isCorrect ? '¡Correcto!' : 'Incorrecto'}
+                      </Text>
+                    </View>
+                    <View style={styles.correctAnswerContainer}>
+                      <Text style={styles.correctAnswerLabel}>Respuesta correcta</Text>
+                      <Text style={styles.correctAnswerValue}>{currentQuestion.answer}</Text>
+                    </View>
+                    <View style={styles.resultActions}>
+                      <TouchableOpacity style={styles.secondaryButton} onPress={handleRepeatQuestion}>
+                        <MaterialCommunityIcons name="replay" size={16} color={designSystem.colors.brand.primary} />
+                        <Text style={styles.secondaryButtonText}>Repetir</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.primaryButton} onPress={handleNextQuestion}>
+                        <Text style={styles.primaryButtonText}>Siguiente</Text>
+                        <MaterialCommunityIcons name="arrow-right" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 )}
 
                 {showMarkQuestionDialog && (
@@ -438,11 +547,23 @@ const RandomPracticeScreen = () => {
             </Animated.View>
 
             {isCorrect === null && (
-              <FloatingAnswerInput
-                value={userAnswer}
-                onChangeText={setUserAnswer}
-                onSubmit={handleAnswerSubmit}
-              />
+              <View style={styles.floatingAnswerContainer}>
+                <Text style={styles.answerLabel}>Tu respuesta</Text>
+                <TextInput
+                  style={styles.answerInput}
+                  value={userAnswer}
+                  onChangeText={setUserAnswer}
+                  placeholder="Escribe tu respuesta aquí..."
+                  placeholderTextColor={designSystem.colors.text.tertiary}
+                  multiline
+                  textAlignVertical="top"
+                />
+                {userAnswer.trim().length > 0 && (
+                  <TouchableOpacity style={styles.submitButton} onPress={handleAnswerSubmit}>
+                    <Text style={styles.submitButtonText}>Confirmar respuesta</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
           </View>
         </KeyboardAvoidingView>
@@ -582,6 +703,185 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(30, 64, 175, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  questionCard: {
+    backgroundColor: designSystem.colors.background.primary,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: designSystem.spacing.md,
+    gap: designSystem.spacing.sm + 2,
+    ...designSystem.shadows.sm,
+  },
+  questionModeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(30, 64, 175, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: designSystem.borderRadius.full,
+    gap: 5,
+  },
+  questionModeTextChip: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: designSystem.colors.brand.primary,
+  },
+  questionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: designSystem.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  questionText: {
+    fontSize: 15,
+    color: designSystem.colors.text.primary,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  audioContainer: {
+    alignItems: 'center',
+    backgroundColor: designSystem.colors.background.secondary,
+    padding: designSystem.spacing.md,
+    borderRadius: designSystem.borderRadius.md,
+    gap: designSystem.spacing.sm,
+  },
+  audioButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: designSystem.colors.brand.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: designSystem.borderRadius.full,
+    gap: 8,
+  },
+  audioButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  voiceInstruction: {
+    fontSize: 12,
+    color: designSystem.colors.text.secondary,
+    textAlign: 'center',
+  },
+  resultCard: {
+    backgroundColor: designSystem.colors.background.primary,
+    borderRadius: designSystem.borderRadius.lg,
+    padding: designSystem.spacing.md,
+    gap: designSystem.spacing.md,
+    ...designSystem.shadows.sm,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: designSystem.spacing.md,
+    borderRadius: designSystem.borderRadius.md,
+    gap: 8,
+  },
+  resultHeaderText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  correctAnswerContainer: {
+    backgroundColor: designSystem.colors.background.secondary,
+    padding: designSystem.spacing.md,
+    borderRadius: designSystem.borderRadius.md,
+  },
+  correctAnswerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: designSystem.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  correctAnswerValue: {
+    fontSize: 14,
+    color: designSystem.colors.text.primary,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  resultActions: {
+    flexDirection: 'row',
+    gap: designSystem.spacing.sm,
+  },
+  secondaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: designSystem.colors.background.secondary,
+    paddingVertical: 12,
+    borderRadius: designSystem.borderRadius.md,
+    gap: 6,
+  },
+  secondaryButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: designSystem.colors.brand.primary,
+  },
+  primaryButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: designSystem.colors.brand.primary,
+    paddingVertical: 12,
+    borderRadius: designSystem.borderRadius.md,
+    gap: 6,
+  },
+  primaryButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  floatingAnswerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: designSystem.colors.background.primary,
+    paddingHorizontal: designSystem.spacing.md,
+    paddingTop: designSystem.spacing.md,
+    paddingBottom: designSystem.spacing.md,
+    ...designSystem.shadows.lg,
+  },
+  answerLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: designSystem.colors.text.primary,
+    marginBottom: designSystem.spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  answerInput: {
+    borderWidth: 1.5,
+    borderColor: designSystem.colors.border.light,
+    borderRadius: designSystem.borderRadius.md,
+    padding: designSystem.spacing.md,
+    fontSize: 14,
+    minHeight: 70,
+    maxHeight: 100,
+    color: designSystem.colors.text.primary,
+    backgroundColor: designSystem.colors.background.secondary,
+    textAlignVertical: 'top',
+  },
+  submitButton: {
+    marginTop: designSystem.spacing.sm + 2,
+    backgroundColor: designSystem.colors.brand.primary,
+    paddingVertical: 14,
+    borderRadius: designSystem.borderRadius.md,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+    letterSpacing: 0.3,
   },
   markBanner: {
     flexDirection: 'row',

@@ -71,11 +71,27 @@ const PruebaPracticaScreenModerno = () => {
     }
   }, []);
 
-  // Cargar estadísticas cuando la pantalla recibe focus
+  // Resetear el stack cuando esta pantalla recibe focus
   useFocusEffect(
     React.useCallback(() => {
+      const state = navigation.getState();
+      const practiceState = state.routes.find((r: any) => r.name === 'Practice')?.state;
+      
+      if (practiceState && practiceState.routes.length > 1 && practiceState.index !== undefined) {
+        const currentRoute = practiceState.routes[practiceState.index];
+        if (currentRoute?.name !== 'PruebaPracticaHome') {
+          (navigation as any).reset({
+            index: 0,
+            routes: [
+              { name: 'Practice', state: { routes: [{ name: 'PruebaPracticaHome' }], index: 0 } }
+            ],
+          });
+        }
+      }
+      
+      // Cargar estadísticas cuando la pantalla recibe focus
       loadStats();
-    }, [loadStats])
+    }, [navigation, loadStats])
   );
 
   const practiceOptions: PracticeOption[] = [

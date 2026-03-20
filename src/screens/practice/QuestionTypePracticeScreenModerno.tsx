@@ -138,14 +138,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
-    textAlign: 'center',
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.8)',
     marginTop: 1,
-    textAlign: 'center',
   },
   container: {
     flex: 1,

@@ -18,15 +18,14 @@ import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Audio } from 'expo-av';
+import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProps } from '../../types/navigation';
 import aiInterviewN400Service, { InterviewContext } from '../../services/aiInterviewN400Service';
+import { useVoiceRecognition } from '../../hooks/useVoiceRecognition';
 import WebLayout from '../../components/layout/WebLayout';
 import { useIsWebDesktop } from '../../hooks/useIsWebDesktop';
 import { USE_BACKEND, BACKEND_URL } from '../../constants/backend';
-
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY || '';
 
 const isWeb = Platform.OS === 'web';
 
@@ -49,10 +48,6 @@ const AIInterviewN400ScreenModerno = () => {
   const [applicantName, setApplicantName] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [waitingForAutoMessage, setWaitingForAutoMessage] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const ttsSound = useRef<Audio.Sound | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
   const welcomeScrollRef = useRef<ScrollView>(null);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,16 +94,30 @@ const AIInterviewN400ScreenModerno = () => {
   };
 
   const handleEndInterview = async () => {
-    // Stop any playing TTS audio
-    if (ttsSound.current) {
-      try { await ttsSound.current.stopAsync(); await ttsSound.current.unloadAsync(); } catch {}
-      ttsSound.current = null;
-    }
+    Speech.stop();
     await saveSession();
     setSessionStarted(false);
     setMessages([]);
     setSessionId(null);
   };
+
+  // Hook de reconocimiento de voz - siempre se llama (requisito de React)
+  const {
+    isRecording: isListening,
+    isSupported: voiceSupported,
+    startRecording,
+    stopRecording,
+  } = useVoiceRecognition({
+    onSpeechResult: (text) => {
+      setUserInput(text);
+      stopRecording();
+    },
+    onError: (error) => {
+      // No mostrar errores automáticos de disponibilidad
+      // Solo mostrar errores reales cuando el usuario intenta usar la voz
+      // El mensaje de disponibilidad se maneja en handleVoiceInput
+    },
+  });
 
   // Mostrar estado del backend cuando se carga la pantalla
   useEffect(() => {
@@ -180,172 +189,28 @@ const AIInterviewN400ScreenModerno = () => {
   };
 
 
-  // ========== OpenAI TTS — voz natural del oficial ==========
+  // Función para hablar un mensaje
   const speakMessage = async (text: string): Promise<void> => {
-    if (!OPENAI_API_KEY) {
-      if (__DEV__) console.warn('No OPENAI_API_KEY — TTS desactivado');
-      return;
-    }
-    setIsSpeaking(true);
-    try {
-      // Detener audio previo
-      if (ttsSound.current) {
-        try { await ttsSound.current.stopAsync(); await ttsSound.current.unloadAsync(); } catch {}
-        ttsSound.current = null;
-      }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
-
-      const response = await fetch('https://api.openai.com/v1/audio/speech', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
+    return new Promise((resolve) => {
+      setIsSpeaking(true);
+      Speech.speak(text, {
+        language: 'en-US',
+        rate: 0.85,
+        pitch: 1.0,
+        onDone: () => {
+          setIsSpeaking(false);
+          resolve();
         },
-        body: JSON.stringify({
-          model: 'tts-1',
-          voice: 'nova',
-          input: text,
-          speed: 0.95,
-          response_format: 'mp3',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`TTS API error: ${response.status}`);
-      }
-
-      const blob = await response.blob();
-      const reader = new FileReader();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => {
-          const result = reader.result as string;
-          resolve(result.split(',')[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: `data:audio/mp3;base64,${base64}` },
-        { shouldPlay: true }
-      );
-      ttsSound.current = sound;
-
-      await new Promise<void>((resolve) => {
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            resolve();
-          }
-        });
-      });
-
-      await sound.unloadAsync();
-      ttsSound.current = null;
-    } catch (error) {
-      if (__DEV__) console.error('OpenAI TTS error:', error);
-    } finally {
-      setIsSpeaking(false);
-    }
-  };
-
-  // ========== Grabación de voz del usuario ==========
-  const startVoiceRecording = async () => {
-    try {
-      // Detener TTS si está hablando
-      if (ttsSound.current) {
-        try { await ttsSound.current.stopAsync(); await ttsSound.current.unloadAsync(); } catch {}
-        ttsSound.current = null;
-        setIsSpeaking(false);
-      }
-
-      const permission = await Audio.requestPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Permisos', 'Se necesitan permisos de micrófono para responder con voz.');
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      recordingRef.current = recording;
-      setIsRecording(true);
-    } catch (err) {
-      if (__DEV__) console.error('Failed to start recording:', err);
-      Alert.alert('Error', 'No se pudo iniciar la grabación');
-    }
-  };
-
-  const stopVoiceRecording = async () => {
-    const recording = recordingRef.current;
-    if (!recording) return;
-    setIsRecording(false);
-    setIsTranscribing(true);
-
-    try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-
-      if (uri) {
-        await transcribeAndSend(uri);
-      }
-    } catch (err) {
-      if (__DEV__) console.error('Failed to stop recording:', err);
-      setIsTranscribing(false);
-    }
-    recordingRef.current = null;
-  };
-
-  const transcribeAndSend = async (uri: string) => {
-    if (!OPENAI_API_KEY) {
-      Alert.alert('Error', 'No se encontró EXPO_PUBLIC_OPENAI_API_KEY');
-      setIsTranscribing(false);
-      return;
-    }
-    try {
-      const formData = new FormData();
-      formData.append('file', {
-        uri,
-        name: 'audio.m4a',
-        type: 'audio/m4a',
-      } as any);
-      formData.append('model', 'whisper-1');
-      formData.append('language', 'en');
-
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Accept': 'application/json',
+        onStopped: () => {
+          setIsSpeaking(false);
+          resolve();
         },
-        body: formData,
+        onError: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
       });
-
-      const data = await response.json();
-      if (data.text && data.text.trim()) {
-        setUserInput(data.text.trim());
-      } else {
-        Alert.alert('No se entendió', 'No se pudo transcribir tu audio. Intenta de nuevo o escribe tu respuesta.');
-      }
-    } catch (err) {
-      if (__DEV__) console.error('Transcription error:', err);
-      Alert.alert('Error', 'Error al transcribir. Verifica tu conexión.');
-    } finally {
-      setIsTranscribing(false);
-    }
-  };
-
-  const handleVoiceInput = async () => {
-    if (isRecording) {
-      await stopVoiceRecording();
-    } else {
-      await startVoiceRecording();
-    }
+    });
   };
 
   // Función para generar mensaje automático después de una respuesta
@@ -428,16 +293,30 @@ const AIInterviewN400ScreenModerno = () => {
     }
   };
 
+  const handleVoiceInput = async () => {
+    if (isListening) {
+      stopRecording();
+    } else {
+      if (!voiceSupported) {
+        Alert.alert(
+          'Reconocimiento de Voz No Disponible',
+          'El reconocimiento de voz requiere un development build y no está disponible en Expo Go.\n\nPuedes continuar la entrevista escribiendo tus respuestas en el campo de texto.',
+          [{ text: 'Entendido', style: 'default' }]
+        );
+        return;
+      }
+      try {
+        await startRecording('en-US'); // Inglés para la entrevista
+      } catch (error) {
+        Alert.alert('Error', 'No se pudo iniciar el reconocimiento de voz');
+      }
+    }
+  };
+
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
-      if (ttsSound.current) {
-        ttsSound.current.stopAsync().catch(() => {});
-        ttsSound.current.unloadAsync().catch(() => {});
-      }
-      if (recordingRef.current) {
-        recordingRef.current.stopAndUnloadAsync().catch(() => {});
-      }
+      Speech.stop();
       if (speechTimeoutRef.current) {
         clearTimeout(speechTimeoutRef.current);
       }
@@ -643,50 +522,36 @@ const AIInterviewN400ScreenModerno = () => {
         <View style={styles.inputArea}>
           <View style={styles.inputRow}>
             <TouchableOpacity
-              style={[
-                styles.voiceButton,
-                isRecording && styles.voiceButtonRecording,
-              ]}
+              style={[styles.voiceButton, !voiceSupported && styles.voiceButtonDisabled]}
               onPress={handleVoiceInput}
-              disabled={isLoading || isSpeaking || isTranscribing}
+              disabled={isLoading || isSpeaking}
               activeOpacity={0.7}
             >
               <MaterialCommunityIcons
-                name={isRecording ? 'microphone' : 'microphone-outline'}
+                name={isListening ? 'microphone' : 'microphone-outline'}
                 size={24}
-                color={isRecording ? '#fff' : '#1E40AF'}
+                color={isListening ? '#EF4444' : (!voiceSupported ? '#9CA3AF' : '#1E40AF')}
               />
             </TouchableOpacity>
 
             <TextInput
               style={styles.messageInput}
-              placeholder={
-                isRecording ? "Grabando... toca el mic para parar"
-                : isTranscribing ? "Transcribiendo tu voz..."
-                : isSpeaking ? "Escuchando al oficial..."
-                : "Escribe o habla tu respuesta..."
-              }
+              placeholder={isSpeaking ? "Escuchando al oficial..." : "Escribe tu respuesta..."}
               placeholderTextColor="#9CA3AF"
               value={userInput}
               onChangeText={setUserInput}
               multiline
-              editable={!isLoading && !isSpeaking && !isRecording && !isTranscribing}
+              editable={!isLoading && !isSpeaking}
             />
 
-            {isTranscribing ? (
-              <View style={styles.sendButton}>
-                <ActivityIndicator color="#fff" size="small" />
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[styles.sendButton, (isLoading || isSpeaking || isRecording || !userInput.trim()) && styles.sendButtonDisabled]}
-                onPress={handleSendMessage}
-                disabled={isLoading || isSpeaking || isRecording || !userInput.trim()}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="send" size={20} color="#fff" />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.sendButton, (isLoading || isSpeaking || !userInput.trim()) && styles.sendButtonDisabled]}
+              onPress={handleSendMessage}
+              disabled={isLoading || isSpeaking || !userInput.trim()}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="send" size={20} color="#fff" />
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -1014,9 +879,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
     backgroundColor: '#EFF6FF',
-  },
-  voiceButtonRecording: {
-    backgroundColor: '#EF4444',
   },
   voiceButtonDisabled: {
     opacity: 0.5,
