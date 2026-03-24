@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "763891163291",
+    "project_id": "ciudadaniafacil2025",
+    "storage_bucket": "ciudadaniafacil2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763891163291:android:bd34b2d5f1135f0111e63e",
+        "android_client_info": {
+          "package_name": "com.ciudadaniafacil.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCocrryvOn0_2cOi70z5Tt-AUuPhdlUh_A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
