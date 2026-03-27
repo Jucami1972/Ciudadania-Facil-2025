@@ -557,21 +557,45 @@ const HomeScreenRevolutionary = () => {
         end={{ x: 1, y: 1 }}
         style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <View style={styles.headerContent}>
-          {/* Logo + Título a la izquierda */}
-          <View style={styles.headerLeft}>
+        {/* Fila 1: marca + acciones */}
+        <View style={styles.headerTop}>
+          <View style={styles.headerBrand}>
             <Image
               source={require('../assets/imagenonboarding/logoapp1.png')}
               style={styles.headerLogo}
             />
-            <View style={styles.headerTextGroup}>
-              <Text style={styles.headerTitle}>Ciudadanía Fácil</Text>
-              <Text style={styles.headerGreeting}>
-                ¡Hola, {homeData.userName}!
-              </Text>
-            </View>
+            <Text style={styles.headerTitle}>Ciudadanía Fácil</Text>
           </View>
-          {/* Chip de modo de examen */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => navigation.navigate('Settings')}
+              accessibilityLabel="Ajustes"
+            >
+              <MaterialCommunityIcons name="cog-outline" size={22} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.profileButton}
+              onPress={handlePickProfilePhoto}
+              onLongPress={handleProfileLongPress}
+              accessibilityLabel="Foto de perfil. Mantén presionado para ver opciones."
+            >
+              {profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
+              ) : (
+                <MaterialCommunityIcons name="account-circle" size={32} color="white" />
+              )}
+              {homeData.completedQuestions > 0 && (
+                <View style={styles.profileBadge}>
+                  <MaterialCommunityIcons name="check" size={8} color="white" />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+        {/* Fila 2: saludo + chip de examen */}
+        <View style={styles.headerBottom}>
+          <Text style={styles.headerGreeting}>¡Hola, {homeData.userName}!</Text>
           <TouchableOpacity
             style={styles.examChip}
             onPress={handleExamModeChipPress}
@@ -583,32 +607,6 @@ const HomeScreenRevolutionary = () => {
               color="#fff"
             />
             <Text style={styles.examChipText}>{examMode} preguntas</Text>
-          </TouchableOpacity>
-          {/* Botón de ajustes */}
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => navigation.navigate('Settings')}
-            accessibilityLabel="Ajustes"
-          >
-            <MaterialCommunityIcons name="cog-outline" size={22} color="white" />
-          </TouchableOpacity>
-          {/* Foto de perfil a la derecha */}
-          <TouchableOpacity
-            style={styles.profileButton}
-            onPress={handlePickProfilePhoto}
-            onLongPress={handleProfileLongPress}
-            accessibilityLabel="Foto de perfil. Mantén presionado para ver opciones."
-          >
-            {profilePhoto ? (
-              <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
-            ) : (
-              <MaterialCommunityIcons name="account-circle" size={28} color="white" />
-            )}
-            {homeData.completedQuestions > 0 && (
-              <View style={styles.profileBadge}>
-                <MaterialCommunityIcons name="check" size={8} color="white" />
-              </View>
-            )}
           </TouchableOpacity>
         </View>
       </LinearGradient>
@@ -960,28 +958,35 @@ const styles = StyleSheet.create({
   headerContainer: {},
   header: {
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
-  headerContent: {
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  headerBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerBottom: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
   headerLogo: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.3)',
-  },
-  headerTextGroup: {
-    marginLeft: 12,
-    flex: 1,
   },
   headerTitle: {
     color: '#FFFFFF',
@@ -990,9 +995,8 @@ const styles = StyleSheet.create({
   },
   headerGreeting: {
     color: 'rgba(255,255,255,0.85)',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
-    marginTop: 1,
   },
   settingsButton: {
     width: 36,
@@ -1001,21 +1005,19 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
   },
   profileButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 12,
   },
   profilePhoto: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.4)',
   },
@@ -1042,7 +1044,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.35)',
-    marginHorizontal: 8,
   },
   examChipText: {
     color: '#fff',
