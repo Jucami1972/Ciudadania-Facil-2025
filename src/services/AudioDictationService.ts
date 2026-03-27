@@ -57,6 +57,9 @@ export class AudioDictationService {
         return;
       }
 
+      // Limpiar listeners previos para evitar memory leaks
+      await Voice.destroy();
+
       // Configurar callbacks
       Voice.onSpeechStart = () => {
         this.isListening = true;
@@ -110,6 +113,7 @@ export class AudioDictationService {
       if (Platform.OS !== 'web' && this.isListening) {
         await Voice.stop();
         await Voice.cancel();
+        await Voice.destroy();
         this.isListening = false;
       }
     } catch (error) {

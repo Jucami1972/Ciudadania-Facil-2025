@@ -247,7 +247,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackEvent(AnalyticsEvent.USER_SIGNED_OUT);
       
       await authInstance.signOut();
-      await AsyncStorage.clear();
+      // Solo borrar claves de sesión, NO el progreso del usuario
+      const AUTH_KEYS_TO_CLEAR = [
+        '@auth:user',
+        '@auth:token',
+        '@premium:status',
+        '@premium:expiry',
+        '@onboarding:completed',
+        '@privacy:ai_voice_consent',
+      ];
+      await Promise.all(AUTH_KEYS_TO_CLEAR.map(key => AsyncStorage.removeItem(key)));
     } catch (error: any) {
       throw new Error(error.message || 'Error al cerrar sesión');
     }
