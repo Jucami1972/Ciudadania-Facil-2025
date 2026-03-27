@@ -122,7 +122,7 @@ const SubscriptionScreen = () => {
 
     const isMonthly = pkg.packageType === 'MONTHLY';
     const features = isMonthly ? [
-        'Acceso completo a todas las 100 preguntas',
+        'Acceso completo a todas las preguntas del examen',
         'Exámenes de 20 preguntas ilimitados',
         'Sin anuncios en la aplicación'
     ] : [
@@ -190,7 +190,7 @@ const SubscriptionScreen = () => {
           <View style={styles.headerContent}>
             <MaterialCommunityIcons name="crown" size={48} color="#F59E0B" />
             <Text style={styles.headerTitle}>Desbloquea Premium</Text>
-            <Text style={styles.headerSubtitle}>Las primeras 20 preguntas son gratis. Actualízate para ver las 100 preguntas y asegurar tu ciudadanía.</Text>
+            <Text style={styles.headerSubtitle}>Las primeras 20 preguntas son gratis. Actualízate para acceder a todas las preguntas de tu versión del examen.</Text>
           </View>
         </View>
       

@@ -33,10 +33,11 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { RootStackParamList } from '../types/navigation';
 import { CategoryType } from '../constants/categories';
-import { questions } from '../data/questions';
 import WebLayout from '../components/layout/WebLayout';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 import { useAuth } from '../context/AuthContext';
+import { useExamMode } from '../context/ExamModeContext';
+import { useQuestions } from '../context/QuestionsContext';
 
 const isWeb = Platform.OS === 'web';
 
@@ -71,18 +72,20 @@ const HomeScreenRevolutionary = () => {
   const insets = useSafeAreaInsets();
   const isWebDesktop = useIsWebDesktop();
   const { user, logout } = useAuth();
+  const { examMode, setExamMode } = useExamMode();
+  const { questions } = useQuestions();
 
   const [homeData, setHomeData] = useState<HomeData>({
     progress: 0,
     completedQuestions: 0,
-    totalQuestions: 100,
+    totalQuestions: questions.length,
     todayCount: 0,
-    remainingQuestions: 100,
+    remainingQuestions: questions.length,
     streak: 0,
     governmentProgress: 0,
     historyProgress: 0,
     civicsProgress: 0,
-    lastStudiedSubcategory: 'A: Principios de la Democracia Americana',
+    lastStudiedSubcategory: examMode === '128' ? 'A: Principios del Gobierno Americano' : 'A: Principios de la Democracia Americana',
     userName: user?.email?.split('@')[0] || 'Estudiante',
   });
 
@@ -176,8 +179,8 @@ const HomeScreenRevolutionary = () => {
 
       const viewedIds = viewedData ? new Set<number>(JSON.parse(viewedData)) : new Set();
       const completedCount = viewedIds.size;
-      const progress = Math.round((completedCount / 100) * 100);
-      const remaining = 100 - completedCount;
+      const progress = Math.round((completedCount / questions.length) * 100);
+      const remaining = questions.length - completedCount;
 
       // Calcular racha correctamente
       const currentStreak = parseInt(streakData || '0', 10);
@@ -206,12 +209,31 @@ const HomeScreenRevolutionary = () => {
       const histCompleted = histQuestions.filter((q) => viewedIds.has(q.id)).length;
       const histProgress = Math.round((histCompleted / histQuestions.length) * 100);
 
-      const civQuestions = questions.filter((q) => q.category === 'civics');
+      const civQuestions = questions.filter((q) => q.category === 'civics' || q.category === 'symbols_holidays');
       const civCompleted = civQuestions.filter((q) => viewedIds.has(q.id)).length;
-      const civProgress = Math.round((civCompleted / civQuestions.length) * 100);
+      const civProgress = civQuestions.length > 0 ? Math.round((civCompleted / civQuestions.length) * 100) : 0;
 
-      // Mapeo de questionRange a subcategoría correcta
+      // Mapeo de questionRange a subcategoría correcta (según modo de examen)
       const getSubcategoryFromRange = (range: string, cat: string): string => {
+        if (examMode === '128') {
+          const rangeMap: Record<string, Record<string, string>> = {
+            GobiernoAmericano: {
+              '1-15': 'A: Principios del Gobierno Americano',
+              '16-62': 'B: Sistema de Gobierno',
+              '63-72': 'C: Derechos y Responsabilidades',
+            },
+            HistoriaAmericana: {
+              '73-89': 'A: Período Colonial e Independencia',
+              '90-99': 'B: Siglo XIX (1800s)',
+              '100-118': 'C: Historia Reciente',
+            },
+            SymbolsHolidays: {
+              '119-124': 'A: Símbolos',
+              '125-128': 'B: Días Festivos',
+            },
+          };
+          return rangeMap[cat]?.[range] || rangeMap.GobiernoAmericano['1-15'];
+        }
         const rangeMap: Record<string, Record<string, string>> = {
           GobiernoAmericano: {
             '1-12': 'A: Principios de la Democracia Americana',
@@ -233,14 +255,14 @@ const HomeScreenRevolutionary = () => {
       };
 
       let lastCategory = 'GobiernoAmericano';
-      let lastRange = '1-12';
+      let lastRange = examMode === '128' ? '1-15' : '1-12';
       if (govProgress === 100) {
         lastCategory = 'HistoriaAmericana';
-        lastRange = '58-70';
+        lastRange = examMode === '128' ? '73-89' : '58-70';
       }
       if (histProgress === 100) {
-        lastCategory = 'EducacionCivica';
-        lastRange = '88-95';
+        lastCategory = examMode === '128' ? 'SymbolsHolidays' : 'EducacionCivica';
+        lastRange = examMode === '128' ? '119-124' : '88-95';
       }
 
       const lastSubcategory = getSubcategoryFromRange(lastRange, lastCategory);
@@ -248,7 +270,7 @@ const HomeScreenRevolutionary = () => {
       setHomeData({
         progress,
         completedQuestions: completedCount,
-        totalQuestions: 100,
+        totalQuestions: questions.length,
         todayCount: today,
         remainingQuestions: remaining,
         streak,
@@ -269,7 +291,7 @@ const HomeScreenRevolutionary = () => {
           id: 'questions_10',
           icon: '📝',
           name: '10 preguntas estudiadas',
-          date: `${completedCount} de 100 completadas`,
+          date: `${completedCount} de ${questions.length} completadas`,
           unlocked: true,
         });
       }
@@ -279,16 +301,16 @@ const HomeScreenRevolutionary = () => {
           id: 'questions_50',
           icon: '⭐',
           name: '50 preguntas completadas',
-          date: `${completedCount} de 100 completadas`,
+          date: `${completedCount} de ${questions.length} completadas`,
           unlocked: true,
         });
       }
 
-      if (completedCount >= 100) {
+      if (completedCount >= questions.length && questions.length > 0) {
         newAchievements.push({
           id: 'questions_100',
           icon: '🏆',
-          name: '¡Las 100 preguntas!',
+          name: `¡Las ${questions.length} preguntas!`,
           date: '100% completado',
           unlocked: true,
         });
@@ -358,7 +380,7 @@ const HomeScreenRevolutionary = () => {
       if (__DEV__) console.error('Error loading data:', error);
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, questions, examMode]);
 
   useFocusEffect(
     useCallback(() => {
@@ -371,27 +393,30 @@ const HomeScreenRevolutionary = () => {
       GobiernoAmericano: 'government',
       HistoriaAmericana: 'history',
       EducacionCivica: 'civics',
+      SymbolsHolidays: 'symbols_holidays',
     };
 
     const category = categoryMap[homeData.lastStudiedCategory || 'GobiernoAmericano'] || 'government';
 
-    const subtitle = homeData.lastStudiedSubcategory || 'A: Principios de la Democracia Americana';
-    const title = homeData.lastStudiedCategory === 'GobiernoAmericano'
-      ? 'Gobierno Americano'
-      : homeData.lastStudiedCategory === 'HistoriaAmericana'
-      ? 'Historia Americana'
-      : 'Educación Cívica';
+    const subtitle = homeData.lastStudiedSubcategory || (examMode === '128' ? 'A: Principios del Gobierno Americano' : 'A: Principios de la Democracia Americana');
+    const titleMap: Record<string, string> = {
+      GobiernoAmericano: 'Gobierno Americano',
+      HistoriaAmericana: 'Historia Americana',
+      EducacionCivica: 'Educación Cívica',
+      SymbolsHolidays: 'Símbolos y Feriados',
+    };
+    const title = titleMap[homeData.lastStudiedCategory || 'GobiernoAmericano'] || 'Gobierno Americano';
 
     (navigation as any).navigate('Study', {
       screen: 'StudyCards',
       params: {
         category,
-        questionRange: homeData.lastStudiedRange || '1-12',
+        questionRange: homeData.lastStudiedRange || (examMode === '128' ? '1-15' : '1-12'),
         title,
         subtitle,
       },
     });
-  }, [homeData, navigation]);
+  }, [homeData, navigation, examMode]);
 
   const handleStudyPress = useCallback(() => {
     (navigation as any).navigate('Study', { screen: 'StudyHome' });
@@ -428,7 +453,101 @@ const HomeScreenRevolutionary = () => {
     ]);
   }, [logout]);
 
+  const handleResetProgress = useCallback(() => {
+    Alert.alert(
+      'Reiniciar Progreso',
+      '¿Seguro que quieres borrar todo tu progreso de estudio y práctica? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Sí, Reiniciar',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Última Confirmación',
+              'Se borrarán todas las preguntas vistas, tu racha, marcadas e incorrectas. ¿Continuar?',
+              [
+                { text: 'No, Cancelar', style: 'cancel' },
+                {
+                  text: 'Borrar Todo',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      // Claves fijas a eliminar
+                      const fixedKeys = [
+                        '@study:viewed',
+                        '@study:streak',
+                        '@study:lastDate',
+                        '@study:bestStreak',
+                        '@study:daysStudied',
+                        '@practice:incorrect',
+                        '@practice:marked',
+                        '@practice:stats',
+                        '@practice:srs_data',
+                        '@practice:random_incorrect',
+                        '@practice:random_marked',
+                        '@practice:random20_incorrect',
+                        '@practice:random20_marked',
+                      ];
+                      // Claves dinámicas de estudio diario
+                      const allKeys = await AsyncStorage.getAllKeys();
+                      const dailyKeys = allKeys.filter((k) =>
+                        k.startsWith('@study:dailyQuestions_')
+                      );
+                      await AsyncStorage.multiRemove([...fixedKeys, ...dailyKeys]);
+                      await loadData();
+                      Alert.alert('Listo', 'Tu progreso ha sido reiniciado. ¡Puedes empezar de cero!');
+                    } catch (err) {
+                      if (__DEV__) console.error('Error resetting progress:', err);
+                      Alert.alert('Error', 'No se pudo reiniciar el progreso. Intenta de nuevo.');
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }, [loadData]);
+
+  const handleProfileLongPress = useCallback(() => {
+    Alert.alert('Opciones', '', [
+      {
+        text: '📷 Cambiar Foto de Perfil',
+        onPress: handlePickProfilePhoto,
+      },
+      {
+        text: '🔄 Reiniciar Progreso',
+        style: 'destructive',
+        onPress: handleResetProgress,
+      },
+      {
+        text: '🚪 Cerrar Sesión',
+        style: 'destructive',
+        onPress: handleLogoutPress,
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }, [handlePickProfilePhoto, handleResetProgress, handleLogoutPress]);
+
   // =============== COMPONENTES ===============
+
+  const handleExamModeChipPress = () => {
+    Alert.alert(
+      'Cambiar Examen',
+      examMode === '100'
+        ? 'Estás en la versión de 100 preguntas (aplicantes hasta el 19 oct 2025).\n¿Cambiar a la versión de 128 preguntas?'
+        : 'Estás en la versión de 128 preguntas (aplicantes después del 20 oct 2025).\n¿Cambiar a la versión de 100 preguntas?',
+      [
+        {
+          text: examMode === '100' ? 'Cambiar a 128 preguntas' : 'Cambiar a 100 preguntas',
+          onPress: () => setExamMode(examMode === '100' ? '128' : '100'),
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    );
+  };
 
   const Header = () => (
     <View style={styles.headerContainer}>
@@ -452,12 +571,33 @@ const HomeScreenRevolutionary = () => {
               </Text>
             </View>
           </View>
+          {/* Chip de modo de examen */}
+          <TouchableOpacity
+            style={styles.examChip}
+            onPress={handleExamModeChipPress}
+            accessibilityLabel={`Examen de ${examMode} preguntas. Toca para cambiar.`}
+          >
+            <MaterialCommunityIcons
+              name={examMode === '100' ? 'clipboard-check-outline' : 'book-open-page-variant-outline'}
+              size={13}
+              color="#fff"
+            />
+            <Text style={styles.examChipText}>{examMode} preguntas</Text>
+          </TouchableOpacity>
+          {/* Botón de ajustes */}
+          <TouchableOpacity
+            style={styles.settingsButton}
+            onPress={() => navigation.navigate('Settings')}
+            accessibilityLabel="Ajustes"
+          >
+            <MaterialCommunityIcons name="cog-outline" size={22} color="white" />
+          </TouchableOpacity>
           {/* Foto de perfil a la derecha */}
           <TouchableOpacity
             style={styles.profileButton}
             onPress={handlePickProfilePhoto}
-            onLongPress={handleLogoutPress}
-            accessibilityLabel="Foto de perfil. Mantén presionado para cerrar sesión."
+            onLongPress={handleProfileLongPress}
+            accessibilityLabel="Foto de perfil. Mantén presionado para ver opciones."
           >
             {profilePhoto ? (
               <Image source={{ uri: profilePhoto }} style={styles.profilePhoto} />
@@ -519,7 +659,7 @@ const HomeScreenRevolutionary = () => {
 
       <View style={styles.progressInfo}>
         <Text style={styles.progressCount}>
-          {homeData.completedQuestions} de 100 preguntas
+          {homeData.completedQuestions} de {homeData.totalQuestions} preguntas
         </Text>
         <Text style={styles.progressPercent}>{homeData.progress}%</Text>
       </View>
@@ -554,6 +694,7 @@ const HomeScreenRevolutionary = () => {
       GobiernoAmericano: 'Gobierno',
       HistoriaAmericana: 'Historia',
       EducacionCivica: 'Cívica',
+      SymbolsHolidays: 'Símbolos',
     };
 
     const ctaSubtitle =
@@ -582,12 +723,15 @@ const HomeScreenRevolutionary = () => {
   };
 
   const LearningPath = () => {
+    const govCount = questions.filter(q => q.category === 'government').length;
+    const histCount = questions.filter(q => q.category === 'history').length;
+    const civCount = questions.filter(q => q.category === 'civics' || q.category === 'symbols_holidays').length;
     const pathSteps = [
       {
         id: 'government',
         icon: 'bank' as const,
         title: 'Gobierno Americano',
-        subtitle: '57 preguntas',
+        subtitle: `${govCount} preguntas`,
         progress: homeData.governmentProgress,
         completed: homeData.governmentProgress >= 100,
         unlocked: true,
@@ -598,7 +742,7 @@ const HomeScreenRevolutionary = () => {
         id: 'history',
         icon: 'book-open-page-variant' as const,
         title: 'Historia Americana',
-        subtitle: '30 preguntas',
+        subtitle: `${histCount} preguntas`,
         progress: homeData.historyProgress,
         completed: homeData.historyProgress >= 100,
         unlocked: homeData.governmentProgress >= 50,
@@ -608,8 +752,8 @@ const HomeScreenRevolutionary = () => {
       {
         id: 'civics',
         icon: 'account-group' as const,
-        title: 'Educación Cívica',
-        subtitle: '13 preguntas',
+        title: examMode === '128' ? 'Símbolos y Feriados' : 'Educación Cívica',
+        subtitle: `${civCount} preguntas`,
         progress: homeData.civicsProgress,
         completed: homeData.civicsProgress >= 100,
         unlocked: homeData.historyProgress >= 50,
@@ -850,6 +994,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 1,
   },
+  settingsButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
   profileButton: {
     width: 44,
     height: 44,
@@ -878,6 +1031,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#1E40AF',
+  },
+  examChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
+    marginHorizontal: 8,
+  },
+  examChipText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 
   // =============== STATS BAR ===============

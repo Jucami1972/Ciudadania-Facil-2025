@@ -17,18 +17,23 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { questions } from '../data/questions';
+import { questions128 } from '../data/questions128';
+import { useExamMode } from '../context/ExamModeContext';
 import { StudyCardsRouteProp, NavigationProps } from '../types/navigation';
 import FlipCard from '../components/FlipCard';
 import { useSectionProgress } from '../hooks/useSectionProgress';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { questionAudioMap } from '../assets/audio/questions/questionsMap';
 import { answerAudioMap } from '../assets/audio/answers/answersMap';
+import { questionAudioMap128 } from '../assets/audio/exam128/questions/questionsMap128';
+import { answerAudioMap128 } from '../assets/audio/exam128/answers/answersMap128';
 import WebLayout from '../components/layout/WebLayout';
 import { useIsWebDesktop } from '../hooks/useIsWebDesktop';
 import { usePremium } from '../context/PremiumContext';
 import ProgressModal from '../components/ProgressModal';
 import { audioManager } from '../services/AudioManagerService';
 import { SectionNavigationService, NextSectionInfo } from '../services/SectionNavigationService';
+import { getPracticeMarkedKey, getStudyViewedKey } from '../utils/examModeStorage';
 
 const { width } = Dimensions.get('window');
 const isWeb = Platform.OS === 'web';
@@ -38,9 +43,16 @@ const StudyCardsScreenModerno = () => {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<StudyCardsRouteProp>();
   const isWebDesktop = useIsWebDesktop();
-  const { category, title, subtitle, blockRange, blockTitle } = route.params as any; // Cast as any because it's a new parameter
+  const { examMode } = useExamMode();
+  const { category, title, subtitle, subcategoryKey, blockRange, blockTitle } = route.params as any;
   const flipCardRef = useRef<any>(null);
   const { isPremium } = usePremium();
+
+  /** Clave para filtrar q.subcategory — puede ser distinta al subtitle de display (128-exam) */
+  const filterKey: string = subcategoryKey ?? subtitle;
+
+  /** Seleccionar el set de preguntas según el modo de examen */
+  const activeQuestions: any[] = examMode === '128' ? questions128 : questions;
 
   const [language, setLanguage] = useState<'en' | 'es'>('en');
   const [markedQuestions, setMarkedQuestions] = useState<Set<number>>(new Set());
@@ -52,14 +64,14 @@ const StudyCardsScreenModerno = () => {
 
   // Filtrar preguntas por categoría y subcategoría, aplicando bloque si existe
   const filteredQuestions = useMemo(() => {
-    let qlist = questions.filter(
-      (q) => q.category === category && q.subcategory === subtitle
+    let qlist = (activeQuestions as any[]).filter(
+      (q) => q.category === category && q.subcategory === filterKey
     );
     if (blockRange) {
        qlist = qlist.slice(blockRange[0], blockRange[1]);
     }
     return qlist;
-  }, [category, subtitle, blockRange]);
+  }, [category, filterKey, blockRange, activeQuestions]);
 
   // Crear ID único para la sección (diferente si es un bloque)
   const sectionId = blockRange 
@@ -93,7 +105,7 @@ const StudyCardsScreenModerno = () => {
   useEffect(() => {
     const loadMarkedQuestions = async () => {
       try {
-        const markedData = await AsyncStorage.getItem('@practice:marked');
+        const markedData = await AsyncStorage.getItem(getPracticeMarkedKey(examMode));
         if (markedData) {
           setMarkedQuestions(new Set(JSON.parse(markedData)));
         }
@@ -102,7 +114,7 @@ const StudyCardsScreenModerno = () => {
       }
     };
     loadMarkedQuestions();
-  }, []);
+  }, [examMode]);
 
   // Detener audio cuando cambia la pregunta o se resetea la tarjeta
   useEffect(() => {
@@ -122,7 +134,7 @@ const StudyCardsScreenModerno = () => {
     const markViewed = async () => {
       try {
         if (!current) return;
-        const key = '@study:viewed';
+        const key = getStudyViewedKey(examMode);
         const existing = await AsyncStorage.getItem(key);
         const set = new Set<number>(existing ? JSON.parse(existing) : []);
         if (!set.has(current.id)) {
@@ -172,38 +184,7 @@ const StudyCardsScreenModerno = () => {
       }
     };
     markViewed();
-  }, [current?.id]);
-
-  // Early return después de todos los hooks
-  if (filteredQuestions.length === 0 || !current) {
-    return (
-      <View style={styles.safeArea}>
-        <View style={styles.mainContainer}>
-          <View style={styles.headerContainer}>
-            <LinearGradient
-              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.header, { paddingTop: insets.top + 8 }]}
-            >
-              <View style={styles.headerContent}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                  <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
-                </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
-                </View>
-                <View style={{ width: 44 }} />
-              </View>
-            </LinearGradient>
-          </View>
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>No hay preguntas disponibles</Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
+  }, [current?.id, examMode]);
 
   const playAudio = useCallback(async () => {
     try {
@@ -211,7 +192,9 @@ const StudyCardsScreenModerno = () => {
 
       await stopAudio();
 
-      const audioMap = isFlipped ? answerAudioMap : questionAudioMap;
+      const qAudioMap = examMode === '128' ? questionAudioMap128 : questionAudioMap;
+      const aAudioMap = examMode === '128' ? answerAudioMap128 : answerAudioMap;
+      const audioMap = isFlipped ? aAudioMap : qAudioMap;
       const module = audioMap[current.id];
 
       if (!module) {
@@ -246,10 +229,10 @@ const StudyCardsScreenModerno = () => {
         flipCardRef.current.reset();
       }
     } else {
-      const isLastInSection = SectionNavigationService.isLastQuestionInSection(current.id);
+      const isLastInSection = SectionNavigationService.isLastQuestionInSection(current.id, examMode);
       
       if (isLastInSection) {
-        const nextSection = SectionNavigationService.getNextSection(current.id);
+        const nextSection = SectionNavigationService.getNextSection(current.id, examMode);
         
         if (nextSection && nextSection.exists) {
           setNextSectionInfo(nextSection);
@@ -313,7 +296,7 @@ const StudyCardsScreenModerno = () => {
       }
       setMarkedQuestions(newMarked);
       await AsyncStorage.setItem(
-        '@practice:marked',
+        getPracticeMarkedKey(examMode),
         JSON.stringify([...newMarked])
       );
     } catch (error) {
@@ -402,8 +385,8 @@ const StudyCardsScreenModerno = () => {
               <MaterialCommunityIcons name="lock" size={64} color="#F59E0B" />
               <Text style={styles.lockedCardTitle}>Pregunta Premium</Text>
               <Text style={styles.lockedCardText}>
-                La pregunta {current.id} es parte de las 100 preguntas oficiales completas.
-                Actualízate a Premium para acceder a esta y todas las demás preguntas, además de desbloquear modos de práctica avanzados.
+                Esta pregunta es parte del banco oficial del examen de ciudadanía.
+                Actualízate a Premium para acceder a todas las preguntas y desbloquear modos de práctica avanzados.
               </Text>
               <TouchableOpacity
                 style={styles.unlockButton}
@@ -537,6 +520,37 @@ const StudyCardsScreenModerno = () => {
       </Modal>
     </>
   );
+
+  // Early return después de todos los hooks - si no hay preguntas disponibles
+  if (filteredQuestions.length === 0 || !current) {
+    return (
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, { paddingTop: insets.top + 8 }]}
+            >
+              <View style={styles.headerContent}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+                </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
+                </View>
+                <View style={{ width: 44 }} />
+              </View>
+            </LinearGradient>
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>No hay preguntas disponibles</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   // Web de escritorio: usar WebLayout con sidebar
   if (isWeb && isWebDesktop) {

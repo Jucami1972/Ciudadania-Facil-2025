@@ -132,7 +132,7 @@ export const useHomeData = () => {
     {
       id: 'cards',
       title: 'Tarjetas de Estudio',
-      description: 'Aprende las 100 preguntas',
+      description: 'Aprende las preguntas del examen',
       icon: 'cards',
       color: '#1E40AF',
       progress: 0,

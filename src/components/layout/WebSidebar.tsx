@@ -141,7 +141,7 @@ const WebSidebar: React.FC = () => {
       {/* Footer */}
       <View style={styles.footerSection}>
         <Text style={styles.footerText}>Versión 2025</Text>
-        <Text style={styles.footerSubtext}>128 Preguntas</Text>
+        <Text style={styles.footerSubtext}>100 / 128 preguntas</Text>
       </View>
     </View>
   );

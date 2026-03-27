@@ -33,7 +33,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     id: 'welcome',
     image: 'onboarding1.webp',
     title: '¡Tu Ciudadanía Te Espera!',
-    description: 'La app #1 para dominar el examen con 128 preguntas y más de 10 métodos de estudio interactivos.',
+    description: 'La app #1 para preparar el examen de ciudadanía con 100 o 128 preguntas oficiales y más de 10 métodos de estudio interactivos.',
   },
   {
     id: 'smart-study',
