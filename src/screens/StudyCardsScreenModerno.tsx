@@ -44,7 +44,7 @@ const StudyCardsScreenModerno = () => {
   const route = useRoute<StudyCardsRouteProp>();
   const isWebDesktop = useIsWebDesktop();
   const { examMode } = useExamMode();
-  const { category, title, subtitle, subcategoryKey, blockRange, blockTitle } = route.params as any;
+  const { category, title, subtitle, subcategoryKey, blockRange, blockTitle } = route.params;
   const flipCardRef = useRef<any>(null);
   const { isPremium } = usePremium();
 
@@ -95,7 +95,7 @@ const StudyCardsScreenModerno = () => {
     try {
       await audioManager.stopCurrentAudio();
     } catch (error) {
-      console.log('Audio stop ignored from StudyCardsScreenModerno:', error);
+      if (__DEV__) console.log('Audio stop ignored from StudyCardsScreenModerno:', error);
     } finally {
       setIsPlaying(false);
     }
@@ -110,7 +110,7 @@ const StudyCardsScreenModerno = () => {
           setMarkedQuestions(new Set(JSON.parse(markedData)));
         }
       } catch (error) {
-        console.error('Error loading marked questions:', error);
+        if (__DEV__) console.error('Error loading marked questions:', error);
       }
     };
     loadMarkedQuestions();
@@ -207,7 +207,7 @@ const StudyCardsScreenModerno = () => {
         setIsPlaying(false);
       });
     } catch (error) {
-      console.error('Error playing audio in StudyCardsScreenModerno:', error);
+      if (__DEV__) console.error('Error playing audio in StudyCardsScreenModerno:', error);
       setIsPlaying(false);
     }
   }, [current, isFlipped, stopAudio]);
@@ -265,16 +265,29 @@ const StudyCardsScreenModerno = () => {
 
   const handleContinueToNextSection = async () => {
     if (!nextSectionInfo) return;
-    
     await stopAudio();
     setShowNextSectionDialog(false);
-    
     navigation.replace('StudyCards', {
       category: nextSectionInfo.category as any,
       title: nextSectionInfo.title,
       subtitle: nextSectionInfo.subcategory,
       questionRange: nextSectionInfo.questionRange,
     });
+  };
+
+  const handleRestartSection = () => {
+    setShowNextSectionDialog(false);
+    setNextSectionInfo(null);
+    restartFromBeginning();
+  };
+
+  const handlePracticeSection = () => {
+    setShowNextSectionDialog(false);
+    setNextSectionInfo(null);
+    navigation.navigate('Practice', {
+      screen: 'CategoryPractice',
+      params: { questionType: category, subcategory: filterKey },
+    } as any);
   };
 
   const handlePreviousCard = () => {
@@ -287,6 +300,7 @@ const StudyCardsScreenModerno = () => {
   };
 
   const handleMarkCard = async () => {
+    if (!current) return;
     try {
       const newMarked = new Set(markedQuestions);
       if (newMarked.has(current.id)) {
@@ -300,11 +314,12 @@ const StudyCardsScreenModerno = () => {
         JSON.stringify([...newMarked])
       );
     } catch (error) {
-      console.error('Error marking question:', error);
+      if (__DEV__) console.error('Error marking question:', error);
     }
   };
 
   const handleShowExplanation = () => {
+    if (!current) return;
     navigation.navigate('Explanation', {
       explanationEs: current.explanationEs,
       explanationEn: current.explanationEn,
@@ -320,6 +335,68 @@ const StudyCardsScreenModerno = () => {
     setIsFlipped(isFlipped);
     stopAudio(); // Detener audio al voltear
   };
+
+  // GUARDIA CRÍTICA: estos checks DEBEN ir antes de que se evalúe el JSX de `content`.
+  // Si se colocan después, current.id ya habrá explotado antes de llegar al guard.
+  if (progressLoading) {
+    return (
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, { paddingTop: insets.top + 8 }]}
+            >
+              <View style={styles.headerContent}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+                </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
+                </View>
+                <View style={{ width: 44 }} />
+              </View>
+            </LinearGradient>
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>Cargando...</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (filteredQuestions.length === 0 || !current) {
+    return (
+      <View style={styles.safeArea}>
+        <View style={styles.mainContainer}>
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.header, { paddingTop: insets.top + 8 }]}
+            >
+              <View style={styles.headerContent}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                  <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
+                </TouchableOpacity>
+                <View style={styles.headerTitleContainer}>
+                  <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
+                </View>
+                <View style={{ width: 44 }} />
+              </View>
+            </LinearGradient>
+          </View>
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>No hay preguntas disponibles</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const content = (
     <>
@@ -379,7 +456,7 @@ const StudyCardsScreenModerno = () => {
       </View>
 
       <View style={styles.cardContainer}>
-        {!isPremium && current.id > 20 ? (
+        {!isPremium && current!.id > 20 ? (
           <View style={styles.lockedCardContainer}>
             <View style={styles.lockedCardContent}>
               <MaterialCommunityIcons name="lock" size={64} color="#F59E0B" />
@@ -479,78 +556,75 @@ const StudyCardsScreenModerno = () => {
         totalQuestions={filteredQuestions.length}
       />
 
-      {/* Diálogo para continuar a la siguiente sección */}
+      {/* Modal de fin de sección */}
       <Modal
         visible={showNextSectionDialog}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => {
           setShowNextSectionDialog(false);
           setNextSectionInfo(null);
         }}
       >
         {nextSectionInfo && (
-          <View style={styles.dialogOverlay}>
-            <View style={styles.dialogContainer}>
-              <Text style={styles.dialogTitle}>¿Continuar a la siguiente sección?</Text>
-              <Text style={styles.dialogMessage}>
-                Has completado esta sección. ¿Deseas continuar a:
+          <TouchableOpacity
+            style={styles.sheetOverlay}
+            activeOpacity={1}
+            onPress={() => {
+              setShowNextSectionDialog(false);
+              setNextSectionInfo(null);
+            }}
+          >
+            <TouchableOpacity activeOpacity={1} style={styles.bottomSheet}>
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>¡Sección completada!</Text>
+              <Text style={styles.sheetSubtitle}>
+                Siguiente:{' '}
+                <Text style={styles.sheetSectionName}>{nextSectionInfo.subcategory}</Text>
               </Text>
-              <Text style={styles.dialogSectionName}>{nextSectionInfo.subcategory}</Text>
-              <View style={styles.dialogButtons}>
-                <TouchableOpacity
-                  style={[styles.dialogButton, styles.dialogButtonCancel]}
-                  onPress={() => {
-                    setShowNextSectionDialog(false);
-                    setNextSectionInfo(null);
-                  }}
-                >
-                  <Text style={styles.dialogButtonText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.dialogButton, styles.dialogButtonConfirm]}
-                  onPress={handleContinueToNextSection}
-                >
-                  <Text style={[styles.dialogButtonText, styles.dialogButtonTextConfirm]}>Continuar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
+
+              <TouchableOpacity
+                style={styles.sheetButtonRestart}
+                onPress={handleRestartSection}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="refresh" size={18} color="#1E40AF" />
+                <Text style={styles.sheetButtonRestartText}>Volver a estudiar este tema</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetButtonPractice}
+                onPress={handlePracticeSection}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="pencil-box-outline" size={18} color="#7C3AED" />
+                <Text style={styles.sheetButtonPracticeText}>Practicar este tema</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.sheetButtonContinue}
+                onPress={handleContinueToNextSection}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="arrow-right-circle" size={18} color="#fff" />
+                <Text style={styles.sheetButtonContinueText}>Continuar a la siguiente</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowNextSectionDialog(false);
+                  setNextSectionInfo(null);
+                }}
+                style={styles.sheetCancelTouch}
+              >
+                <Text style={styles.sheetCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
         )}
       </Modal>
     </>
   );
-
-  // Early return después de todos los hooks - si no hay preguntas disponibles
-  if (filteredQuestions.length === 0 || !current) {
-    return (
-      <View style={styles.safeArea}>
-        <View style={styles.mainContainer}>
-          <View style={styles.headerContainer}>
-            <LinearGradient
-              colors={['#1E3A8A', '#1E40AF', '#3B82F6'] as [string, string, string]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.header, { paddingTop: insets.top + 8 }]}
-            >
-              <View style={styles.headerContent}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                  <MaterialCommunityIcons name="arrow-left" size={20} color="white" />
-                </TouchableOpacity>
-                <View style={styles.headerTitleContainer}>
-                  <Text style={styles.headerTitle}>{blockTitle || subtitle || 'Tarjetas de Estudio'}</Text>
-                </View>
-                <View style={{ width: 44 }} />
-              </View>
-            </LinearGradient>
-          </View>
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>No hay preguntas disponibles</Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
 
   // Web de escritorio: usar WebLayout con sidebar
   if (isWeb && isWebDesktop) {
@@ -829,71 +903,101 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-  dialogOverlay: {
+  // — Bottom-sheet fin de sección —
+  sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: 'rgba(15,23,42,0.5)',
+    justifyContent: 'flex-end',
   },
-  dialogContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
+  bottomSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    gap: 10,
   },
-  dialogTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  dialogMessage: {
-    fontSize: 16,
-    color: '#4b5563',
-    textAlign: 'center',
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    alignSelf: 'center',
     marginBottom: 8,
   },
-  dialogSectionName: {
+  sheetTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4F46E5', // Primary Indigo
+    fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 24,
   },
-  dialogButtons: {
+  sheetSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  sheetSectionName: {
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  sheetButtonRestart: {
     flexDirection: 'row',
-    width: '100%',
-    gap: 12,
-  },
-  dialogButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
   },
-  dialogButtonCancel: {
-    backgroundColor: '#f3f4f6',
+  sheetButtonRestartText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E40AF',
   },
-  dialogButtonConfirm: {
-    backgroundColor: '#4F46E5', // Primary Indigo
+  sheetButtonPractice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
   },
-  dialogButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4b5563',
+  sheetButtonPracticeText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
-  dialogButtonTextConfirm: {
-    color: 'white',
+  sheetButtonContinue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#059669',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  sheetButtonContinueText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  sheetCancelTouch: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginTop: 2,
+  },
+  sheetCancelText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });
 

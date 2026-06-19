@@ -4,9 +4,11 @@
  * Servicio para clasificar preguntas del examen de ciudadanía por tipo
  * Basado en las 100 preguntas oficiales del USCIS (IDs 1-100)
  * Clasificación explícita por ID para máxima precisión
+ * Nota: lógica del examen de 100 preguntas NO debe modificarse.
  */
 
 import { questions, Question } from '../data/questions';
+import { questions128 } from '../data/questions128';
 
 export interface QuestionType {
   id: string;
@@ -252,3 +254,59 @@ export const getQuestionTypeStats = (): QuestionType[] => {
   }).filter(type => type.questionCount > 0);
 };
 
+// ─── Examen de 128 preguntas — NO tocar lógica de 100 preguntas arriba ──────
+
+/**
+ * Auto-clasifica una pregunta del examen de 128 a partir de su texto en inglés.
+ * Usa el inicio de la pregunta como indicador del tipo.
+ */
+export const classifyQuestion128 = (questionText: string): string => {
+  const q = (questionText || '').trim().toLowerCase();
+  if (q.startsWith('who ') || q.startsWith("who's ") || q === 'who') return 'who';
+  if (q.startsWith('what ')) return 'what';
+  if (q.startsWith('name ')) return 'name';
+  if (q.startsWith('why ')) return 'why';
+  if (q.startsWith('how many') || q.startsWith('how long')) return 'how_many';
+  if (
+    q.startsWith('when ') ||
+    q.startsWith('in what month') ||
+    q.startsWith('in what year') ||
+    q.startsWith('how old')
+  ) return 'dates';
+  // Preguntas con contexto previo: el tipo aparece después de un punto o signo de interrogación
+  if (/[.?]\s+what[\s?]/.test(q)) return 'what';
+  if (/[.?]\s+name[\s.]/.test(q)) return 'name';
+  if (/[.?]\s+why[\s?]/.test(q)) return 'why';
+  if (/[.?]\s+who[\s?']/.test(q)) return 'who';
+  if (/[.?]\s+when[\s?]/.test(q)) return 'dates';
+  if (/[.?]\s+how many/.test(q) || /[.?]\s+how long/.test(q)) return 'how_many';
+  return 'other';
+};
+
+/**
+ * Obtiene preguntas del examen de 128 filtradas por tipo.
+ */
+export const getQuestionsByType128 = (typeId: string): any[] => {
+  return questions128.filter((q: any) => {
+    const text = Array.isArray(q.questionEn) ? q.questionEn[0] : q.questionEn;
+    return classifyQuestion128(text) === typeId;
+  });
+};
+
+/**
+ * Obtiene estadísticas de tipos de preguntas para el examen de 128.
+ */
+export const getQuestionTypeStats128 = (): QuestionType[] => {
+  return QUESTION_TYPES.map((type) => ({
+    ...type,
+    questionCount: getQuestionsByType128(type.id).length,
+  })).filter((t) => t.questionCount > 0);
+};
+
+/**
+ * Obtiene N preguntas aleatorias del pool de 128 preguntas.
+ */
+export const getRandomQuestions128 = (count: number = 10): any[] => {
+  const shuffled = fisherYatesShuffle([...questions128] as any[]);
+  return shuffled.slice(0, Math.min(count, questions128.length));
+};

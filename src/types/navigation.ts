@@ -7,6 +7,8 @@ import { CategoryType } from '../constants/categories';
 export interface SubCategory {
   title: string;
   subtitle: string;
+  /** Clave interna para filtrar q.subcategory; si no se especifica usa subtitle */
+  subcategoryKey?: string;
   questionRange: string;
   category: CategoryType;
 }
@@ -58,6 +60,7 @@ export type RootStackParamList = {
   };
   CategoryPractice: {
     questionType?: string;
+    subcategory?: string;
   };
   QuestionTypePractice: undefined;
   Practice: {
@@ -88,6 +91,9 @@ export type RootStackParamList = {
     title: string;
     subtitle: string;
     questionRange: string;
+    subcategoryKey?: string;
+    blockRange?: [number, number];
+    blockTitle?: string;
   };
   StudyCardsByType: {
     questionType: string;
@@ -115,6 +121,7 @@ export type RootStackParamList = {
     categoryId: string;
     mode: 'study' | 'quick';
   };
+  CiclosAudioHome: undefined;
 
   // Pantallas de categorías principales
   GobiernoAmericano: { 
@@ -125,6 +132,9 @@ export type RootStackParamList = {
   Subscription: undefined;
 
   ResultsScreen: undefined;
+
+  // Ajustes
+  Settings: undefined;
 };
 
 export type NavigationProps = NativeStackNavigationProp<RootStackParamList>;

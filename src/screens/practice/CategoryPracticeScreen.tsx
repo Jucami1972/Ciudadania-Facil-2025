@@ -23,11 +23,11 @@ import { NavigationProps } from '../../types/navigation';
 import { colors } from '../../constants/colors';
 import { QuestionLoaderService, LocalPracticeQuestion, QuestionMode } from '../../services/QuestionLoaderService';
 import { QuestionStorageService } from '../../services/QuestionStorageService';
-import { isAnswerCorrect } from '../../utils/answerValidation';
+import { formatAnswerText, isAnswerCorrect } from '../../utils/answerValidation';
 import { useQuestionAudio } from '../../hooks/useQuestionAudio';
 import { ProgressHeader } from '../../components/practice/ProgressHeader';
 import { PracticeQuestionCard } from '../../components/practice/PracticeQuestionCard';
-import { AnswerResultCard } from '../../components/practice/AnswerResultCard';
+import PracticeFeedbackCard from '../../components/practice/PracticeFeedbackCard';
 import { FloatingAnswerInput } from '../../components/practice/FloatingAnswerInput';
 import { MarkQuestionBanner } from '../../components/practice/MarkQuestionBanner';
 import { useSectionProgress } from '../../hooks/useSectionProgress';
@@ -35,6 +35,8 @@ import ProgressModal from '../../components/ProgressModal';
 import { SectionNavigationService } from '../../services/SectionNavigationService';
 import { audioManager } from '../../services/AudioManagerService';
 import { questions } from '../../data/questions';
+import { questions128 } from '../../data/questions128';
+import { useExamMode } from '../../context/ExamModeContext';
 
 interface Category {
   id: string;
@@ -44,7 +46,7 @@ interface Category {
   description: string;
 }
 
-const categories: Category[] = [
+const categories100: Category[] = [
   {
     id: 'government',
     title: 'Gobierno Americano',
@@ -68,17 +70,49 @@ const categories: Category[] = [
   },
 ];
 
+const categories128: Category[] = [
+  {
+    id: 'government',
+    title: 'Gobierno Americano',
+    icon: 'bank',
+    gradient: ['#1e88e5', '#1976d2'],
+    description: 'Preguntas oficiales del bloque de gobierno americano',
+  },
+  {
+    id: 'history',
+    title: 'Historia Americana',
+    icon: 'book-open-page-variant',
+    gradient: ['#9c27b0', '#7b1fa2'],
+    description: 'Preguntas oficiales del bloque de historia americana',
+  },
+  {
+    id: 'symbols_holidays',
+    title: 'Símbolos y Días Festivos',
+    icon: 'flag',
+    gradient: ['#4caf50', '#388e3c'],
+    description: 'Preguntas oficiales sobre símbolos y feriados nacionales',
+  },
+];
+
+const BLOCK_SIZE = 12;
+const MODAL_THRESHOLD = 20;
+
 const CategoryPracticeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute();
-  const routeParams = route.params as { questionType?: string };
+  const { examMode } = useExamMode();
+  const routeParams = route.params as { questionType?: string; subcategory?: string };
   const initializedFromParams = useRef(false);
   const insets = useSafeAreaInsets();
+  const categoryOptions = examMode === '128' ? categories128 : categories100;
+  const activeQuestionBank = examMode === '128' ? questions128 : questions;
 
   // Estado principal
   const [selectedCategory, setSelectedCategory] = useState<string | null>(
     routeParams?.questionType || null
   );
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
+  const [isBlockModalVisible, setIsBlockModalVisible] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<LocalPracticeQuestion | null>(null);
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
@@ -94,7 +128,7 @@ const CategoryPracticeScreen = () => {
   const [nextSectionInfo, setNextSectionInfo] = useState<{ category: string; subcategory: string; title: string } | null>(null);
 
   // Hook para audio
-  const { playAudio } = useQuestionAudio(currentQuestion?.id || null);
+  const { playAudio } = useQuestionAudio(currentQuestion?.id || null, examMode);
 
   // Estado para rastrear la sección actual basada en la pregunta
   const [currentSectionId, setCurrentSectionId] = useState<string>('');
@@ -116,27 +150,9 @@ const CategoryPracticeScreen = () => {
   // Cargar datos persistentes al iniciar
   useEffect(() => {
     loadPersistedData();
-  }, []);
+  }, [examMode]);
 
-  // Auto-hide del resultado después de un tiempo
-  // IMPORTANTE: NO ocultar automáticamente si es la última pregunta de una sección
-  // para permitir que el usuario pueda presionar "Siguiente" y ver el diálogo
-  useEffect(() => {
-    if (isCorrect !== null && currentQuestion) {
-      // Verificar si es la última pregunta de su sección
-      const isLastInSection = SectionNavigationService.isLastQuestionInSection(currentQuestion.id);
-      
-      // Solo auto-ocultar si NO es la última pregunta de la sección
-      if (!isLastInSection) {
-        const timer = setTimeout(() => {
-          if (isCorrect) {
-            setIsCorrect(null);
-          }
-        }, isCorrect ? 3000 : 5000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isCorrect, currentQuestion]);
+  // El feedback permanece visible hasta que el usuario presione "Siguiente" o "Repetir"
 
   // Inicializar práctica automáticamente si viene una categoría desde navegación
   useEffect(() => {
@@ -146,8 +162,8 @@ const CategoryPracticeScreen = () => {
       !initializedFromParams.current
     ) {
       initializedFromParams.current = true;
-      handleCategorySelect(routeParams.questionType).catch(error => {
-        console.error('Error initializing practice:', error);
+      handleCategorySelect(routeParams.questionType, routeParams?.subcategory).catch(error => {
+        if (__DEV__) console.error('Error initializing practice:', error);
         Alert.alert('Error', 'No se pudieron cargar las preguntas');
       });
     }
@@ -155,18 +171,20 @@ const CategoryPracticeScreen = () => {
 
   // Función para cargar datos persistentes
   const loadPersistedData = async () => {
-    const data = await QuestionStorageService.loadPersistedData();
+    const data = await QuestionStorageService.loadPersistedData(examMode);
     setIncorrectQuestions(data.incorrectQuestions);
     setMarkedQuestions(data.markedQuestions);
   };
 
   // Función para obtener el ID de sección basado en la pregunta actual
   const getSectionIdForQuestion = (questionId: number): string => {
-    const question = questions.find(q => q.id === questionId);
-    if (!question) return '';
+    const section = SectionNavigationService.getCurrentSection(questionId, examMode);
+    if (!section) return '';
     
     // Crear ID único basado en categoría y subcategoría
-    const sectionId = `practice_${question.category}_${question.subcategory}`.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    const sectionId = `practice_${examMode}_${section.category}_${section.subcategory}`
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9_]/g, '');
     return sectionId;
   };
 
@@ -176,7 +194,7 @@ const CategoryPracticeScreen = () => {
     if (currentQuestion) {
       const sectionId = getSectionIdForQuestion(currentQuestion.id);
       if (sectionId && sectionId !== currentSectionId) {
-        console.log('📝 Actualizando sectionId a:', sectionId, 'para pregunta ID:', currentQuestion.id);
+        if (__DEV__) console.log('📝 Actualizando sectionId a:', sectionId, 'pregunta ID:', currentQuestion.id);
         setCurrentSectionId(sectionId);
         // El hook useSectionProgress se actualizará automáticamente cuando cambie currentSectionId
         // y cargará el progreso guardado para esa sección
@@ -185,7 +203,7 @@ const CategoryPracticeScreen = () => {
   }, [currentQuestion, currentSectionId]);
 
   // Función para seleccionar categoría
-  const handleCategorySelect = async (categoryId: string) => {
+  const handleCategorySelect = async (categoryId: string, subcategoryFilter?: string, blockRange?: [number, number]) => {
     setSelectedCategory(categoryId);
     setScore(0);
     setUserAnswer('');
@@ -193,18 +211,24 @@ const CategoryPracticeScreen = () => {
     setShowNextSectionDialog(false);
     setNextSectionInfo(null);
 
-    const categoryQuestions = await QuestionLoaderService.getAllQuestionsByCategory(categoryId);
-    if (categoryQuestions.length > 0) {
-      setShuffledQuestions(categoryQuestions);
-      setTotalQuestions(categoryQuestions.length);
-      
+    const categoryQuestions = await QuestionLoaderService.getAllQuestionsByCategory(categoryId, examMode);
+    const filteredQuestions = subcategoryFilter
+      ? categoryQuestions.filter(q => q.subcategory === subcategoryFilter)
+      : categoryQuestions;
+    const finalQuestions = blockRange
+      ? filteredQuestions.slice(blockRange[0], blockRange[1])
+      : filteredQuestions;
+    if (finalQuestions.length > 0) {
+      setShuffledQuestions(finalQuestions);
+      setTotalQuestions(finalQuestions.length);
+
       // IMPORTANTE: Establecer el sectionId ANTES de establecer currentQuestion
       // Esto permite que el hook useSectionProgress cargue el progreso correctamente
-      const firstQuestion = categoryQuestions[0];
+      const firstQuestion = finalQuestions[0];
       const firstSectionId = getSectionIdForQuestion(firstQuestion.id);
       
       if (firstSectionId) {
-        console.log('📝 Estableciendo sectionId inicial:', firstSectionId);
+        if (__DEV__) console.log('📝 Estableciendo sectionId inicial:', firstSectionId);
         setCurrentSectionId(firstSectionId);
         
         // Esperar a que el hook cargue el progreso antes de establecer la pregunta
@@ -261,7 +285,8 @@ const CategoryPracticeScreen = () => {
       setIncorrectQuestions(newIncorrectQuestions);
       await QuestionStorageService.saveIncorrectQuestion(
         currentQuestion.id,
-        newIncorrectQuestions
+        newIncorrectQuestions,
+        examMode
       );
 
       // Mostrar diálogo para marcar pregunta después de un delay
@@ -275,124 +300,56 @@ const CategoryPracticeScreen = () => {
     if (questionIndex >= 0 && currentSectionId) {
       saveProgress(questionIndex);
       updateCurrentIndex(questionIndex);
-      console.log('💾 Progreso guardado después de responder, índice:', questionIndex, 'sección:', currentSectionId);
+      if (__DEV__) console.log('💾 Progreso guardado, índice:', questionIndex, 'sección:', currentSectionId);
     }
   };
 
   // Función para avanzar a la siguiente pregunta
-  // Lógica similar a StudyCardsScreen: primero verifica si hay más preguntas,
-  // luego verifica si es la última de la sección para mostrar diálogo
   const handleNextQuestion = async () => {
-    console.log('🚀 ========== handleNextQuestion INICIADO ==========');
-    console.log('📋 Parámetros de entrada:');
-    console.log('  - selectedCategory:', selectedCategory);
-    console.log('  - shuffledQuestions.length:', shuffledQuestions.length);
-    console.log('  - currentQuestion:', currentQuestion ? `ID ${currentQuestion.id}` : 'null');
-    console.log('  - questionIndex:', questionIndex);
-    console.log('  - totalQuestions:', totalQuestions);
-    
     if (!selectedCategory || shuffledQuestions.length === 0 || !currentQuestion) {
-      console.log('❌ ERROR: No se puede avanzar - faltan datos');
       Alert.alert('Error', 'No se puede avanzar. Faltan datos necesarios.');
       return;
     }
 
-    // Detener audio antes de avanzar
     try {
       await audioManager.stopCurrentAudio();
-      console.log('🔇 Audio detenido');
-    } catch (error) {
-      console.log('⚠️ Error al detener audio:', error);
-    }
+    } catch {}
 
     const nextIndex = questionIndex + 1;
-    console.log('📊 nextIndex calculado:', nextIndex);
 
-    // PRIMERO: Verificar si hay más preguntas en el array mezclado
     if (nextIndex < shuffledQuestions.length) {
-      console.log('✅ Hay más preguntas en el array. Avanzando normalmente...');
-      // Hay más preguntas en el array, avanzar normalmente
       const nextQuestion = shuffledQuestions[nextIndex];
-      console.log('➡️ Siguiente pregunta:', nextQuestion ? `ID ${nextQuestion.id}` : 'null');
-      
-      // Verificar si la nueva pregunta pertenece a una sección diferente
       const nextSectionId = getSectionIdForQuestion(nextQuestion.id);
       if (nextSectionId && nextSectionId !== currentSectionId) {
-        console.log('📝 Cambiando de sección:', currentSectionId, '→', nextSectionId);
         setCurrentSectionId(nextSectionId);
       }
-      
       setQuestionIndex(nextIndex);
       updateCurrentIndex(nextIndex);
       setCurrentQuestion(nextQuestion);
       setUserAnswer('');
       setIsCorrect(null);
       setShowMarkQuestionDialog(false);
-      
-      // IMPORTANTE: Guardar progreso DESPUÉS de avanzar
-      // Esto guarda la nueva posición donde está el usuario
-      if (nextSectionId || currentSectionId) {
-        const sectionToSave = nextSectionId || currentSectionId;
-        // Usar el saveProgress del hook, pero necesitamos guardar para la sección correcta
-        saveProgress(nextIndex);
-        updateCurrentIndex(nextIndex);
-        console.log('💾 Progreso guardado para nueva posición:', nextIndex, 'sección:', sectionToSave);
-      }
+      saveProgress(nextIndex);
+      updateCurrentIndex(nextIndex);
 
       Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start();
-      
-      console.log('✅ Avanzado a siguiente pregunta exitosamente');
     } else {
-      // Es la última pregunta del array mezclado
-      console.log('🏁 Es la última pregunta del array mezclado');
-      console.log('🔍 Verificando si es última de sección...');
-      
-      // SEGUNDO: Verificar si la pregunta actual es la última de su sección
-      // y si hay una siguiente sección disponible
-      const isLastInSection = SectionNavigationService.isLastQuestionInSection(currentQuestion.id);
-      console.log('📊 ¿Es última de sección?', isLastInSection);
-      console.log('📊 Pregunta ID:', currentQuestion.id);
-      
+      const isLastInSection = SectionNavigationService.isLastQuestionInSection(currentQuestion.id, examMode);
       if (isLastInSection) {
-        console.log('✅ Es la última pregunta de su sección');
-        const nextSection = SectionNavigationService.getNextSection(currentQuestion.id);
-        console.log('➡️ Siguiente sección encontrada:', nextSection);
-        
+        const nextSection = SectionNavigationService.getNextSection(currentQuestion.id, examMode);
         if (nextSection && nextSection.exists) {
-          console.log('✅ Hay siguiente sección disponible:', nextSection.subcategory);
-          console.log('📝 Configurando información de siguiente sección...');
-          
           setNextSectionInfo({
             category: nextSection.category,
             subcategory: nextSection.subcategory,
             title: nextSection.title,
           });
-          
-          console.log('📝 Mostrando diálogo...');
           setShowNextSectionDialog(true);
-          console.log('✅ showNextSectionDialog establecido a: true');
-          console.log('✅ Diálogo debería estar visible ahora');
-          return; // Mostrar diálogo y no avanzar
-        } else {
-          console.log('⚠️ No hay siguiente sección disponible');
+          return;
         }
-      } else {
-        console.log('ℹ️ No es la última pregunta de su sección');
       }
-      
-      // No hay más preguntas ni secciones disponibles
-      console.log('🏁 Mostrando alerta de práctica completada');
       Alert.alert(
         'Práctica Completada',
         `Puntuación: ${score}/${totalQuestions}`,
@@ -402,8 +359,6 @@ const CategoryPracticeScreen = () => {
         ]
       );
     }
-    
-    console.log('🚀 ========== handleNextQuestion FINALIZADO ==========');
   };
 
   // Función para continuar a la siguiente sección
@@ -418,20 +373,8 @@ const CategoryPracticeScreen = () => {
     
     // Cargar preguntas de la siguiente sección
     // Mapear subcategoría a categoría si es necesario
-    const categoryMap: Record<string, string> = {
-      'A: Principios de la Democracia Americana': 'government',
-      'B: Sistema de Gobierno': 'government',
-      'C: Derechos y Responsabilidades': 'government',
-      'A: Período Colonial e Independencia': 'history',
-      'B: Siglo XIX (1800s)': 'history',
-      'C: Historia Reciente': 'history',
-      'A: Geografía': 'civics',
-      'B: Símbolos': 'civics',
-      'C: Días Festivos': 'civics',
-    };
-    
     // Obtener preguntas de la siguiente sección
-    const nextSectionQuestions = questions.filter(
+    const nextSectionQuestions = activeQuestionBank.filter(
       q => q.category === nextSectionInfo.category && q.subcategory === nextSectionInfo.subcategory
     );
     
@@ -439,9 +382,10 @@ const CategoryPracticeScreen = () => {
       // Convertir a LocalPracticeQuestion
       const practiceQuestions = nextSectionQuestions.map(q => ({
         id: q.id,
-        question: q.questionEn || q.questionEs,
-        answer: q.answerEn || q.answerEs,
+        question: q.questionEn,
+        answer: q.answerEn,
         category: q.category,
+        subcategory: q.subcategory,
         difficulty: 'medium' as const,
         mode: 'text-text' as QuestionMode,
       }));
@@ -486,7 +430,8 @@ const CategoryPracticeScreen = () => {
 
     const newMarkedQuestions = await QuestionStorageService.toggleMarkedQuestion(
       currentQuestion.id,
-      markedQuestions
+      markedQuestions,
+      examMode
     );
     setMarkedQuestions(newMarkedQuestions);
     setShowMarkQuestionDialog(false);
@@ -494,7 +439,38 @@ const CategoryPracticeScreen = () => {
 
   // Obtener título de categoría
   const getCategoryTitle = () => {
-    return categories.find(c => c.id === selectedCategory)?.title || 'Práctica';
+    return categoryOptions.find(c => c.id === selectedCategory)?.title || 'Práctica';
+  };
+
+  const getCategoryQuestionCount = (categoryId: string): number =>
+    (activeQuestionBank as any[]).filter(q => q.category === categoryId).length;
+
+  const buildBlocks = () => {
+    if (!pendingCategory) return [];
+    const total = getCategoryQuestionCount(pendingCategory);
+    const numBlocks = Math.ceil(total / BLOCK_SIZE);
+    return Array.from({ length: numBlocks }, (_, i) => {
+      const start = i * BLOCK_SIZE;
+      const end = Math.min((i + 1) * BLOCK_SIZE, total);
+      return { range: [start, end] as [number, number], label: `Parte ${i + 1}  (${start + 1}–${end})`, count: end - start };
+    });
+  };
+
+  const handleCategoryTap = (categoryId: string) => {
+    if (getCategoryQuestionCount(categoryId) > MODAL_THRESHOLD) {
+      setPendingCategory(categoryId);
+      setIsBlockModalVisible(true);
+    } else {
+      handleCategorySelect(categoryId);
+    }
+  };
+
+  const handleBlockSelect = (blockRange: [number, number] | null) => {
+    if (!pendingCategory) return;
+    setIsBlockModalVisible(false);
+    setTimeout(() => {
+      handleCategorySelect(pendingCategory, undefined, blockRange ?? undefined);
+    }, 150);
   };
 
   return (
@@ -535,11 +511,11 @@ const CategoryPracticeScreen = () => {
 
       {!selectedCategory && (
         <View style={styles.categoriesContainer}>
-          {categories.map((category) => (
+          {categoryOptions.map((category) => (
             <TouchableOpacity
               key={category.id}
               style={styles.categoryCard}
-              onPress={() => handleCategorySelect(category.id)}
+              onPress={() => handleCategoryTap(category.id)}
               activeOpacity={0.8}
             >
               <LinearGradient
@@ -598,48 +574,18 @@ const CategoryPracticeScreen = () => {
                   onPlayAudio={playAudio}
                 />
 
-                {/* SIEMPRE mostrar AnswerResultCard cuando hay una respuesta, sin importar si es la última pregunta */}
                 {isCorrect !== null && currentQuestion && (
-                  <View style={{ zIndex: 10, elevation: 10 }}>
-                    <AnswerResultCard
-                      isCorrect={isCorrect}
-                      correctAnswer={currentQuestion.answer}
-                      onRepeat={handleRepeatQuestion}
-                      onNext={() => {
-                        console.log('🔘 ========== BOTÓN SIGUIENTE PRESIONADO ==========');
-                        console.log('🔘 Botón Siguiente presionado para pregunta ID:', currentQuestion.id);
-                        console.log('📊 Estado al presionar:');
-                        console.log('  - questionIndex:', questionIndex);
-                        console.log('  - totalQuestions:', totalQuestions);
-                        console.log('  - shuffledLength:', shuffledQuestions.length);
-                        console.log('  - nextIndex sería:', questionIndex + 1);
-                        console.log('  - ¿Hay más preguntas?:', questionIndex + 1 < shuffledQuestions.length);
-                        handleNextQuestion();
-                      }}
-                    />
-                  </View>
-                )}
-                
-                {/* Debug: Verificar si el botón debería estar visible */}
-                {__DEV__ && (
-                  <View style={{ padding: 10, backgroundColor: '#fff3cd', marginTop: 10, borderRadius: 8, borderWidth: 2, borderColor: '#ffc107' }}>
-                    <Text style={{ fontSize: 12, fontWeight: 'bold' }}>🔍 DEBUG ESTADO:</Text>
-                    <Text style={{ fontSize: 12 }}>isCorrect: {isCorrect !== null ? (isCorrect ? 'true' : 'false') : 'null'}</Text>
-                    <Text style={{ fontSize: 12 }}>questionIndex: {questionIndex}</Text>
-                    <Text style={{ fontSize: 12 }}>shuffledQuestions.length: {shuffledQuestions.length}</Text>
-                    <Text style={{ fontSize: 12 }}>nextIndex sería: {questionIndex + 1}</Text>
-                    <Text style={{ fontSize: 12 }}>¿Hay más preguntas?: {questionIndex + 1 < shuffledQuestions.length ? 'SÍ' : 'NO'}</Text>
-                    <Text style={{ fontSize: 12 }}>¿AnswerResultCard visible?: {isCorrect !== null ? 'SÍ' : 'NO'}</Text>
-                  </View>
-                )}
-                
-                {/* Debug: Mostrar información de la pregunta actual */}
-                {__DEV__ && currentQuestion && (
-                  <View style={{ padding: 10, backgroundColor: '#f0f0f0', marginTop: 10, borderRadius: 8 }}>
-                    <Text style={{ fontSize: 12 }}>ID: {currentQuestion.id}</Text>
-                    <Text style={{ fontSize: 12 }}>Index: {questionIndex + 1}/{totalQuestions}</Text>
-                    <Text style={{ fontSize: 12 }}>Es última de sección: {SectionNavigationService.isLastQuestionInSection(currentQuestion.id) ? 'SÍ' : 'NO'}</Text>
-                  </View>
+                  <PracticeFeedbackCard
+                    isCorrect={isCorrect}
+                    correctAnswer={formatAnswerText(currentQuestion.answer)}
+                    userAnswer={!isCorrect ? userAnswer : undefined}
+                    explanationEs={
+                      (examMode === '128' ? (questions128 as any[]) : questions)
+                        .find((q: any) => q.id === currentQuestion.id)?.explanationEs
+                    }
+                    onRetry={handleRepeatQuestion}
+                    onNext={handleNextQuestion}
+                  />
                 )}
 
                 {showMarkQuestionDialog && (
@@ -677,31 +623,26 @@ const CategoryPracticeScreen = () => {
           visible={showProgressModal && !progressLoading}
           onClose={closeProgressModal}
           onContinue={() => {
-            console.log('✅ Usuario eligió continuar desde pregunta:', savedIndex + 1);
+            if (__DEV__) console.log('➡️ Continuando desde pregunta:', savedIndex + 1);
             continueFromSaved();
-            // Permitir continuar desde savedIndex >= 0 (incluyendo 0)
             if (savedIndex >= 0 && shuffledQuestions.length > 0 && savedIndex < shuffledQuestions.length) {
-              // Continuar desde donde quedó
-              console.log('➡️ Continuando desde índice:', savedIndex, 'pregunta ID:', shuffledQuestions[savedIndex]?.id);
+              if (__DEV__) console.log('➡️ índice:', savedIndex, 'pregunta ID:', shuffledQuestions[savedIndex]?.id);
               setQuestionIndex(savedIndex);
               setCurrentQuestion(shuffledQuestions[savedIndex]);
               updateCurrentIndex(savedIndex);
-              
-              // Actualizar sectionId si es necesario
               const questionSectionId = getSectionIdForQuestion(shuffledQuestions[savedIndex].id);
               if (questionSectionId) {
                 setCurrentSectionId(questionSectionId);
               }
             } else {
-              // Si el índice guardado no es válido, empezar desde el inicio
-              console.log('⚠️ Índice guardado no válido, empezando desde el inicio');
+              if (__DEV__) console.log('⚠️ Índice no válido, empezando desde el inicio');
               setQuestionIndex(0);
               setCurrentQuestion(shuffledQuestions[0]);
               updateCurrentIndex(0);
             }
           }}
           onRestart={() => {
-            console.log('🔄 Usuario eligió empezar desde el inicio');
+            if (__DEV__) console.log('🔄 Empezando desde el inicio');
             restartFromBeginning();
             if (shuffledQuestions.length > 0) {
               setQuestionIndex(0);
@@ -716,11 +657,61 @@ const CategoryPracticeScreen = () => {
             }
           }}
           onViewAll={viewAllQuestions}
-          sectionName={SectionNavigationService.getCurrentSection(currentQuestion.id)?.subcategory || getCategoryTitle()}
+          sectionName={SectionNavigationService.getCurrentSection(currentQuestion.id, examMode)?.subcategory || getCategoryTitle()}
           currentQuestion={savedIndex + 1}
           totalQuestions={totalQuestions}
         />
       )}
+
+      {/* Modal de bloques para categorías extensas */}
+      <Modal
+        visible={isBlockModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setIsBlockModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsBlockModalVisible(false)}
+        >
+          <TouchableOpacity activeOpacity={1} style={styles.bottomSheet}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetTitle}>Sección extensa</Text>
+            <Text style={styles.sheetSubtitle}>
+              Esta sección tiene {pendingCategory ? getCategoryQuestionCount(pendingCategory) : 0} preguntas.{'\n'}
+              ¿Cómo prefieres practicarlas hoy?
+            </Text>
+            {buildBlocks().map((block, i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.blockOption}
+                onPress={() => handleBlockSelect(block.range)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.blockOptionLeft}>
+                  <MaterialCommunityIcons name="layers" size={18} color="#1E40AF" />
+                  <Text style={styles.blockOptionText}>{block.label}</Text>
+                </View>
+                <Text style={styles.blockOptionCount}>{block.count} preguntas</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.blockOptionAll}
+              onPress={() => handleBlockSelect(null)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.blockOptionLeft}>
+                <MaterialCommunityIcons name="book-open-variant" size={18} color="#059669" />
+                <Text style={styles.blockOptionAllText}>Practicar todo de una vez</Text>
+              </View>
+              <Text style={styles.blockOptionAllCount}>
+                {pendingCategory ? getCategoryQuestionCount(pendingCategory) : 0} preguntas
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Diálogo para continuar a la siguiente sección */}
       <Modal
@@ -966,6 +957,89 @@ const styles = StyleSheet.create({
   },
   dialogButtonTextConfirm: {
     color: 'white',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 36,
+    gap: 10,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  sheetSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 4,
+  },
+  blockOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  blockOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  blockOptionText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  blockOptionCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  blockOptionAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+    marginTop: 4,
+  },
+  blockOptionAllText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  blockOptionAllCount: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
   },
 });
 

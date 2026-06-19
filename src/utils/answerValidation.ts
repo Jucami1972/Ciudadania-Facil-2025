@@ -20,9 +20,19 @@ export const cleanText = (text: string): string => {
     .replace(/\(.*?\)/g, '')
     // Remover asteriscos
     .replace(/\*/g, '')
+    // Remover puntuación final (punto, exclamación, interrogación)
+    .replace(/[.!?]+$/, '')
     // Remover espacios múltiples
     .replace(/\s+/g, ' ')
     .trim();
+};
+
+export const formatAnswerText = (answer: string | string[]): string => {
+  if (Array.isArray(answer)) {
+    return answer.join('\n');
+  }
+
+  return answer;
 };
 
 /**
@@ -35,7 +45,7 @@ export const cleanText = (text: string): string => {
  */
 export const isAnswerCorrect = (
   userAnswer: string,
-  correctAnswer: string,
+  correctAnswer: string | string[],
   questionText?: string
 ): boolean => {
   if (questionText) {
@@ -47,12 +57,15 @@ export const isAnswerCorrect = (
 
   // Limpiar ambas respuestas
   const cleanUserAnswer = cleanText(userAnswer);
-  const cleanCorrectAnswer = cleanText(correctAnswer);
+  const cleanCorrectAnswer = cleanText(formatAnswerText(correctAnswer));
 
   if (questionText) {
     console.log('User Answer (cleaned):', cleanUserAnswer);
     console.log('Correct Answer (cleaned):', cleanCorrectAnswer);
   }
+
+  // Coincidencia exacta con la respuesta completa (cubre respuestas con coma interna)
+  if (cleanUserAnswer === cleanCorrectAnswer) return true;
 
   // Dividir la respuesta correcta en opciones (separadas por comas o saltos de línea)
   const correctOptions = cleanCorrectAnswer
@@ -64,14 +77,13 @@ export const isAnswerCorrect = (
     console.log('Correct Options:', correctOptions);
   }
 
-  // Verificar si la respuesta del usuario coincide con alguna opción
+  // Verificar si la respuesta del usuario coincide EXACTAMENTE con alguna opción
+  // (tras limpieza: minúsculas, sin símbolos, sin espacios múltiples).
+  // No se aceptan respuestas parciales ni substrings.
   const isMatch = correctOptions.some(option => {
     const normalizedOption = cleanText(option);
-    return (
-      cleanUserAnswer === normalizedOption ||
-      cleanUserAnswer.includes(normalizedOption) ||
-      normalizedOption.includes(cleanUserAnswer)
-    );
+    if (normalizedOption.length < 2) return false;
+    return cleanUserAnswer === normalizedOption;
   });
 
   if (questionText) {

@@ -3,7 +3,7 @@
  * Muestra preguntas basadas en el algoritmo SM-2 para optimizar la memorización
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -23,48 +23,44 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NavigationProps } from '../../types/navigation';
 import { questions } from '../../data/questions';
+import { questions128 } from '../../data/questions128';
 import { usePracticeSession } from '../../hooks/usePracticeSession';
-import { isAnswerCorrect } from '../../utils/answerValidation';
+import { formatAnswerText, isAnswerCorrect } from '../../utils/answerValidation';
 import { SpacedRepetitionService } from '../../services/SpacedRepetitionService';
 import { ProgressHeader } from '../../components/practice/ProgressHeader';
 import { PracticeQuestionCard } from '../../components/practice/PracticeQuestionCard';
 import { AnswerResultCard } from '../../components/practice/AnswerResultCard';
 import { FloatingAnswerInput } from '../../components/practice/FloatingAnswerInput';
 import { useQuestionAudio } from '../../hooks/useQuestionAudio';
+import { useExamMode } from '../../context/ExamModeContext';
 
 const SpacedRepetitionPracticeScreen = () => {
   const navigation = useNavigation<NavigationProps>();
   const insets = useSafeAreaInsets();
+  const { examMode } = useExamMode();
   const [userAnswer, setUserAnswer] = useState<string>('');
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [answeredQuestion, setAnsweredQuestion] = useState<{ text: string; answer: string } | null>(null);
   const [pendingAnswer, setPendingAnswer] = useState<{ answer: string; correct: boolean } | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
 
-  // Convertir questions a formato compatible con usePracticeSession
-  // Manejar respuestas como string o array
-  const formatAnswer = (ans: string | string[]): string => {
-    if (Array.isArray(ans)) {
-      return ans.join('\n');
-    }
-    return ans;
-  };
+  const activeQuestionBank = examMode === '128' ? questions128 : questions;
   
-  const practiceQuestions = questions.map(q => ({
+  const practiceQuestions = useMemo(() => activeQuestionBank.map(q => ({
     id: q.id,
     text: q.questionEn,
     options: [],
-    correctAnswer: formatAnswer(q.answerEn),
+    correctAnswer: formatAnswerText(q.answerEn),
     category: q.category,
     section: q.subcategory,
     question: {
       text: q.questionEn,
       translation: q.questionEs,
     },
-    answer: formatAnswer(q.answerEn),
-    answerTranslation: formatAnswer(q.answerEs),
+    answer: formatAnswerText(q.answerEn),
+    answerTranslation: formatAnswerText(q.answerEs),
     difficulty: 'medium' as const,
-  }));
+  })), [activeQuestionBank]);
 
   const {
     currentQuestion,
@@ -78,9 +74,10 @@ const SpacedRepetitionPracticeScreen = () => {
     mode: 'spaced_repetition',
     questions: practiceQuestions,
     questionCount: 20,
+    examMode,
   });
 
-  const { playAudio } = useQuestionAudio(currentQuestion?.id || null);
+  const { playAudio } = useQuestionAudio(currentQuestion?.id || null, examMode);
 
   useEffect(() => {
     if (currentQuestion) {

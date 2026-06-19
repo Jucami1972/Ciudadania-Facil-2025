@@ -407,6 +407,18 @@ const HomeScreenRevolutionary = () => {
     };
     const title = titleMap[homeData.lastStudiedCategory || 'GobiernoAmericano'] || 'Gobierno Americano';
 
+    const subcategoryKeyMap128: Record<string, string> = {
+      'A: Principios del Gobierno Americano': 'A: Principles of American Government',
+      'B: Sistema de Gobierno': 'B: System of Government',
+      'C: Derechos y Responsabilidades': 'C: Rights and Responsibilities',
+      'A: Período Colonial e Independencia': 'A: Colonial Period and Independence',
+      'B: Siglo XIX (1800s)': 'B: 1800s',
+      'C: Historia Reciente': 'C: Recent American History and Other Important Historical Information',
+      'A: Símbolos': 'A: Symbols',
+      'B: Días Festivos': 'B: Holidays',
+    };
+    const subcategoryKey = examMode === '128' ? (subcategoryKeyMap128[subtitle] ?? subtitle) : undefined;
+
     (navigation as any).navigate('Study', {
       screen: 'StudyCards',
       params: {
@@ -414,6 +426,7 @@ const HomeScreenRevolutionary = () => {
         questionRange: homeData.lastStudiedRange || (examMode === '128' ? '1-15' : '1-12'),
         title,
         subtitle,
+        subcategoryKey,
       },
     });
   }, [homeData, navigation, examMode]);
