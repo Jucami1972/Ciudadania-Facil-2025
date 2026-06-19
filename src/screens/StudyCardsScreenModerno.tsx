@@ -89,6 +89,7 @@ const StudyCardsScreenModerno = () => {
     restartFromBeginning,
     viewAllQuestions,
     closeProgressModal,
+    clearProgress,
   } = useSectionProgress(sectionId, filteredQuestions.length);
 
   const stopAudio = useCallback(async () => {
@@ -247,7 +248,10 @@ const StudyCardsScreenModerno = () => {
         [
           {
             text: 'Volver',
-            onPress: () => navigation.goBack(),
+            onPress: () => {
+              clearProgress();
+              navigation.goBack();
+            },
           },
           {
             text: 'Repetir',
@@ -267,6 +271,7 @@ const StudyCardsScreenModerno = () => {
     if (!nextSectionInfo) return;
     await stopAudio();
     setShowNextSectionDialog(false);
+    await clearProgress();
     navigation.replace('StudyCards', {
       category: nextSectionInfo.category as any,
       title: nextSectionInfo.title,

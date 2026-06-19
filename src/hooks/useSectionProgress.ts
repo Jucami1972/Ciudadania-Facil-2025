@@ -50,20 +50,17 @@ export const useSectionProgress = (sectionId: string, totalQuestions: number) =>
       if (savedProgress) {
         const savedIndex = parseInt(savedProgress, 10);
         console.log('💾 Progreso guardado encontrado:', savedIndex, 'de', totalQuestions);
-        // Permitir savedIndex >= 0 (incluyendo 0) y < totalQuestions
-        if (!isNaN(savedIndex) && savedIndex >= 0 && savedIndex < totalQuestions && totalQuestions > 0) {
+        // Solo mostrar modal si el usuario avanzó al menos 1 pregunta (index > 0)
+        // y no llegó a la última tarjeta (sección completada)
+        if (!isNaN(savedIndex) && savedIndex > 0 && savedIndex < totalQuestions - 1 && totalQuestions > 0) {
           setProgress(prev => ({
             ...prev,
             lastSavedIndex: savedIndex,
           }));
           
           // Mostrar modal solo si hay progreso guardado y es válido
-          // Incluso si savedIndex es 0, mostramos el modal para dar opción al usuario
           console.log('✅ Mostrando modal de progreso para pregunta:', savedIndex + 1);
-          // Usar setTimeout para asegurar que el estado se actualice correctamente
-          setTimeout(() => {
-            setShowProgressModal(true);
-          }, 100);
+          setShowProgressModal(true);
         } else {
           console.log('⚠️ Progreso guardado no es válido (fuera de rango o inválido):', savedIndex, 'totalQuestions:', totalQuestions);
         }
