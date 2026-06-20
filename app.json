@@ -14,11 +14,16 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "description": "Aprende para el examen de ciudadanía estadounidense de manera fácil y práctica. Preguntas oficiales de USCIS, práctica con audio, simulación de entrevista N-400 con IA.",
+    "privacyPolicy": "https://ciudadania-facil-2025.vercel.app/privacy",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ciudadaniafacil.app",
+      "buildNumber": "1",
       "newArchEnabled": true,
       "jsEngine": "hermes",
+      "appStoreCategory": "Education",
+      "keywords": ["ciudadania", "citizenship", "immigration", "examen", "test", "N-400", "USCIS", "naturalization", "civics"],
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Esta app necesita acceso al micrófono para el reconocimiento de voz durante las prácticas.",
         "NSSpeechRecognitionUsageDescription": "Esta app necesita acceso al reconocimiento de voz para transcribir las respuestas del usuario."
@@ -40,8 +45,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.ciudadaniafacil.app",
+      "versionCode": 1,
       "newArchEnabled": true,
       "jsEngine": "hermes",
+      "playStoreCategory": "EDUCATION",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.INTERNET",
@@ -72,7 +79,8 @@
       "orientation": "portrait"
     },
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      "@sentry/react-native"
     ]
   }
 }

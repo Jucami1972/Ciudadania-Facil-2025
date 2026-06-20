@@ -1,6 +1,6 @@
 # Política de Privacidad - Ciudadanía Fácil
 
-**Última actualización:** 17 de enero de 2025
+**Última actualización:** 23 de marzo de 2026
 
 ## 1. Introducción
 
@@ -29,7 +29,12 @@ Ciudadanía Fácil ("nosotros", "nuestra", "la aplicación") se compromete a pro
   - Identificador único del dispositivo (para analytics)
 
 - **Datos de Audio:**
-  - Grabaciones de voz durante prácticas (procesadas localmente, no almacenadas)
+  - Grabaciones de voz durante prácticas: algunas funciones envían audio temporalmente a proveedores externos de IA (OpenAI) para transcripción o evaluación vocal. Esto aplica específicamente a:
+    - Práctica de Lectura y Escritura (dictado por voz)
+    - Entrevista de Práctica N-400 (evaluación de respuestas habladas)
+    - Práctica Aleatoria con evaluación de voz
+  - El audio **no se almacena permanentemente** en servidores propios. OpenAI puede retener el audio temporalmente según su propia política de privacidad.
+  - Estas funciones solo se activan cuando el usuario las usa y otorga permiso de micrófono.
 
 ### 2.3 Información de Terceros
 
