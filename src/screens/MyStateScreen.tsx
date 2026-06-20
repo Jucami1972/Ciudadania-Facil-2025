@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Modal, FlatList, SafeAreaView, Alert,
+  TextInput, Modal, FlatList, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -72,7 +72,7 @@ export default function MyStateScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={styles.container}>
       {/* Header */}
       <LinearGradient
         colors={['#1E3A8A', '#1E40AF', '#3B82F6']}
@@ -91,7 +91,7 @@ export default function MyStateScreen() {
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentPadding}>
         {/* Selector de estado */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Estado actual</Text>
@@ -173,7 +173,7 @@ export default function MyStateScreen() {
 
       {/* Modal selector de estado */}
       <Modal visible={showPicker} animationType="slide" onRequestClose={() => setShowPicker(false)}>
-        <SafeAreaView style={styles.modalSafe}>
+        <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Selecciona tu estado</Text>
             <TouchableOpacity onPress={() => { setShowPicker(false); setSearch(''); }}>
@@ -209,26 +209,53 @@ export default function MyStateScreen() {
             )}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
           />
-        </SafeAreaView>
+        </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { paddingBottom: 16 },
-  headerContent: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 },
-  backButton: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center', alignItems: 'center',
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  headerTitleContainer: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: '#fff' },
-  headerSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  body: { flex: 1 },
-  bodyContent: { padding: 16 },
+  header: {
+    paddingBottom: 16,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  content: {
+    flex: 1,
+  },
+  contentPadding: {
+    padding: 16,
+  },
   card: {
     backgroundColor: '#fff', borderRadius: 12, padding: 16,
     marginBottom: 12, elevation: 1,
@@ -269,7 +296,11 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', paddingVertical: 48, gap: 16 },
   emptyText: { fontSize: 15, color: '#94A3B8', textAlign: 'center', lineHeight: 22, paddingHorizontal: 32 },
   // Modal
-  modalSafe: { flex: 1, backgroundColor: '#fff' },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+    paddingTop: 44,
+  },
   modalHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
