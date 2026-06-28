@@ -16,6 +16,7 @@ interface SyncItem {
   data: any;
   timestamp: number;
   retries: number;
+  nextRetryAt?: number;
 }
 
 /**
@@ -24,15 +25,18 @@ interface SyncItem {
  */
 export const isOnline = async (): Promise<boolean> => {
   try {
-    // Intentar una operación simple de Firestore
-    // Si falla, asumimos que estamos offline
-    await db.collection('_health').limit(1).get();
-    
-    // Si llegamos aquí, hay conexión
+    // Timeout de 5 segundos para evitar que la query cuelgue indefinidamente
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 5000)
+    );
+    await Promise.race([
+      db.collection('_health').limit(1).get(),
+      timeoutPromise,
+    ]);
+
     await AsyncStorage.setItem(ONLINE_STATUS_KEY, 'true');
     return true;
   } catch (error) {
-    // Probablemente offline
     await AsyncStorage.setItem(ONLINE_STATUS_KEY, 'false');
     return false;
   }
@@ -101,16 +105,28 @@ export const processSyncQueue = async (userId: string): Promise<{ success: numbe
   let failed = 0;
   const remainingQueue: SyncItem[] = [];
 
-  for (const item of queue) {
+  // 1s → 2s → 4s antes de cada reintento
+  const BACKOFF_MS = [1000, 2000, 4000];
+
+  // Solo procesar items cuyo tiempo de espera ya expiró
+  const readyItems = queue.filter(item => !item.nextRetryAt || Date.now() >= item.nextRetryAt);
+  const waitingItems = queue.filter(item => item.nextRetryAt && Date.now() < item.nextRetryAt);
+
+  // Ítems que aún esperan su backoff pasan al siguiente ciclo intactos
+  remainingQueue.push(...waitingItems);
+
+  for (const item of readyItems) {
     try {
       await syncItem(userId, item);
       success++;
     } catch (error) {
       console.error('Error sincronizando item:', error);
-      
-      // Reintentar hasta 3 veces
+
+      // Reintentar hasta 3 veces con backoff exponencial
       if (item.retries < 3) {
+        const delay = BACKOFF_MS[item.retries] ?? 4000;
         item.retries++;
+        item.nextRetryAt = Date.now() + delay;
         remainingQueue.push(item);
       } else {
         failed++;
@@ -326,15 +342,18 @@ export const loadFromFirestore = async (userId: string): Promise<void> => {
     if (userDoc.exists) {
       const userData = userDoc.data();
 
-      // Cargar progreso
-      if (userData?.progress) {
-        const viewedQuestions = userData.progress.viewedQuestions || [];
-        await AsyncStorage.setItem('@study:viewed', JSON.stringify(viewedQuestions));
-      }
-
       // Cargar configuración
       if (userData?.settings) {
         await AsyncStorage.setItem('@user:settings', JSON.stringify(userData.settings));
+      }
+
+      // Cargar progreso — usar la clave correcta según el examMode del usuario
+      if (userData?.progress) {
+        const viewedQuestions = userData.progress.viewedQuestions || [];
+        const savedSettings = userData.settings || {};
+        const examMode: string = savedSettings.examMode ?? '100';
+        const viewedKey = `@study:viewed:${examMode}`;
+        await AsyncStorage.setItem(viewedKey, JSON.stringify(viewedQuestions));
       }
     }
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, Suspense } from 'react';
-import { Platform, View, Text } from 'react-native';
+import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import { NavigationContainer, NavigationContainerRef, useNavigation, useFocusEffect, CommonActions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,9 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback } from 'react';
 
 import { useAuth } from '../context/AuthContext';
+import { useExamMode } from '../context/ExamModeContext';
 import { RootStackParamList } from '../types/navigation';
 import { trackScreenView, trackSessionStart } from '../utils/analytics';
 import SplashScreen from '../components/SplashScreen';
+import ExamSelectionScreen from '../screens/ExamSelectionScreen';
 // HomeScreenRedesign se importa directamente porque es la pantalla principal del tab
 import HomeScreenRedesign from '../screens/HomeScreenRedesign';
 
@@ -171,7 +173,10 @@ import VocabularioScreenModernoV2 from '../screens/VocabularioScreenModernoV2';
 import SpacedRepetitionPracticeScreen from '../screens/practice/SpacedRepetitionPracticeScreen';
 import N400PracticeHomeScreen from '../screens/practice/N400PracticeHomeScreen';
 import N400SectionPracticeScreen from '../screens/practice/N400SectionPracticeScreen';
+import CiclosAudioScreen from '../screens/practice/CiclosAudioScreen';
 import EstadisticasScreen from '../screens/EstadisticasScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import MyStateScreen from '../screens/MyStateScreen';
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStackNavigator = createNativeStackNavigator();
@@ -210,10 +215,6 @@ const StudyStack = () => (
       <StudyStackNavigator.Screen name="Subcategorias" component={SubcategoriasScreenModerno} />
       <StudyStackNavigator.Screen name="StudyCards" component={StudyCardsScreenModerno} />
       <StudyStackNavigator.Screen name="StudyCardsByType" component={StudyCardsByTypeScreen} />
-      <StudyStackNavigator.Screen
-        name="QuestionTypePracticeHome"
-        component={QuestionTypePracticeScreenModerno}
-      />
       <StudyStackNavigator.Screen
         name="Explanation"
         component={ExplanationScreenModerno}
@@ -279,6 +280,10 @@ const PracticeStack = () => (
     <PracticeStackNavigator.Screen
       name="N400SectionPractice"
       component={N400SectionPracticeScreen}
+    />
+    <PracticeStackNavigator.Screen
+      name="CiclosAudioHome"
+      component={CiclosAudioScreen}
     />
   </PracticeStackNavigator.Navigator>
   </Suspense>
@@ -383,6 +388,7 @@ export default function AppNavigator() {
   // IMPORTANTE: Llamar useOnboardingStatusSafe ANTES de cualquier return condicional
   // para cumplir con las reglas de los hooks de React
   const { isCompleted: onboardingCompleted, isLoading: onboardingLoading, refresh: refreshOnboardingStatus } = useOnboardingStatusSafe();
+  const { isExamModeSelected, isLoading: examModeLoading } = useExamMode();
 
   // Cargar Onboarding de forma lazy solo cuando hay usuario autenticado
   // IMPORTANTE: Cargar el módulo tan pronto como haya usuario, incluso si aún está cargando
@@ -462,7 +468,7 @@ export default function AppNavigator() {
 
   // Determinar qué mostrar ANTES de cualquier return
   // Esta lógica debe ser calculada después de todos los hooks pero antes de los returns
-  const isInitializing = loading || onboardingLoading;
+  const isInitializing = loading || onboardingLoading || examModeLoading;
   // Mostrar onboarding si:
   // 1. No está inicializando (terminó de cargar auth y onboarding status)
   // 2. No está mostrando splash
@@ -472,12 +478,21 @@ export default function AppNavigator() {
   // 6. No es web
   // IMPORTANTE: No verificar null aquí porque isLoading ya maneja eso
   // Si isLoading es false y onboardingCompleted es false, significa cuenta nueva y debe mostrar onboarding
-  const shouldShowOnboarding = !isInitializing && 
+  const shouldShowOnboarding = !isInitializing &&
                                 !showSplash &&
-                                user && 
-                                onboardingModule?.Onboarding && 
+                                user &&
+                                onboardingModule?.Onboarding &&
                                 onboardingCompleted === false &&
                                 Platform.OS !== 'web';
+
+  // Mostrar selección de examen si:
+  // el usuario está autenticado, pasó el onboarding, y aún no eligió qué examen estudiar
+  const shouldShowExamSelection = !isInitializing &&
+                                  !showSplash &&
+                                  user &&
+                                  !shouldShowOnboarding &&
+                                  !isExamModeSelected &&
+                                  Platform.OS !== 'web';
 
   // Debug logging para entender el flujo
   useEffect(() => {
@@ -506,10 +521,14 @@ export default function AppNavigator() {
     );
   }
 
-  // 2. Si está inicializando (verificando auth o onboarding) después del splash → Mostrar nada (esperar)
+  // 2. Si está inicializando (verificando auth o onboarding) después del splash → Mostrar indicador
   // Esto previene que se muestre algo antes de determinar qué mostrar
   if (isInitializing && hasShownSplash) {
-    return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1E40AF" />
+      </View>
+    );
   }
 
   // 2. Si debe mostrar onboarding (usuario autenticado + onboarding no completado) → Mostrar Onboarding
@@ -519,6 +538,11 @@ export default function AppNavigator() {
     if (Onboarding) {
       return <Onboarding onComplete={handleOnboardingComplete} />;
     }
+  }
+
+  // 3. Si el usuario nunca eligió qué examen preparar → Mostrar ExamSelectionScreen
+  if (shouldShowExamSelection) {
+    return <ExamSelectionScreen />;
   }
 
   return (
@@ -547,6 +571,14 @@ export default function AppNavigator() {
             <RootStack.Screen
               name="ResultsScreen"
               component={EstadisticasScreen}
+            />
+            <RootStack.Screen
+              name="Settings"
+              component={SettingsScreen}
+            />
+            <RootStack.Screen
+              name="MyState"
+              component={MyStateScreen}
             />
           </>
         )}

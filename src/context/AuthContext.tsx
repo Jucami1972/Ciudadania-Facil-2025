@@ -67,10 +67,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
 
+    // Timeout de seguridad: si onAuthStateChanged no dispara en 10s, desbloquear la app
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+      if (__DEV__) console.warn('⚠️ Auth: timeout de seguridad activado — Firebase tardó más de 10s');
+    }, 10000);
+
     try {
       const authInstance = getAuthInstance();
       
       unsubscribe = authInstance.onAuthStateChanged(async (firebaseUser) => {
+        clearTimeout(safetyTimer);
         setUser(firebaseUser);
         setLoading(false);
         
@@ -99,11 +106,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
     } catch (error) {
+      clearTimeout(safetyTimer);
       console.error('Error configurando auth listener:', error);
       setLoading(false);
     }
 
     return () => {
+      clearTimeout(safetyTimer);
       if (unsubscribe) {
         unsubscribe();
       }
